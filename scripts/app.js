@@ -176,7 +176,6 @@ function renderAll() {
 
 // ── WEIGHT ACTIONS ──
 function deleteWeight(sortedIdx) {
-  function deleteWeight(sortedIdx) {
   if (!confirm('Bu kaydı silmek istediğinden emin misin?')) return;
 
   const sorted = [...state.weights]
@@ -191,11 +190,6 @@ function deleteWeight(sortedIdx) {
 
   stateSave();
   renderAll();
-  setStatus('Kayıt silindi ✓', 'ok');
-  );
-
-  stateSave();
-  renderAll();                // 🔴 KRİTİK: tüm UI’ı anında yenile
   setStatus('Kayıt silindi ✓', 'ok');
 }
 
