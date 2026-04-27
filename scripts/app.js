@@ -223,6 +223,16 @@ document.getElementById('openAddWeightBtn').addEventListener('click', () => {
   setStatus('Kayıt eklendi ✓', 'ok');
 });
 
+document.getElementById('editNameBtn').addEventListener('click', () => {
+  const newName = prompt('İsmini gir:', state.name || 'Sporcu');
+  if (!newName) return;
+
+  state.name = newName.trim();
+  stateSave();
+  renderHero();
+  setStatus('İsim güncellendi ✓', 'ok');
+});
+
 // ── THEME BUTTON ──
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
 
