@@ -322,6 +322,22 @@ window.addEventListener('appinstalled', () => {
   setStatus('FitTracker yüklendi ✓', 'ok');
 });
 
+document.getElementById('addNoteBtn').addEventListener('click', () => {
+  const text = prompt('Not gir:');
+  if (!text || !text.trim()) return;
+
+  if (!Array.isArray(state.notes)) state.notes = [];
+
+  state.notes.push({
+    text: text.trim(),
+    date: today()
+  });
+
+  stateSave();
+  renderNotes();
+  setStatus('Not eklendi ✓', 'ok');
+});
+
 // ── SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
