@@ -52,7 +52,7 @@ html {
 }
 
 body {
-  background: var(--bg);
+  background: red !important;
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
@@ -68,7 +68,7 @@ body {
   min-height: 100dvh;
   margin: 0 auto;
   position: relative;
-  background: var(--bg);
+  background: red !important;
 }
 
 /* ── TOPNAV ── */
