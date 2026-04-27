@@ -52,7 +52,7 @@ html {
 }
 
 body {
-  background: red !important;
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
@@ -64,11 +64,11 @@ body {
 
 /* ── LAYOUT ── */
 .app-shell {
-  max-width: 480px;
+  width: 100%;
   min-height: 100dvh;
   margin: 0 auto;
   position: relative;
-  background: red !important;
+  background: var(--bg);
 }
 
 /* ── TOPNAV ── */
@@ -173,10 +173,9 @@ body {
 .bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  transform: none;
   width: 100%;
-  max-width: 480px;
   z-index: 200;
   background: var(--surface);
   border-top: 1px solid var(--border);
