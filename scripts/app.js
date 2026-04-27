@@ -176,15 +176,22 @@ function renderAll() {
 
 // ── WEIGHT ACTIONS ──
 function deleteWeight(sortedIdx) {
+  function deleteWeight(sortedIdx) {
   if (!confirm('Bu kaydı silmek istediğinden emin misin?')) return;
 
-  // Listeyi ekrandaki sıraya göre üret
-  const sorted = [...state.weights].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...state.weights]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
   const target = sorted[sortedIdx];
 
-  // Güvenli silme (date + weight ile eşleştir)
-  state.weights = state.weights.filter(item =>
-    !(item.date === target.date && item.weight === target.weight)
+  if (!target) return;
+
+  state.weights.splice(target.originalIndex, 1);
+
+  stateSave();
+  renderAll();
+  setStatus('Kayıt silindi ✓', 'ok');
   );
 
   stateSave();
