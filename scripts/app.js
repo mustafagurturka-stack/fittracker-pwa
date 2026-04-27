@@ -61,7 +61,20 @@ function stateSave() {
 function stateLoad() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state = { ...state, ...JSON.parse(raw) };
+    if (!raw) return;
+
+    const savedState = JSON.parse(raw);
+
+    state = {
+      ...state,
+      ...savedState,
+      weights: Array.isArray(savedState.weights) ? savedState.weights : [],
+      nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
+      workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
+      notes: Array.isArray(savedState.notes) ? savedState.notes : [],
+      water: savedState.water || { ml: 0, date: '' },
+    };
+
   } catch (e) {
     console.warn('State yüklenemedi, sıfırlanıyor.', e);
   }
