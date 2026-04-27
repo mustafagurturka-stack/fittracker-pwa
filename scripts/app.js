@@ -20,6 +20,7 @@ let state = {
   water: { ml: 0, date: '' },
   nutrition: [],
   workouts: [],
+  notes: [],
   goalWeight: 74,
 };
 
