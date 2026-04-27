@@ -49,7 +49,9 @@ function stateSave() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     setSyncDot('ok');
+    console.log('State saved:', state);
   } catch (e) {
+    console.error('State kaydedilemedi:', e);
     setSyncDot('err');
     setStatus('Kayıt hatası: ' + e.message, 'error');
   }
@@ -197,12 +199,17 @@ function deleteWeight(sortedIdx) {
 document.getElementById('openAddWeightBtn').addEventListener('click', () => {
   const kg = prompt('Kilonu gir (kg):');
   if (!kg || isNaN(parseFloat(kg))) return;
+
   if (!state.weights) state.weights = [];
-  state.weights.push({ date: today(), weight: parseFloat(kg).toFixed(1) });
+
+  state.weights.push({
+    date: today(),
+    weight: parseFloat(kg).toFixed(1)
+  });
+
   stateSave();
+  renderAll();
   setStatus('Kayıt eklendi ✓', 'ok');
-  renderStats();
-  renderWeightList();
 });
 
 // ── THEME BUTTON ──
