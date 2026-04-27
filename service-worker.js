@@ -2,7 +2,7 @@
 
 // ── CACHE VERSION ──
 // Versiyonu her deploy'da artır → eski cache otomatik temizlenir.
-const CACHE_VERSION  = 'ft-v2';
+const CACHE_VERSION  = 'ft-v6';
 const STATIC_CACHE   = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE  = `${CACHE_VERSION}-runtime`;
 const MAX_RUNTIME_ITEMS = 50;
