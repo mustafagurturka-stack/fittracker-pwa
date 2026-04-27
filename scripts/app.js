@@ -219,6 +219,7 @@ function renderAll() {
   renderMoti();
   renderStats();
   renderWeightList();
+  renderNotes();
   applyTheme();
 }
 
