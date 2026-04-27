@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Çevrimdışı — FitTracker</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      background: #f4f6fb;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: #0f1724;
+      text-align: center;
+      padding: 24px;
+    }
+    .icon { font-size: 64px; margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    p  { font-size: 14px; color: #8896b0; margin-bottom: 24px; }
+    button {
+      padding: 10px 24px;
+      border-radius: 10px;
+      border: none;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="icon">📵</div>
+    <h1>İnternet bağlantısı yok</h1>
+    <p>Uygulamayı kullanmaya devam etmek için<br>bağlantını kontrol et.</p>
+    <button onclick="location.reload()">Tekrar Dene</button>
+  </div>
+</body>
+</html>

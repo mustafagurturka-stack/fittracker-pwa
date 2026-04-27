@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#3b82f6" id="themeColorMeta" />
+  <meta name="description" content="FitTracker Pro — Kilo, antrenman ve beslenme takibi." />
+
+  <!-- PWA -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FitTracker" />
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Icons (Apple) -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <title>FitTracker Pro</title>
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+    crossorigin
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- TOP NAV -->
+  <nav class="topnav" role="navigation" aria-label="Ana navigasyon">
+    <div class="nav-logo">Fit<span>Tracker</span></div>
+    <div class="nav-actions">
+      <span class="sync-dot" id="syncDot" title="Senkronizasyon durumu" aria-label="Senkronizasyon"></span>
+      <button class="icon-btn" id="themeBtn" aria-label="Tema değiştir" title="Tema değiştir">🌙</button>
+    </div>
+  </nav>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar" role="status" aria-live="polite">
+    <span>●</span>
+    <span id="statusText">Yükleniyor…</span>
+  </div>
+
+  <!-- PWA INSTALL BANNER -->
+  <div id="installBanner" role="complementary" aria-label="Uygulama yükle">
+    <span style="font-size:28px">📲</span>
+    <div class="install-text">
+      <strong>Ana ekrana ekle</strong><br>
+      Daha hızlı erişim için yükle.
+    </div>
+    <button class="btn green" id="installBtn">Yükle</button>
+    <button class="btn ghost" id="dismissInstall" aria-label="Kapat">✕</button>
+  </div>
+
+  <!-- PANELS -->
+  <main id="panels">
+
+    <!-- PANEL: HOME -->
+    <section class="panel active" id="pHome" aria-label="Ana sayfa">
+      <div class="hero">
+        <div class="hero-date" id="heroDate">—</div>
+        <h1 class="hero-title">Merhaba, <span id="heroName">Sporcu</span> 👋</h1>
+        <p class="hero-sub">Bugün nasıl hissediyorsun?</p>
+      </div>
+
+      <!-- MOTIVATION CARD -->
+      <div class="moti-card" id="motiCard">
+        <span class="moti-emoji">💪</span>
+        <p class="moti-text" id="motiText">Her adım seni hedefe yaklaştırıyor.</p>
+      </div>
+
+      <!-- STAT CARDS -->
+      <div class="stats-grid" id="statsGrid">
+        <!-- JS ile doldurulur -->
+        <div class="stat-card">
+          <div class="stat-top">
+            <span class="stat-icon">⚖️</span>
+            <span class="stat-badge sb-b">KİLO</span>
+          </div>
+          <div><span class="stat-val" id="statWeight">—</span><span class="stat-unit">kg</span></div>
+          <div class="stat-lbl">Son ölçüm</div>
+          <div class="prog-wrap">
+            <div class="prog-meta"><span>Hedef</span><span id="statWeightPct">—</span></div>
+            <div class="prog-track"><div class="prog-fill" id="weightBar" style="width:0%;background:var(--blue)"></div></div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-top">
+            <span class="stat-icon">💧</span>
+            <span class="stat-badge sb-c">SU</span>
+          </div>
+          <div><span class="stat-val" id="statWater">0</span><span class="stat-unit">ml</span></div>
+          <div class="stat-lbl">Bugün</div>
+          <div class="prog-wrap">
+            <div class="prog-meta"><span>Hedef 3L</span><span id="statWaterPct">0%</span></div>
+            <div class="prog-track"><div class="prog-fill" id="waterBar" style="width:0%;background:var(--cyan)"></div></div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-top">
+            <span class="stat-icon">🔥</span>
+            <span class="stat-badge sb-o">KALORİ</span>
+          </div>
+          <div><span class="stat-val" id="statKcal">0</span><span class="stat-unit">kcal</span></div>
+          <div class="stat-lbl">Bugün alınan</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-top">
+            <span class="stat-icon">🏋️</span>
+            <span class="stat-badge sb-p">ANTRENMAN</span>
+          </div>
+          <div><span class="stat-val" id="statWorkouts">0</span></div>
+          <div class="stat-lbl">Bu hafta</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL: WEIGHT -->
+    <section class="panel" id="pWeight" aria-label="Kilo takibi">
+      <div class="section">
+        <div class="sec-head">
+          <span class="sec-title">Kilo Takibi</span>
+          <button class="btn" id="openAddWeightBtn">+ Ekle</button>
+        </div>
+        <div class="card">
+          <div class="empty-state" id="weightEmpty">
+            <div class="empty-icon">⚖️</div>
+            Henüz ölçüm yok.
+          </div>
+          <div id="weightList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL: DAILY -->
+    <section class="panel" id="pDaily" aria-label="Günlük takip">
+      <div class="section">
+        <div class="sec-head">
+          <span class="sec-title">Günlük</span>
+        </div>
+        <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">Antrenman ve beslenme buraya gelecek.</p>
+      </div>
+    </section>
+
+    <!-- PANEL: SETTINGS -->
+    <section class="panel" id="pSettings" aria-label="Ayarlar">
+      <div class="section">
+        <div class="sec-head">
+          <span class="sec-title">Ayarlar</span>
+        </div>
+        <div class="card" style="padding:16px">
+          <p style="font-size:13px;color:var(--muted);font-family:var(--font-mono)">Profil ve bildirim ayarları yakında.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- OFFLINE NOTICE -->
+  <div id="offlineNotice" role="alert">📵 Çevrimdışı mod</div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" role="navigation" aria-label="Alt navigasyon">
+    <button class="bn-item active" id="bn0" onclick="goPanel(0)" aria-label="Ana sayfa">
+      <span class="bn-icon">🏠</span>
+      <span>Ana Sayfa</span>
+    </button>
+    <button class="bn-item" id="bn1" onclick="goPanel(1)" aria-label="Kilo">
+      <span class="bn-icon">⚖️</span>
+      <span>Kilo</span>
+    </button>
+    <button class="bn-item" id="bn2" onclick="goPanel(2)" aria-label="Günlük">
+      <span class="bn-icon">📋</span>
+      <span>Günlük</span>
+    </button>
+    <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="Ayarlar">
+      <span class="bn-icon">⚙️</span>
+      <span>Ayarlar</span>
+    </button>
+  </nav>
+
+</div><!-- /.app-shell -->
+
+  <script src="scripts/app.js" defer></script>
+</body>
+</html>
