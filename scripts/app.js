@@ -191,7 +191,18 @@ function deleteWeight(sortedIdx) {
   state.weights.splice(target.originalIndex, 1);
 
   stateSave();
-  renderAll();
+
+  // Ana sayfa + kilo listesi birlikte güncellensin
+  renderStats();
+  renderWeightList();
+
+  // Eğer tüm kilo kayıtları silindiyse ana sayfadaki kilo kartını sıfırla
+  if (!state.weights.length) {
+    document.getElementById('statWeight').textContent = '—';
+    document.getElementById('statWeightPct').textContent = '—';
+    document.getElementById('weightBar').style.width = '0%';
+  }
+
   setStatus('Kayıt silindi ✓', 'ok');
 }
 
