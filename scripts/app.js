@@ -372,3 +372,4 @@ setStatus('Hazır', 'ok');
 // Expose for inline handlers
 window.goPanel     = goPanel;
 window.deleteWeight = deleteWeight;
+window.deleteNote = deleteNote;
