@@ -253,6 +253,18 @@ function deleteWeight(sortedIdx) {
   setStatus('Kayıt silindi ✓', 'ok');
 }
 
+function deleteNote(index) {
+  if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
+
+  if (!Array.isArray(state.notes)) state.notes = [];
+
+  state.notes.splice(index, 1);
+
+  stateSave();
+  renderNotes();
+  setStatus('Not silindi ✓', 'ok');
+}
+
 // ── ADD WEIGHT (simple prompt, will be a modal in Phase 2) ──
 document.getElementById('openAddWeightBtn').addEventListener('click', () => {
   const kg = prompt('Kilonu gir (kg):');
