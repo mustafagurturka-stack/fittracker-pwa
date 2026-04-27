@@ -182,6 +182,38 @@ function renderWeightList() {
   }).join('');
 }
 
+function renderNotes() {
+  const list = document.getElementById('noteList');
+  if (!list) return;
+
+  const notes = Array.isArray(state.notes) ? state.notes : [];
+
+  if (!notes.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        Henüz not yok.
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = notes.map((note, index) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:700">${note.text}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+          ${formatDate(note.date)}
+        </div>
+      </div>
+      <button onclick="deleteNote(${index})"
+        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px">
+        ✕
+      </button>
+    </div>
+  `).join('');
+}
+
 function renderAll() {
   renderHero();
   renderMoti();
