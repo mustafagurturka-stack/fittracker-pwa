@@ -290,9 +290,9 @@ function renderAll() {
 
 // ── WEIGHT ACTIONS ──
 function deleteWeight(sortedIdx) {
-  if (!confirm('Bu kaydı silmek istediğinden emin misin?')) return;
+  if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
 
-  const sorted = [...state.weights]
+  const sorted = [...state.measurements]
     .map((item, originalIndex) => ({ ...item, originalIndex }))
     .sort((a, b) => b.date.localeCompare(a.date));
 
@@ -300,24 +300,12 @@ function deleteWeight(sortedIdx) {
 
   if (!target) return;
 
-  state.weights.splice(target.originalIndex, 1);
+  state.measurements.splice(target.originalIndex, 1);
 
   stateSave();
-
-  // Ana sayfa + kilo listesi birlikte güncellensin
-  renderStats();
-  renderWeightList();
-
-  // Eğer tüm kilo kayıtları silindiyse ana sayfadaki kilo kartını sıfırla
-  if (!state.weights.length) {
-    document.getElementById('statWeight').textContent = '—';
-    document.getElementById('statWeightPct').textContent = '—';
-    document.getElementById('weightBar').style.width = '0%';
-  }
-
-  setStatus('Kayıt silindi ✓', 'ok');
+  renderAll();
+  setStatus('Ölçüm silindi ✓', 'ok');
 }
-
 function deleteNote(index) {
   if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
 
@@ -332,19 +320,26 @@ function deleteNote(index) {
 
 // ── ADD WEIGHT (simple prompt, will be a modal in Phase 2) ──
 document.getElementById('openAddWeightBtn').addEventListener('click', () => {
-  const kg = prompt('Kilonu gir (kg):');
-  if (!kg || isNaN(parseFloat(kg))) return;
+  const date = prompt('Ölçüm tarihi gir (YYYY-MM-DD):', today());
+  if (!date) return;
 
-  if (!state.weights) state.weights = [];
+  const weight = prompt('Kilonu gir (kg):');
+  if (!weight || isNaN(parseFloat(weight))) return;
 
-  state.weights.push({
-    date: today(),
-    weight: parseFloat(kg).toFixed(1)
+  const waist = prompt('Bel ölçünü gir (cm):');
+  if (!waist || isNaN(parseFloat(waist))) return;
+
+  if (!Array.isArray(state.measurements)) state.measurements = [];
+
+  state.measurements.push({
+    date,
+    weight: parseFloat(parseFloat(weight).toFixed(1)),
+    waist: parseFloat(parseFloat(waist).toFixed(1))
   });
 
   stateSave();
   renderAll();
-  setStatus('Kayıt eklendi ✓', 'ok');
+  setStatus('Ölçüm eklendi ✓', 'ok');
 });
 
 document.getElementById('editNameBtn').addEventListener('click', () => {
