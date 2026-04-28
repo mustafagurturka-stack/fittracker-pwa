@@ -17,6 +17,7 @@ let state = {
   theme: 'light',
   name: 'Sporcu',
   weights: [],
+  measurements: [],
   water: { ml: 0, date: '' },
   nutrition: [],
   workouts: [],
@@ -69,11 +70,25 @@ function stateLoad() {
       ...state,
       ...savedState,
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
+      measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
       workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
       notes: Array.isArray(savedState.notes) ? savedState.notes : [],
       water: savedState.water || { ml: 0, date: '' },
+
+      if (!state.measurements.length && state.weights.length) {
+  state.measurements = state.weights.map(item => ({
+    date: item.date,
+    weight: parseFloat(item.weight),
+    waist: null
+  }));
+
+  stateSave();
+}
+      
     };
+
+    
 
   } catch (e) {
     console.warn('State yüklenemedi, sıfırlanıyor.', e);
@@ -126,17 +141,35 @@ function renderStats() {
   document.getElementById('waterBar').style.width = waterPct + '%';
 
   // Weight
-  const weights = [...(state.weights || [])].sort((a,b) => a.date.localeCompare(b.date));
-  const last    = weights[weights.length - 1];
-  if (last) {
-    document.getElementById('statWeight').textContent = last.weight;
-    const goal   = state.goalWeight || 74;
-    const start  = weights[0]?.weight || last.weight;
-    const prog   = start > goal
-      ? Math.min(100, Math.round(((start - last.weight) / (start - goal)) * 100))
-      : 100;
-    document.getElementById('statWeightPct').textContent = prog + '%';
-    document.getElementById('weightBar').style.width = prog + '%';
+  // Measurements
+const measurements = [...(state.measurements || [])]
+  .sort((a, b) => a.date.localeCompare(b.date));
+
+const lastMeasurement = measurements[measurements.length - 1];
+const previousMeasurement = measurements[measurements.length - 2];
+
+if (lastMeasurement) {
+  document.getElementById('statWeight').textContent = lastMeasurement.weight ?? '—';
+
+  const goal = state.goalWeight || 74;
+  const start = measurements[0]?.weight || lastMeasurement.weight;
+  const progress = start > goal
+    ? Math.min(100, Math.round(((start - lastMeasurement.weight) / (start - goal)) * 100))
+    : 100;
+
+  document.getElementById('statWeightPct').textContent = progress + '%';
+  document.getElementById('weightBar').style.width = progress + '%';
+
+  if (previousMeasurement) {
+    const diff = (lastMeasurement.weight - previousMeasurement.weight).toFixed(1);
+    const label = diff > 0 ? `+${diff} kg` : `${diff} kg`;
+    document.getElementById('statWeightPct').textContent = label;
+  }
+} else {
+  document.getElementById('statWeight').textContent = '—';
+  document.getElementById('statWeightPct').textContent = '—';
+  document.getElementById('weightBar').style.width = '0%';
+}
   }
 
   // Kcal today
@@ -154,30 +187,62 @@ function renderStats() {
 }
 
 function renderWeightList() {
-  const list  = document.getElementById('weightList');
+  const list = document.getElementById('weightList');
   const empty = document.getElementById('weightEmpty');
-  const data  = [...(state.weights || [])].sort((a,b) => b.date.localeCompare(a.date));
+
+  const data = [...(state.measurements || [])]
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   if (!data.length) {
     empty.style.display = 'block';
     list.innerHTML = '';
     return;
   }
+
   empty.style.display = 'none';
-  list.innerHTML = data.map((w, i) => {
-    const prev = data[i + 1];
-    const diff = prev ? (parseFloat(w.weight) - parseFloat(prev.weight)).toFixed(1) : null;
-    const diffStr = diff
-      ? `<span style="color:${diff < 0 ? 'var(--green)' : 'var(--red)'}">${diff > 0 ? '+' : ''}${diff} kg</span>`
+
+  list.innerHTML = data.map((m, index) => {
+    const prev = data[index + 1];
+
+    const weightDiff = prev && m.weight != null && prev.weight != null
+      ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
+      : null;
+
+    const waistDiff = prev && m.waist != null && prev.waist != null
+      ? (parseFloat(m.waist) - parseFloat(prev.waist)).toFixed(1)
+      : null;
+
+    const weightDiffHtml = weightDiff
+      ? `<span style="color:${weightDiff < 0 ? 'var(--green)' : 'var(--red)'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
       : '<span style="color:var(--muted)">—</span>';
+
+    const waistDiffHtml = waistDiff
+      ? `<span style="color:${waistDiff < 0 ? 'var(--green)' : 'var(--red)'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
+      : '<span style="color:var(--muted)">—</span>';
+
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
         <div style="flex:1">
-          <div style="font-weight:700">${w.weight} <span style="font-size:12px;color:var(--muted)">kg</span></div>
-          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${formatDate(w.date)}</div>
+          <div style="font-weight:700">
+            ${m.weight ?? '—'} <span style="font-size:12px;color:var(--muted)">kg</span>
+            ·
+            ${m.waist ?? '—'} <span style="font-size:12px;color:var(--muted)">cm bel</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+            ${formatDate(m.date)}
+          </div>
         </div>
-        <div style="font-family:var(--font-mono);font-size:12px">${diffStr}</div>
-        <button onclick="deleteWeight(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px" aria-label="Sil">✕</button>
+
+        <div style="font-family:var(--font-mono);font-size:11px;text-align:right">
+          <div>${weightDiffHtml}</div>
+          <div>${waistDiffHtml}</div>
+        </div>
+
+        <button onclick="deleteWeight(${index})"
+          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+          aria-label="Sil">
+          ✕
+        </button>
       </div>`;
   }).join('');
 }
