@@ -30,6 +30,24 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function todayDisplay() {
+  const d = new Date();
+  return d.toLocaleDateString('tr-TR');
+}
+
+function parseDisplayDate(value) {
+  const parts = value.split('/');
+  if (parts.length !== 3) return null;
+
+  const day = parts[0].padStart(2, '0');
+  const month = parts[1].padStart(2, '0');
+  const year = parts[2];
+
+  if (!day || !month || !year) return null;
+
+  return `${year}-${month}-${day}`;
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
 }
@@ -319,7 +337,14 @@ function deleteNote(index) {
 
 // ── ADD WEIGHT (simple prompt, will be a modal in Phase 2) ──
 document.getElementById('openAddWeightBtn').addEventListener('click', () => {
-  const date = prompt('Ölçüm tarihi gir (YYYY-MM-DD):', today());
+  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
+if (!dateInput) return;
+
+const date = parseDisplayDate(dateInput);
+if (!date) {
+  alert('Tarih formatı hatalı. Örnek: 27/04/2026');
+  return;
+}
   if (!date) return;
 
   const weight = prompt('Kilonu gir (kg):');
