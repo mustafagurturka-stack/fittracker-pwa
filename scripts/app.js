@@ -187,11 +187,26 @@ function renderStats() {
   }
 
   // Kcal today
-  const kcal = (state.nutrition || [])
-    .filter(n => n.date === today())
-    .reduce((s, n) => s + (parseFloat(n.kcal) || 0), 0);
+  // Waist
+if (lastMeasurement && lastMeasurement.waist != null) {
+  document.getElementById('statWaist').textContent = lastMeasurement.waist;
 
-  document.getElementById('statKcal').textContent = Math.round(kcal);
+  if (previousMeasurement && previousMeasurement.waist != null) {
+    const waistDiff = (lastMeasurement.waist - previousMeasurement.waist).toFixed(1);
+    document.getElementById('statWaistDiff').textContent =
+      waistDiff > 0 ? `+${waistDiff} cm` : `${waistDiff} cm`;
+
+    const waistProgress = Math.min(100, Math.abs(parseFloat(waistDiff)) * 20);
+    document.getElementById('waistBar').style.width = waistProgress + '%';
+  } else {
+    document.getElementById('statWaistDiff').textContent = '—';
+    document.getElementById('waistBar').style.width = '0%';
+  }
+} else {
+  document.getElementById('statWaist').textContent = '—';
+  document.getElementById('statWaistDiff').textContent = '—';
+  document.getElementById('waistBar').style.width = '0%';
+}
 
   // Workouts this week
   const weekAgo = new Date();
