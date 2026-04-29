@@ -67,16 +67,17 @@ function stateLoad() {
     const savedState = JSON.parse(raw);
 
     state = {
-      ...state,
-      ...savedState,
-      weights: Array.isArray(savedState.weights) ? savedState.weights : [],
-      measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
-      nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
-      workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
-      notes: Array.isArray(savedState.notes) ? savedState.notes : [],
-      water: savedState.water || { ml: 0, date: '' },
+  ...state,
+  ...savedState,
+  weights: Array.isArray(savedState.weights) ? savedState.weights : [],
+  measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
+  nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
+  workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
+  notes: Array.isArray(savedState.notes) ? savedState.notes : [],
+  water: savedState.water || { ml: 0, date: '' },
+};
 
-      if (!state.measurements.length && state.weights.length) {
+if (!state.measurements.length && state.weights.length) {
   state.measurements = state.weights.map(item => ({
     date: item.date,
     weight: parseFloat(item.weight),
@@ -85,10 +86,6 @@ function stateLoad() {
 
   stateSave();
 }
-      
-    };
-
-    
 
   } catch (e) {
     console.warn('State yüklenemedi, sıfırlanıyor.', e);
