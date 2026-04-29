@@ -32,18 +32,74 @@ function today() {
 
 function todayDisplay() {
   const d = new Date();
-  return d.toLocaleDateString('tr-TR');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  return `${day}/${month}/${year}`;
 }
 
 function parseDisplayDate(value) {
-  const parts = value.split('/');
+  if (!value) return null;
+
+  const normalized = value.trim().replaceAll('.', '/').replaceAll('-', '/');
+  const parts = normalized.split('/');
+
   if (parts.length !== 3) return null;
 
   const day = parts[0].padStart(2, '0');
   const month = parts[1].padStart(2, '0');
   const year = parts[2];
 
-  if (!day || !month || !year) return null;
+  if (year.length !== 4) return null;
+
+  const date = new Date(`${year}-${month}-${day}`);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() + 1 !== Number(month) ||
+    date.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+function todayDisplay() {
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  return `${day}/${month}/${year}`;
+}
+
+function parseDisplayDate(value) {
+  if (!value) return null;
+
+  const normalized = value.trim().replaceAll('.', '/').replaceAll('-', '/');
+  const parts = normalized.split('/');
+
+  if (parts.length !== 3) return null;
+
+  const day = parts[0].padStart(2, '0');
+  const month = parts[1].padStart(2, '0');
+  const year = parts[2];
+
+  if (year.length !== 4) return null;
+
+  const date = new Date(`${year}-${month}-${day}`);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() + 1 !== Number(month) ||
+    date.getDate() !== Number(day)
+  ) {
+    return null;
+  }
 
   return `${year}-${month}-${day}`;
 }
@@ -357,7 +413,7 @@ if (!dateInput) return;
 
 const date = parseDisplayDate(dateInput);
 if (!date) {
-  alert('Tarih formatı hatalı. Örnek: 27/04/2026');
+  alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
   return;
 }
   if (!date) return;
