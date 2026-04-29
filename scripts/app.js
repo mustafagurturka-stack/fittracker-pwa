@@ -132,54 +132,56 @@ function renderMoti() {
 function renderStats() {
   // Water
   const todayWater = (state.water?.date === today()) ? (state.water.ml || 0) : 0;
-  const waterPct   = Math.min(100, Math.round(todayWater / 30));
+  const waterPct = Math.min(100, Math.round(todayWater / 30));
+
   document.getElementById('statWater').textContent = todayWater;
   document.getElementById('statWaterPct').textContent = waterPct + '%';
   document.getElementById('waterBar').style.width = waterPct + '%';
 
-  // Weight
   // Measurements
-const measurements = [...(state.measurements || [])]
-  .sort((a, b) => a.date.localeCompare(b.date));
+  const measurements = [...(state.measurements || [])]
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-const lastMeasurement = measurements[measurements.length - 1];
-const previousMeasurement = measurements[measurements.length - 2];
+  const lastMeasurement = measurements[measurements.length - 1];
+  const previousMeasurement = measurements[measurements.length - 2];
 
-if (lastMeasurement) {
-  document.getElementById('statWeight').textContent = lastMeasurement.weight ?? '—';
+  if (lastMeasurement) {
+    document.getElementById('statWeight').textContent = lastMeasurement.weight ?? '—';
 
-  const goal = state.goalWeight || 74;
-  const start = measurements[0]?.weight || lastMeasurement.weight;
-  const progress = start > goal
-    ? Math.min(100, Math.round(((start - lastMeasurement.weight) / (start - goal)) * 100))
-    : 100;
+    const goal = state.goalWeight || 74;
+    const start = measurements[0]?.weight || lastMeasurement.weight;
+    const progress = start > goal
+      ? Math.min(100, Math.round(((start - lastMeasurement.weight) / (start - goal)) * 100))
+      : 100;
 
-  document.getElementById('statWeightPct').textContent = progress + '%';
-  document.getElementById('weightBar').style.width = progress + '%';
+    document.getElementById('weightBar').style.width = progress + '%';
 
-  if (previousMeasurement) {
-    const diff = (lastMeasurement.weight - previousMeasurement.weight).toFixed(1);
-    const label = diff > 0 ? `+${diff} kg` : `${diff} kg`;
-    document.getElementById('statWeightPct').textContent = label;
-  }
-} else {
-  document.getElementById('statWeight').textContent = '—';
-  document.getElementById('statWeightPct').textContent = '—';
-  document.getElementById('weightBar').style.width = '0%';
-}
+    if (previousMeasurement) {
+      const diff = (lastMeasurement.weight - previousMeasurement.weight).toFixed(1);
+      document.getElementById('statWeightPct').textContent = diff > 0 ? `+${diff} kg` : `${diff} kg`;
+    } else {
+      document.getElementById('statWeightPct').textContent = progress + '%';
+    }
+  } else {
+    document.getElementById('statWeight').textContent = '—';
+    document.getElementById('statWeightPct').textContent = '—';
+    document.getElementById('weightBar').style.width = '0%';
   }
 
   // Kcal today
   const kcal = (state.nutrition || [])
     .filter(n => n.date === today())
     .reduce((s, n) => s + (parseFloat(n.kcal) || 0), 0);
+
   document.getElementById('statKcal').textContent = Math.round(kcal);
 
   // Workouts this week
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
+
   const wo = (state.workouts || [])
-    .filter(w => w.date >= weekAgo.toISOString().slice(0,10)).length;
+    .filter(w => w.date >= weekAgo.toISOString().slice(0, 10)).length;
+
   document.getElementById('statWorkouts').textContent = wo;
 }
 
