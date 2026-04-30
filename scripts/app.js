@@ -1,12 +1,11 @@
 'use strict';
 
 // Supabase bağlantısı
-const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
+const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.db.co';
 const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-console.log('Supabase hazır:', supabase);
+const db = window.db.createClient(SUPABASE_URL, SUPABASE_KEY);
+console.log('Supabase hazır:', db);
 
 // ── CONSTANTS ──
 const PANELS = ['pHome','pWeight','pDaily','pSettings'];
