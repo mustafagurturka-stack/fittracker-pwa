@@ -3,9 +3,10 @@
 // Supabase bağlantısı
 const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
+console.log('Supabase hazır:', supabase);
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-console.log('Supabase hazır:', supabase);
+
 // ── CONSTANTS ──
 const PANELS = ['pHome','pWeight','pDaily','pSettings'];
 const BN_IDS  = ['bn0','bn1','bn2','bn3'];
