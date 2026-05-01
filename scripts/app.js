@@ -440,6 +440,16 @@ if (!date) {
     waist: parseFloat(parseFloat(waist).toFixed(1))
   });
 
+  // Supabase'e yaz
+await db.from('measurements').insert([
+  {
+    date,
+    weight: parseFloat(weight),
+    waist: parseFloat(waist),
+    user_id: 'demo-user'
+  }
+]);
+
   stateSave();
   renderAll();
   setStatus('Ölçüm eklendi ✓', 'ok');
