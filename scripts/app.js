@@ -568,6 +568,19 @@ function init() {
 
   loadMeasurementsFromSupabase();
 
+  function setupRealtime() {
+  db.channel('measurements-changes')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'measurements' },
+      payload => {
+        console.log('Realtime event:', payload);
+        // Her değişimde yeniden çek
+        loadMeasurementsFromSupabase();
+      }
+    )
+    .subscribe();
+}
+
   const weightBtn = document.getElementById('openAddWeightBtn');
   if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
 
