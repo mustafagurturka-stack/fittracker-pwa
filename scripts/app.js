@@ -410,7 +410,7 @@ async function loadMeasurementsFromSupabase() {
 }
 
 // ── WEIGHT ACTIONS ──
-function deleteWeight(sortedIdx) {
+async function deleteWeight(sortedIdx) {
   if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
 
   const sorted = [...state.measurements]
@@ -420,6 +420,20 @@ function deleteWeight(sortedIdx) {
   const target = sorted[sortedIdx];
 
   if (!target) return;
+
+  const { error } = await db
+    .from('measurements')
+    .delete()
+    .eq('user_id', 'demo-user')
+    .eq('date', target.date)
+    .eq('weight', target.weight)
+    .eq('waist', target.waist);
+
+  if (error) {
+    console.error('Supabase delete hatası:', error);
+    alert('Cloud silme hatası: ' + error.message);
+    return;
+  }
 
   state.measurements.splice(target.originalIndex, 1);
 
