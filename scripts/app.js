@@ -1,16 +1,17 @@
 'use strict';
 
-// Supabase bağlantısı
+// ── SUPABASE ──
 const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
-
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 console.log('Supabase hazır:', db);
 
 // ── CONSTANTS ──
-const PANELS = ['pHome','pWeight','pDaily','pSettings'];
-const BN_IDS  = ['bn0','bn1','bn2','bn3'];
+const PANELS = ['pHome', 'pWeight', 'pDaily', 'pSettings'];
+const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3'];
+const STORAGE_KEY = 'ft_state_v1';
+
 const MOTIVATIONS = [
   'Her adım seni hedefe yaklaştırıyor. 🎯',
   'Bugün verdiğin mücadele yarın gücüne dönüşür. 💪',
@@ -18,14 +19,13 @@ const MOTIVATIONS = [
   'Vücuduna verdiğin özen, geleceğine yapılan yatırımdır. 🏆',
   'Disiplin, motivasyonun bittiği yerde devreye girer. 🔥',
 ];
-const STORAGE_KEY = 'ft_state_v1';
 
 // ── STATE ──
 let state = {
   theme: 'light',
   name: 'Sporcu',
-  weights: [],
   measurements: [],
+  weights: [],
   water: { ml: 0, date: '' },
   nutrition: [],
   workouts: [],
@@ -43,7 +43,6 @@ function todayDisplay() {
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
-
   return `${day}/${month}/${year}`;
 }
 
@@ -75,28 +74,26 @@ function parseDisplayDate(value) {
   return `${year}-${month}-${day}`;
 }
 
-function todayDisplay() {
-  const d = new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-
-  return `${day}/${month}/${year}`;
-}
-
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
+  return new Date(iso).toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 function setStatus(msg, cls = '') {
-  const bar  = document.getElementById('statusBar');
+  const bar = document.getElementById('statusBar');
   const text = document.getElementById('statusText');
+  if (!bar || !text) return;
+
   bar.className = 'status-bar ' + cls;
   text.textContent = msg;
 }
 
 function setSyncDot(cls) {
   const dot = document.getElementById('syncDot');
+  if (!dot) return;
   dot.className = 'sync-dot ' + cls;
 }
 
@@ -105,7 +102,6 @@ function stateSave() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     setSyncDot('ok');
-    console.log('State saved:', state);
   } catch (e) {
     console.error('State kaydedilemedi:', e);
     setSyncDot('err');
@@ -123,34 +119,32 @@ function stateLoad() {
     state = {
       ...state,
       ...savedState,
-      weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
+      weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
       workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
       notes: Array.isArray(savedState.notes) ? savedState.notes : [],
       water: savedState.water || { ml: 0, date: '' },
     };
-
-    if (!state.measurements.length && state.weights.length) {
-      state.measurements = state.weights.map(item => ({
-        date: item.date,
-        weight: parseFloat(item.weight),
-        waist: null
-      }));
-
-      stateSave();
-    }
-
   } catch (e) {
-    console.warn('State yüklenemedi, sıfırlanıyor.', e);
+    console.warn('State yüklenemedi:', e);
   }
 }
 
 // ── THEME ──
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.theme);
-  document.getElementById('themeBtn').textContent = state.theme === 'dark' ? '☀️' : '🌙';
-  document.getElementById('themeColorMeta').content = state.theme === 'dark' ? '#0f1117' : '#3b82f6';
+
+  const themeBtn = document.getElementById('themeBtn');
+  const themeMeta = document.getElementById('themeColorMeta');
+
+  if (themeBtn) {
+    themeBtn.textContent = state.theme === 'dark' ? '☀️' : '🌙';
+  }
+
+  if (themeMeta) {
+    themeMeta.content = state.theme === 'dark' ? '#0f1117' : '#3b82f6';
+  }
 }
 
 function toggleTheme() {
@@ -162,10 +156,13 @@ function toggleTheme() {
 // ── NAVIGATION ──
 function goPanel(idx) {
   PANELS.forEach((id, i) => {
-    document.getElementById(id).classList.toggle('active', i === idx);
+    const panel = document.getElementById(id);
+    if (panel) panel.classList.toggle('active', i === idx);
   });
+
   BN_IDS.forEach((id, i) => {
-    document.getElementById(id).classList.toggle('active', i === idx);
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.toggle('active', i === idx);
   });
 }
 
@@ -173,93 +170,106 @@ function goPanel(idx) {
 function renderHero() {
   const dateEl = document.getElementById('heroDate');
   const nameEl = document.getElementById('heroName');
-  const opts = { weekday:'long', day:'numeric', month:'long' };
-  dateEl.textContent = new Date().toLocaleDateString('tr-TR', opts).toUpperCase();
-  nameEl.textContent = state.name;
+
+  if (dateEl) {
+    dateEl.textContent = new Date()
+      .toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
+      .toUpperCase();
+  }
+
+  if (nameEl) {
+    nameEl.textContent = state.name || 'Sporcu';
+  }
 }
 
 function renderMoti() {
-  const idx  = Math.floor(Date.now() / 86400000) % MOTIVATIONS.length;
-  document.getElementById('motiText').textContent = MOTIVATIONS[idx];
+  const el = document.getElementById('motiText');
+  if (!el) return;
+
+  const idx = Math.floor(Date.now() / 86400000) % MOTIVATIONS.length;
+  el.textContent = MOTIVATIONS[idx];
 }
 
 function renderStats() {
-  // Water
-  const todayWater = (state.water?.date === today()) ? (state.water.ml || 0) : 0;
-  const waterPct = Math.min(100, Math.round(todayWater / 30));
+  const measurements = [...(state.measurements || [])].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
 
-  document.getElementById('statWater').textContent = todayWater;
-  document.getElementById('statWaterPct').textContent = waterPct + '%';
-  document.getElementById('waterBar').style.width = waterPct + '%';
+  const last = measurements[measurements.length - 1];
+  const prev = measurements[measurements.length - 2];
 
-  // Measurements
-  const measurements = [...(state.measurements || [])]
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const statWeight = document.getElementById('statWeight');
+  const statWeightPct = document.getElementById('statWeightPct');
+  const weightBar = document.getElementById('weightBar');
 
-  const lastMeasurement = measurements[measurements.length - 1];
-  const previousMeasurement = measurements[measurements.length - 2];
+  if (last) {
+    if (statWeight) statWeight.textContent = last.weight ?? '—';
 
-  if (lastMeasurement) {
-    document.getElementById('statWeight').textContent = lastMeasurement.weight ?? '—';
-
-    const goal = state.goalWeight || 74;
-    const start = measurements[0]?.weight || lastMeasurement.weight;
-    const progress = start > goal
-      ? Math.min(100, Math.round(((start - lastMeasurement.weight) / (start - goal)) * 100))
-      : 100;
-
-    document.getElementById('weightBar').style.width = progress + '%';
-
-    if (previousMeasurement) {
-      const diff = (lastMeasurement.weight - previousMeasurement.weight).toFixed(1);
-      document.getElementById('statWeightPct').textContent = diff > 0 ? `+${diff} kg` : `${diff} kg`;
+    if (prev) {
+      const diff = (last.weight - prev.weight).toFixed(1);
+      if (statWeightPct) statWeightPct.textContent = diff > 0 ? `+${diff} kg` : `${diff} kg`;
     } else {
-      document.getElementById('statWeightPct').textContent = progress + '%';
+      if (statWeightPct) statWeightPct.textContent = 'İlk kayıt';
+    }
+
+    if (weightBar) weightBar.style.width = '100%';
+  } else {
+    if (statWeight) statWeight.textContent = '—';
+    if (statWeightPct) statWeightPct.textContent = '—';
+    if (weightBar) weightBar.style.width = '0%';
+  }
+
+  const statWaist = document.getElementById('statWaist');
+  const statWaistDiff = document.getElementById('statWaistDiff');
+  const waistBar = document.getElementById('waistBar');
+
+  if (last && last.waist != null) {
+    if (statWaist) statWaist.textContent = last.waist;
+
+    if (prev && prev.waist != null) {
+      const diff = (last.waist - prev.waist).toFixed(1);
+      if (statWaistDiff) statWaistDiff.textContent = diff > 0 ? `+${diff} cm` : `${diff} cm`;
+      if (waistBar) waistBar.style.width = Math.min(100, Math.abs(diff) * 20) + '%';
+    } else {
+      if (statWaistDiff) statWaistDiff.textContent = 'İlk kayıt';
+      if (waistBar) waistBar.style.width = '0%';
     }
   } else {
-    document.getElementById('statWeight').textContent = '—';
-    document.getElementById('statWeightPct').textContent = '—';
-    document.getElementById('weightBar').style.width = '0%';
+    if (statWaist) statWaist.textContent = '—';
+    if (statWaistDiff) statWaistDiff.textContent = '—';
+    if (waistBar) waistBar.style.width = '0%';
   }
 
-  // Kcal today
-  // Waist
-if (lastMeasurement && lastMeasurement.waist != null) {
-  document.getElementById('statWaist').textContent = lastMeasurement.waist;
+  const todayWater = state.water?.date === today() ? state.water.ml || 0 : 0;
+  const waterPct = Math.min(100, Math.round(todayWater / 30));
 
-  if (previousMeasurement && previousMeasurement.waist != null) {
-    const waistDiff = (lastMeasurement.waist - previousMeasurement.waist).toFixed(1);
-    document.getElementById('statWaistDiff').textContent =
-      waistDiff > 0 ? `+${waistDiff} cm` : `${waistDiff} cm`;
+  const statWater = document.getElementById('statWater');
+  const statWaterPct = document.getElementById('statWaterPct');
+  const waterBar = document.getElementById('waterBar');
 
-    const waistProgress = Math.min(100, Math.abs(parseFloat(waistDiff)) * 20);
-    document.getElementById('waistBar').style.width = waistProgress + '%';
-  } else {
-    document.getElementById('statWaistDiff').textContent = '—';
-    document.getElementById('waistBar').style.width = '0%';
-  }
-} else {
-  document.getElementById('statWaist').textContent = '—';
-  document.getElementById('statWaistDiff').textContent = '—';
-  document.getElementById('waistBar').style.width = '0%';
-}
+  if (statWater) statWater.textContent = todayWater;
+  if (statWaterPct) statWaterPct.textContent = waterPct + '%';
+  if (waterBar) waterBar.style.width = waterPct + '%';
 
-  // Workouts this week
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
-  const wo = (state.workouts || [])
-    .filter(w => w.date >= weekAgo.toISOString().slice(0, 10)).length;
+  const workoutsThisWeek = (state.workouts || []).filter(
+    w => w.date >= weekAgo.toISOString().slice(0, 10)
+  ).length;
 
-  document.getElementById('statWorkouts').textContent = wo;
+  const statWorkouts = document.getElementById('statWorkouts');
+  if (statWorkouts) statWorkouts.textContent = workoutsThisWeek;
 }
 
 function renderWeightList() {
   const list = document.getElementById('weightList');
   const empty = document.getElementById('weightEmpty');
+  if (!list || !empty) return;
 
-  const data = [...(state.measurements || [])]
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const data = [...(state.measurements || [])].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  );
 
   if (!data.length) {
     empty.style.display = 'block';
@@ -308,10 +318,9 @@ function renderWeightList() {
 
         <button onclick="deleteWeight(${index})"
           style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-          aria-label="Sil">
-          ✕
-        </button>
-      </div>`;
+          aria-label="Sil">✕</button>
+      </div>
+    `;
   }).join('');
 }
 
@@ -340,9 +349,8 @@ function renderNotes() {
         </div>
       </div>
       <button onclick="deleteNote(${index})"
-        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px">
-        ✕
-      </button>
+        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+        aria-label="Sil">✕</button>
     </div>
   `).join('');
 }
@@ -356,6 +364,7 @@ function renderAll() {
   applyTheme();
 }
 
+// ── SUPABASE DATA ──
 async function loadMeasurementsFromSupabase() {
   const { data, error } = await db
     .from('measurements')
@@ -372,16 +381,72 @@ async function loadMeasurementsFromSupabase() {
   state.measurements = (data || []).map(item => ({
     date: item.date,
     weight: parseFloat(item.weight),
-    waist: parseFloat(item.waist)
+    waist: parseFloat(item.waist),
   }));
 
   stateSave();
   renderAll();
-
   console.log('Supabase veriler yüklendi:', data);
 }
 
-// ── WEIGHT ACTIONS ──
+// ── ACTIONS ──
+async function addMeasurement() {
+  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
+  if (!dateInput) return;
+
+  const date = parseDisplayDate(dateInput);
+  if (!date) {
+    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
+    return;
+  }
+
+  if (!Array.isArray(state.measurements)) state.measurements = [];
+
+  const alreadyExists = state.measurements.some(item => item.date === date);
+
+  if (alreadyExists) {
+    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
+    return;
+  }
+
+  const weightInput = prompt('Kilonu gir (kg):');
+  if (!weightInput || isNaN(parseFloat(weightInput))) return;
+
+  const waistInput = prompt('Bel ölçünü gir (cm):');
+  if (!waistInput || isNaN(parseFloat(waistInput))) return;
+
+  const measurement = {
+    date,
+    weight: parseFloat(parseFloat(weightInput).toFixed(1)),
+    waist: parseFloat(parseFloat(waistInput).toFixed(1)),
+    user_id: 'demo-user',
+  };
+
+  const { data, error } = await db
+    .from('measurements')
+    .insert([measurement])
+    .select();
+
+  if (error) {
+    console.error('Supabase insert hatası:', error);
+    alert('Supabase kayıt hatası: ' + error.message);
+    setStatus('Cloud kayıt hatası', 'error');
+    return;
+  }
+
+  state.measurements.push({
+    date: measurement.date,
+    weight: measurement.weight,
+    waist: measurement.waist,
+  });
+
+  stateSave();
+  renderAll();
+  setStatus('Ölçüm eklendi ✓', 'ok');
+
+  console.log('Supabase kayıt başarılı:', data);
+}
+
 async function deleteWeight(sortedIdx) {
   if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
 
@@ -413,6 +478,7 @@ async function deleteWeight(sortedIdx) {
   renderAll();
   setStatus('Ölçüm silindi ✓', 'ok');
 }
+
 function deleteNote(index) {
   if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
 
@@ -425,135 +491,7 @@ function deleteNote(index) {
   setStatus('Not silindi ✓', 'ok');
 }
 
-// ── ADD MEASUREMENT ──
-document.getElementById('openAddWeightBtn').addEventListener('click', async () => {
-  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
-  if (!dateInput) return;
-
-  const date = parseDisplayDate(dateInput);
-  if (!date) {
-    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
-    return;
-  }
-
-  if (!Array.isArray(state.measurements)) {
-    state.measurements = [];
-  }
-
-  const alreadyExists = state.measurements.some(item => item.date === date);
-
-  if (alreadyExists) {
-    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
-    return;
-  }
-
-  const weightInput = prompt('Kilonu gir (kg):');
-  if (!weightInput || isNaN(parseFloat(weightInput))) return;
-
-  const waistInput = prompt('Bel ölçünü gir (cm):');
-  if (!waistInput || isNaN(parseFloat(waistInput))) return;
-
-  const measurement = {
-    date,
-    weight: parseFloat(parseFloat(weightInput).toFixed(1)),
-    waist: parseFloat(parseFloat(waistInput).toFixed(1)),
-    user_id: 'demo-user'
-  };
-
-  const { data, error } = await db
-    .from('measurements')
-    .insert([measurement])
-    .select();
-
-  if (error) {
-    console.error('Supabase insert hatası:', error);
-    alert('Supabase kayıt hatası: ' + error.message);
-    setStatus('Cloud kayıt hatası', 'error');
-    return;
-  }
-
-  state.measurements.push({
-    date: measurement.date,
-    weight: measurement.weight,
-    waist: measurement.waist
-  });
-
-  stateSave();
-  renderAll();
-  setStatus('Ölçüm eklendi ✓', 'ok');
-
-  console.log('Supabase kayıt başarılı:', data);
-});
-
-  // 🔥 async burada çalışacak
-  const { error } = await db.from('measurements').insert([measurement]);
-
-  if (error) {
-    console.error(error);
-    alert('Kayıt hatası');
-    return;
-  }
-
-  state.measurements.push(measurement);
-
-  stateSave();
-  renderAll();
-});
-
-
-document.getElementById('editNameBtn').addEventListener('click', () => {
-  const newName = prompt('İsmini gir:', state.name || 'Sporcu');
-  if (!newName) return;
-
-  state.name = newName.trim();
-  stateSave();
-  renderHero();
-  setStatus('İsim güncellendi ✓', 'ok');
-});
-
-// ── THEME BUTTON ──
-document.getElementById('themeBtn').addEventListener('click', toggleTheme);
-
-// ── OFFLINE ──
-function updateOnlineStatus() {
-  const notice = document.getElementById('offlineNotice');
-  if (navigator.onLine) {
-    notice.classList.remove('visible');
-    setStatus('Çevrimiçi — veriler yerel olarak saklanıyor', 'ok');
-    setSyncDot('ok');
-  } else {
-    notice.classList.add('visible');
-    setStatus('Çevrimdışı — değişiklikler saklandı', 'error');
-    setSyncDot('err');
-  }
-}
-window.addEventListener('online',  updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-
-// ── PWA INSTALL ──
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('installBanner').classList.add('visible');
-});
-document.getElementById('installBtn').addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  document.getElementById('installBanner').classList.remove('visible');
-  if (outcome === 'accepted') setStatus('Uygulama yüklendi ✓', 'ok');
-});
-document.getElementById('dismissInstall').addEventListener('click', () => {
-  document.getElementById('installBanner').classList.remove('visible');
-});
-window.addEventListener('appinstalled', () => {
-  document.getElementById('installBanner').classList.remove('visible');
-  setStatus('FitTracker yüklendi ✓', 'ok');
-});
-
-document.getElementById('addNoteBtn').addEventListener('click', () => {
+function addNote() {
   const text = prompt('Not gir:');
   if (!text || !text.trim()) return;
 
@@ -561,35 +499,114 @@ document.getElementById('addNoteBtn').addEventListener('click', () => {
 
   state.notes.push({
     text: text.trim(),
-    date: today()
+    date: today(),
   });
 
   stateSave();
   renderNotes();
   setStatus('Not eklendi ✓', 'ok');
+}
+
+function editName() {
+  const newName = prompt('İsmini gir:', state.name || 'Sporcu');
+  if (!newName) return;
+
+  state.name = newName.trim();
+  stateSave();
+  renderHero();
+  setStatus('İsim güncellendi ✓', 'ok');
+}
+
+// ── ONLINE STATUS ──
+function updateOnlineStatus() {
+  const notice = document.getElementById('offlineNotice');
+
+  if (navigator.onLine) {
+    if (notice) notice.classList.remove('visible');
+    setStatus('Çevrimiçi — cloud senkron aktif', 'ok');
+    setSyncDot('ok');
+  } else {
+    if (notice) notice.classList.add('visible');
+    setStatus('Çevrimdışı — veriler yerel olarak saklanır', 'error');
+    setSyncDot('err');
+  }
+}
+
+// ── PWA INSTALL ──
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.classList.add('visible');
 });
 
-// ── SERVICE WORKER ──
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-      .then(reg => {
-        console.log('[SW] Kayıtlı:', reg.scope);
-      })
-      .catch(err => {
-        console.warn('[SW] Kayıt hatası:', err);
-      });
+function installApp() {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(({ outcome }) => {
+    deferredPrompt = null;
+
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.classList.remove('visible');
+
+    if (outcome === 'accepted') {
+      setStatus('Uygulama yüklendi ✓', 'ok');
+    }
   });
 }
 
 // ── INIT ──
-stateLoad();
-renderAll();
-updateOnlineStatus();
-setStatus('Hazır', 'ok');
-loadMeasurementsFromSupabase();
+function init() {
+  stateLoad();
+  renderAll();
+  updateOnlineStatus();
+  setStatus('Hazır', 'ok');
 
-// Expose for inline handlers
-window.goPanel     = goPanel;
+  loadMeasurementsFromSupabase();
+
+  const weightBtn = document.getElementById('openAddWeightBtn');
+  if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
+
+  const themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+  const editNameBtn = document.getElementById('editNameBtn');
+  if (editNameBtn) editNameBtn.addEventListener('click', editName);
+
+  const addNoteBtn = document.getElementById('addNoteBtn');
+  if (addNoteBtn) addNoteBtn.addEventListener('click', addNote);
+
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) installBtn.addEventListener('click', installApp);
+
+  const dismissInstall = document.getElementById('dismissInstall');
+  if (dismissInstall) {
+    dismissInstall.addEventListener('click', () => {
+      const banner = document.getElementById('installBanner');
+      if (banner) banner.classList.remove('visible');
+    });
+  }
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/service-worker.js', { scope: '/' })
+        .then(reg => console.log('[SW] Kayıtlı:', reg.scope))
+        .catch(err => console.warn('[SW] Kayıt hatası:', err));
+    });
+  }
+}
+
+// Expose for inline HTML handlers
+window.goPanel = goPanel;
 window.deleteWeight = deleteWeight;
 window.deleteNote = deleteNote;
+
+init();
