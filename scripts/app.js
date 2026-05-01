@@ -456,28 +456,60 @@ function deleteNote(index) {
 // ── ADD WEIGHT (simple prompt, will be a modal in Phase 2) ──
 document.getElementById('openAddWeightBtn').addEventListener('click', async () => {
   const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
-if (!dateInput) return;
+  if (!dateInput) return;
 
-const date = parseDisplayDate(dateInput);
-if (!date) {
-  alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
-  return;
-}
-  if (!date) return;
-
-  const weight = prompt('Kilonu gir (kg):');
-  if (!weight || isNaN(parseFloat(weight))) return;
-
-  const waist = prompt('Bel ölçünü gir (cm):');
-  if (!waist || isNaN(parseFloat(waist))) return;
+  const date = parseDisplayDate(dateInput);
+  if (!date) {
+    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
+    return;
+  }
 
   if (!Array.isArray(state.measurements)) state.measurements = [];
 
-  state.measurements.push({
+  const alreadyExists = state.measurements.some(item => item.date === date);
+
+  if (alreadyExists) {
+    alert('Bu tarih için zaten bir ölçüm kaydı var. Önce mevcut kaydı silmelisin.');
+    return;
+  }
+
+  const weightInput = prompt('Kilonu gir (kg):');
+  if (!weightInput || isNaN(parseFloat(weightInput))) return;
+
+  const waistInput = prompt('Bel ölçünü gir (cm):');
+  if (!waistInput || isNaN(parseFloat(waistInput))) return;
+
+  const measurement = {
     date,
-    weight: parseFloat(parseFloat(weight).toFixed(1)),
-    waist: parseFloat(parseFloat(waist).toFixed(1))
+    weight: parseFloat(parseFloat(weightInput).toFixed(1)),
+    waist: parseFloat(parseFloat(waistInput).toFixed(1)),
+    user_id: 'demo-user'
+  };
+
+  const { data, error } = await db
+    .from('measurements')
+    .insert([measurement])
+    .select();
+
+  if (error) {
+    console.error('Supabase insert hatası:', error);
+    alert('Supabase kayıt hatası: ' + error.message);
+    setStatus('Cloud kayıt hatası', 'error');
+    return;
+  }
+
+  state.measurements.push({
+    date: measurement.date,
+    weight: measurement.weight,
+    waist: measurement.waist
   });
+
+  stateSave();
+  renderAll();
+  setStatus('Ölçüm eklendi ✓', 'ok');
+
+  console.log('Supabase kayıt başarılı:', data);
+});
 
   // Supabase'e yaz
 const { data, error } = await db
