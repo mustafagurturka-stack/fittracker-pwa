@@ -84,34 +84,6 @@ function todayDisplay() {
   return `${day}/${month}/${year}`;
 }
 
-function parseDisplayDate(value) {
-  if (!value) return null;
-
-  const normalized = value.trim().replaceAll('.', '/').replaceAll('-', '/');
-  const parts = normalized.split('/');
-
-  if (parts.length !== 3) return null;
-
-  const day = parts[0].padStart(2, '0');
-  const month = parts[1].padStart(2, '0');
-  const year = parts[2];
-
-  if (year.length !== 4) return null;
-
-  const date = new Date(`${year}-${month}-${day}`);
-
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== Number(year) ||
-    date.getMonth() + 1 !== Number(month) ||
-    date.getDate() !== Number(day)
-  ) {
-    return null;
-  }
-
-  return `${year}-${month}-${day}`;
-}
-
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
 }
@@ -453,22 +425,25 @@ function deleteNote(index) {
   setStatus('Not silindi ✓', 'ok');
 }
 
-// ── ADD WEIGHT (simple prompt, will be a modal in Phase 2) ──
+// ── ADD MEASUREMENT ──
 document.getElementById('openAddWeightBtn').addEventListener('click', async () => {
   const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
   if (!dateInput) return;
 
   const date = parseDisplayDate(dateInput);
   if (!date) {
-    alert('Tarih formatı hatalı');
+    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
     return;
   }
 
-  if (!Array.isArray(state.measurements)) state.measurements = [];
+  if (!Array.isArray(state.measurements)) {
+    state.measurements = [];
+  }
 
   const alreadyExists = state.measurements.some(item => item.date === date);
+
   if (alreadyExists) {
-    alert('Bu tarih için zaten kayıt var');
+    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
     return;
   }
 
@@ -480,10 +455,35 @@ document.getElementById('openAddWeightBtn').addEventListener('click', async () =
 
   const measurement = {
     date,
-    weight: parseFloat(weightInput),
-    waist: parseFloat(waistInput),
+    weight: parseFloat(parseFloat(weightInput).toFixed(1)),
+    waist: parseFloat(parseFloat(waistInput).toFixed(1)),
     user_id: 'demo-user'
   };
+
+  const { data, error } = await db
+    .from('measurements')
+    .insert([measurement])
+    .select();
+
+  if (error) {
+    console.error('Supabase insert hatası:', error);
+    alert('Supabase kayıt hatası: ' + error.message);
+    setStatus('Cloud kayıt hatası', 'error');
+    return;
+  }
+
+  state.measurements.push({
+    date: measurement.date,
+    weight: measurement.weight,
+    waist: measurement.waist
+  });
+
+  stateSave();
+  renderAll();
+  setStatus('Ölçüm eklendi ✓', 'ok');
+
+  console.log('Supabase kayıt başarılı:', data);
+});
 
   // 🔥 async burada çalışacak
   const { error } = await db.from('measurements').insert([measurement]);
@@ -499,32 +499,7 @@ document.getElementById('openAddWeightBtn').addEventListener('click', async () =
   stateSave();
   renderAll();
 });
-  // Supabase'e yaz
-const { data, error } = await db
-  .from('measurements')
-  .insert([
-    {
-      date,
-      weight: parseFloat(weight),
-      waist: parseFloat(waist),
-      user_id: 'demo-user'
-    }
-  ])
-  .select();
 
-if (error) {
-  console.error('Supabase insert hatası:', error);
-  alert('Supabase kayıt hatası: ' + error.message);
-  setStatus('Cloud kayıt hatası', 'error');
-  return;
-}
-
-console.log('Supabase kayıt başarılı:', data);
-
-  stateSave();
-  renderAll();
-  setStatus('Ölçüm eklendi ✓', 'ok');
-});
 
 document.getElementById('editNameBtn').addEventListener('click', () => {
   const newName = prompt('İsmini gir:', state.name || 'Sporcu');
