@@ -384,6 +384,31 @@ function renderAll() {
   applyTheme();
 }
 
+async function loadMeasurementsFromSupabase() {
+  const { data, error } = await db
+    .from('measurements')
+    .select('*')
+    .eq('user_id', 'demo-user')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Supabase load hatası:', error);
+    setStatus('Cloud veri yüklenemedi', 'error');
+    return;
+  }
+
+  state.measurements = (data || []).map(item => ({
+    date: item.date,
+    weight: parseFloat(item.weight),
+    waist: parseFloat(item.waist)
+  }));
+
+  stateSave();
+  renderAll();
+
+  console.log('Supabase veriler yüklendi:', data);
+}
+
 // ── WEIGHT ACTIONS ──
 function deleteWeight(sortedIdx) {
   if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
@@ -553,6 +578,7 @@ stateLoad();
 renderAll();
 updateOnlineStatus();
 setStatus('Hazır', 'ok');
+loadMeasurementsFromSupabase();
 
 // Expose for inline handlers
 window.goPanel     = goPanel;
