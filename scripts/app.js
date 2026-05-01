@@ -460,16 +460,15 @@ document.getElementById('openAddWeightBtn').addEventListener('click', async () =
 
   const date = parseDisplayDate(dateInput);
   if (!date) {
-    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
+    alert('Tarih formatı hatalı');
     return;
   }
 
   if (!Array.isArray(state.measurements)) state.measurements = [];
 
   const alreadyExists = state.measurements.some(item => item.date === date);
-
   if (alreadyExists) {
-    alert('Bu tarih için zaten bir ölçüm kaydı var. Önce mevcut kaydı silmelisin.');
+    alert('Bu tarih için zaten kayıt var');
     return;
   }
 
@@ -481,36 +480,25 @@ document.getElementById('openAddWeightBtn').addEventListener('click', async () =
 
   const measurement = {
     date,
-    weight: parseFloat(parseFloat(weightInput).toFixed(1)),
-    waist: parseFloat(parseFloat(waistInput).toFixed(1)),
+    weight: parseFloat(weightInput),
+    waist: parseFloat(waistInput),
     user_id: 'demo-user'
   };
 
-  const { data, error } = await db
-    .from('measurements')
-    .insert([measurement])
-    .select();
+  // 🔥 async burada çalışacak
+  const { error } = await db.from('measurements').insert([measurement]);
 
   if (error) {
-    console.error('Supabase insert hatası:', error);
-    alert('Supabase kayıt hatası: ' + error.message);
-    setStatus('Cloud kayıt hatası', 'error');
+    console.error(error);
+    alert('Kayıt hatası');
     return;
   }
 
-  state.measurements.push({
-    date: measurement.date,
-    weight: measurement.weight,
-    waist: measurement.waist
-  });
+  state.measurements.push(measurement);
 
   stateSave();
   renderAll();
-  setStatus('Ölçüm eklendi ✓', 'ok');
-
-  console.log('Supabase kayıt başarılı:', data);
 });
-
   // Supabase'e yaz
 const { data, error } = await db
   .from('measurements')
