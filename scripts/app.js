@@ -441,14 +441,26 @@ if (!date) {
   });
 
   // Supabase'e yaz
-await db.from('measurements').insert([
-  {
-    date,
-    weight: parseFloat(weight),
-    waist: parseFloat(waist),
-    user_id: 'demo-user'
-  }
-]);
+const { data, error } = await db
+  .from('measurements')
+  .insert([
+    {
+      date,
+      weight: parseFloat(weight),
+      waist: parseFloat(waist),
+      user_id: 'demo-user'
+    }
+  ])
+  .select();
+
+if (error) {
+  console.error('Supabase insert hatası:', error);
+  alert('Supabase kayıt hatası: ' + error.message);
+  setStatus('Cloud kayıt hatası', 'error');
+  return;
+}
+
+console.log('Supabase kayıt başarılı:', data);
 
   stateSave();
   renderAll();
