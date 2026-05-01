@@ -415,7 +415,7 @@ function deleteNote(index) {
 }
 
 // ── ADD WEIGHT (simple prompt, will be a modal in Phase 2) ──
-document.getElementById('openAddWeightBtn').addEventListener('click', () => {
+document.getElementById('openAddWeightBtn').addEventListener('click', async () => {
   const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
 if (!dateInput) return;
 
