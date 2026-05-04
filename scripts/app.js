@@ -568,6 +568,16 @@ function init() {
 
   loadMeasurementsFromSupabase();
 
+  document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    loadMeasurementsFromSupabase();
+  }
+});
+
+window.addEventListener('focus', () => {
+  loadMeasurementsFromSupabase();
+});
+
   function setupRealtime() {
   const channel = db
   .channel('realtime-measurements')
