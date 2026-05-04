@@ -569,16 +569,23 @@ function init() {
   loadMeasurementsFromSupabase();
 
   function setupRealtime() {
-  db.channel('measurements-changes')
-    .on('postgres_changes',
-      { event: '*', schema: 'public', table: 'measurements' },
-      payload => {
-        console.log('Realtime event:', payload);
-        // Her değişimde yeniden çek
-        loadMeasurementsFromSupabase();
-      }
-    )
-    .subscribe();
+  const channel = db
+  .channel('realtime-measurements')
+  .on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'measurements'
+    },
+    (payload) => {
+      console.log('Realtime geldi:', payload);
+      loadMeasurementsFromSupabase();
+    }
+  )
+  .subscribe((status) => {
+    console.log('Realtime status:', status);
+  });
 }
 
   const weightBtn = document.getElementById('openAddWeightBtn');
