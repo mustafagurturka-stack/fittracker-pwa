@@ -33,6 +33,7 @@ let state = {
   goalWeight: 74,
 };
 
+let measurementChart = null;
 // ── HELPERS ──
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -262,6 +263,57 @@ function renderStats() {
   if (statWorkouts) statWorkouts.textContent = workoutsThisWeek;
 }
 
+function renderMeasurementChart() {
+  const canvas = document.getElementById('measurementChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const data = [...(state.measurements || [])]
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (measurementChart) {
+    measurementChart.destroy();
+  }
+
+  if (!data.length) return;
+
+  measurementChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: data.map(item => formatDate(item.date)),
+      datasets: [
+        {
+          label: 'Kilo (kg)',
+          data: data.map(item => item.weight),
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 4
+        },
+        {
+          label: 'Bel (cm)',
+          data: data.map(item => item.waist),
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false
+        }
+      }
+    }
+  });
+}
+
 function renderWeightList() {
   const list = document.getElementById('weightList');
   const empty = document.getElementById('weightEmpty');
@@ -359,6 +411,7 @@ function renderAll() {
   renderHero();
   renderMoti();
   renderStats();
+  renderMeasurementChart();
   renderWeightList();
   renderNotes();
   applyTheme();
