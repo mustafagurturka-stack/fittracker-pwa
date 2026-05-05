@@ -561,6 +561,37 @@ function addNote() {
   setStatus('Not eklendi ✓', 'ok');
 }
 
+function saveSleep() {
+  const input = document.getElementById('sleepInput');
+  if (!input) return;
+
+  const hours = parseFloat(input.value);
+  if (!hours || hours <= 0) {
+    alert('Geçerli bir saat gir');
+    return;
+  }
+
+  if (!Array.isArray(state.sleep)) state.sleep = [];
+
+  const todayDate = today();
+
+  const existing = state.sleep.find(s => s.date === todayDate);
+
+  if (existing) {
+    existing.hours = hours;
+  } else {
+    state.sleep.push({
+      date: todayDate,
+      hours
+    });
+  }
+
+  stateSave();
+  setStatus('Uyku kaydedildi ✓', 'ok');
+
+  input.value = '';
+}
+
 function editName() {
   const newName = prompt('İsmini gir:', state.name || 'Sporcu');
   if (!newName) return;
@@ -627,6 +658,9 @@ function init() {
     loadMeasurementsFromSupabase();
   }
 });
+
+  const sleepBtn = document.getElementById('saveSleepBtn');
+if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
 
 window.addEventListener('focus', () => {
   loadMeasurementsFromSupabase();
