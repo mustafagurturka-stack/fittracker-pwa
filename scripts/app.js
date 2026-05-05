@@ -30,6 +30,7 @@ let state = {
   nutrition: [],
   workouts: [],
   notes: [],
+  sleep: [],
   goalWeight: 74,
 };
 
