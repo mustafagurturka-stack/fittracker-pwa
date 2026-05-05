@@ -170,23 +170,36 @@
     </section>
 
     <!-- PANEL: DAILY -->
-<div class="section">
-  <div class="sec-head">
-    <span class="sec-title">Uyku</span>
-  </div>
+ <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Uyku</span>
+    </div>
 
-  <div class="card" style="padding:16px">
-    <div style="display:flex;gap:10px;align-items:center">
-      <input 
-        type="number" 
-        id="sleepInput" 
-        placeholder="Saat (örn: 7.5)" 
-        style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px"
-      />
-      <button class="btn" id="saveSleepBtn">Kaydet</button>
+    <div class="card" style="padding:16px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input
+          type="number"
+          id="sleepInput"
+          placeholder="Saat (örn: 7.5)"
+          style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px"
+        />
+        <button class="btn" id="saveSleepBtn">Kaydet</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Notlar</span>
+      <button class="btn" id="addNoteBtn">+ Not</button>
+    </div>
+
+    <div class="card">
+      <div id="noteList"></div>
+    </div>
+  </div>
+
+</section>
 
 
   <!-- ✅ NOTLAR BURAYA TAŞINDI -->
@@ -244,6 +257,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=27" defer></script>
+  <script src="scripts/app.js?v=28" defer></script>
 </body>
 </html>
