@@ -26,12 +26,11 @@ let state = {
   name: 'Sporcu',
   measurements: [],
   weights: [],
-  water: { ml: 0, date: '' },
   nutrition: [],
   workouts: [],
   notes: [],
   sleep: [],
-  goalWeight: 74,
+  goalWeight: 85,
 };
 
 let measurementChart = null;
@@ -126,7 +125,7 @@ function stateLoad() {
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
       workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
       notes: Array.isArray(savedState.notes) ? savedState.notes : [],
-      water: savedState.water || { ml: 0, date: '' },
+      sleep: Array.isArray(savedState.sleep) ? savedState.sleep : [],
     };
   } catch (e) {
     console.warn('State yüklenemedi:', e);
@@ -241,17 +240,6 @@ function renderStats() {
     if (statWaistDiff) statWaistDiff.textContent = '—';
     if (waistBar) waistBar.style.width = '0%';
   }
-
-  const todayWater = state.water?.date === today() ? state.water.ml || 0 : 0;
-  const waterPct = Math.min(100, Math.round(todayWater / 30));
-
-  const statWater = document.getElementById('statWater');
-  const statWaterPct = document.getElementById('statWaterPct');
-  const waterBar = document.getElementById('waterBar');
-
-  if (statWater) statWater.textContent = todayWater;
-  if (statWaterPct) statWaterPct.textContent = waterPct + '%';
-  if (waterBar) waterBar.style.width = waterPct + '%';
 
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
@@ -408,6 +396,77 @@ function renderNotes() {
   `).join('');
 }
 
+function getWeekRange(dateValue) {
+  const date = new Date(dateValue);
+  const day = date.getDay() || 7;
+
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - day + 1);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  return {
+    start: monday.toISOString().slice(0, 10),
+    end: sunday.toISOString().slice(0, 10),
+  };
+}
+
+function renderSleepSummary() {
+  const el = document.getElementById('sleepSummary');
+  if (!el) return;
+
+  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
+
+  if (!sleep.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">😴</div>
+        Henüz uyku kaydı yok.
+      </div>
+    `;
+    return;
+  }
+
+  const groups = {};
+
+  sleep.forEach(item => {
+    const range = getWeekRange(item.date);
+    const key = `${range.start}_${range.end}`;
+
+    if (!groups[key]) {
+      groups[key] = {
+        start: range.start,
+        end: range.end,
+        total: 0,
+        count: 0,
+      };
+    }
+
+    groups[key].total += Number(item.hours);
+    groups[key].count += 1;
+  });
+
+  el.innerHTML = Object.values(groups)
+    .sort((a, b) => b.start.localeCompare(a.start))
+    .map(week => {
+      const avg = (week.total / week.count).toFixed(1);
+
+      return `
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-weight:700">
+            ${formatDate(week.start)} - ${formatDate(week.end)}
+          </div>
+
+          <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+            Ortalama: ${avg} saat · Kayıt: ${week.count} gün
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
 function renderAll() {
   renderHero();
   renderMoti();
@@ -415,6 +474,7 @@ function renderAll() {
   renderMeasurementChart();
   renderWeightList();
   renderNotes();
+  renderSleepSummary();
   applyTheme();
 }
 
@@ -587,6 +647,7 @@ function saveSleep() {
   }
 
   stateSave();
+  renderSleepSummary();
   setStatus('Uyku kaydedildi ✓', 'ok');
 
   input.value = '';
@@ -685,6 +746,8 @@ window.addEventListener('focus', () => {
     console.log('Realtime status:', status);
   });
 }
+
+  setupRealtime();
 
   const weightBtn = document.getElementById('openAddWeightBtn');
   if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
