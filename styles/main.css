@@ -254,8 +254,7 @@ body {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 14px 16px 0;
+  gap: 16px;
 }
 
 .stat-card {
@@ -440,10 +439,11 @@ body {
 .empty-state .empty-icon { font-size: 36px; margin-bottom: 8px; }
 
 /* ── RESPONSIVE ── */
-@media (min-width: 481px) {
-  body {
-    background: var(--bg);
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
+
 
   .bottom-nav {
     border-radius: 0;
