@@ -241,6 +241,18 @@ function renderStats() {
     if (waistBar) waistBar.style.width = '0%';
   }
 
+  const weekSleepTotal = getCurrentWeekSleepTotal();
+  const sleepTarget = 49;
+  const sleepPct = Math.min(100, Math.round((weekSleepTotal / sleepTarget) * 100));
+
+  const statSleep = document.getElementById('statSleep');
+  const statSleepPct = document.getElementById('statSleepPct');
+  const sleepBar = document.getElementById('sleepBar');
+
+  if (statSleep) statSleep.textContent = weekSleepTotal.toFixed(1);
+  if (statSleepPct) statSleepPct.textContent = sleepPct + '%';
+  if (sleepBar) sleepBar.style.width = sleepPct + '%';
+  
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -412,6 +424,15 @@ function getWeekRange(dateValue) {
   };
 }
 
+function getCurrentWeekSleepTotal() {
+  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
+  const range = getWeekRange(today());
+
+  return sleep
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .reduce((total, item) => total + Number(item.hours || 0), 0);
+}
+
 function renderSleepSummary() {
   const el = document.getElementById('sleepSummary');
   if (!el) return;
@@ -443,7 +464,7 @@ function renderSleepSummary() {
       };
     }
 
-    groups[key].total += Number(item.hours);
+    groups[key].total += Number(item.hours || 0);
     groups[key].count += 1;
   });
 
@@ -459,12 +480,39 @@ function renderSleepSummary() {
           </div>
 
           <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-            Ortalama: ${avg} saat · Kayıt: ${week.count} gün
+            Toplam: ${week.total.toFixed(1)} saat · Ortalama: ${avg} saat · Kayıt: ${week.count} gün
           </div>
         </div>
       `;
     })
     .join('');
+}
+
+function renderSleepList() {
+  const list = document.getElementById('sleepList');
+  if (!list) return;
+
+  const sleep = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!sleep.length) {
+    list.innerHTML = '';
+    return;
+  }
+
+  list.innerHTML = sleep.map((item, index) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:700">${Number(item.hours).toFixed(1)} saat</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+          ${formatDate(item.date)}
+        </div>
+      </div>
+
+      <button onclick="deleteSleep(${index})"
+        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+        aria-label="Sil">✕</button>
+    </div>
+  `).join('');
 }
 
 function renderAll() {
@@ -475,6 +523,7 @@ function renderAll() {
   renderWeightList();
   renderNotes();
   renderSleepSummary();
+  renderSleepList();
   applyTheme();
 }
 
@@ -622,35 +671,41 @@ function addNote() {
 }
 
 function saveSleep() {
-  const input = document.getElementById('sleepInput');
-  if (!input) return;
+  const dateInput = document.getElementById('sleepDateInput');
+  const hourInput = document.getElementById('sleepInput');
 
-  const hours = parseFloat(input.value);
+  if (!dateInput || !hourInput) return;
+
+  const date = dateInput.value || today();
+  const hours = parseFloat(hourInput.value);
+
   if (!hours || hours <= 0) {
-    alert('Geçerli bir saat gir');
+    alert('Geçerli bir uyku saati gir');
     return;
   }
 
   if (!Array.isArray(state.sleep)) state.sleep = [];
 
-  const todayDate = today();
-
-  const existing = state.sleep.find(s => s.date === todayDate);
+  const existing = state.sleep.find(item => item.date === date);
 
   if (existing) {
-    existing.hours = hours;
+    existing.hours = parseFloat(hours.toFixed(1));
   } else {
     state.sleep.push({
-      date: todayDate,
-      hours
+      date,
+      hours: parseFloat(hours.toFixed(1)),
     });
   }
 
   stateSave();
+  renderStats();
   renderSleepSummary();
+  renderSleepList();
+
   setStatus('Uyku kaydedildi ✓', 'ok');
 
-  input.value = '';
+  hourInput.value = '';
+  dateInput.value = today();
 }
 
 function editName() {
