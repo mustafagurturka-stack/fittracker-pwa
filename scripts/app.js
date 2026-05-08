@@ -654,6 +654,28 @@ function deleteNote(index) {
   setStatus('Not silindi ✓', 'ok');
 }
 
+function deleteSleep(sortedIdx) {
+  if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
+
+  if (!Array.isArray(state.sleep)) state.sleep = [];
+
+  const sorted = [...state.sleep]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const target = sorted[sortedIdx];
+  if (!target) return;
+
+  state.sleep.splice(target.originalIndex, 1);
+
+  stateSave();
+  renderStats();
+  renderSleepSummary();
+  renderSleepList();
+
+  setStatus('Uyku kaydı silindi ✓', 'ok');
+}
+
 function addNote() {
   const text = prompt('Not gir:');
   if (!text || !text.trim()) return;
@@ -778,6 +800,9 @@ function init() {
   const sleepBtn = document.getElementById('saveSleepBtn');
 if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
 
+  const sleepDateInput = document.getElementById('sleepDateInput');
+if (sleepDateInput) sleepDateInput.value = today();
+
 window.addEventListener('focus', () => {
   loadMeasurementsFromSupabase();
 });
@@ -844,5 +869,6 @@ window.addEventListener('focus', () => {
 window.goPanel = goPanel;
 window.deleteWeight = deleteWeight;
 window.deleteNote = deleteNote;
+window.deleteSleep = deleteSleep;
 
 init();
