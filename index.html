@@ -179,7 +179,7 @@
       <span class="sec-title">Günlük</span>
     </div>
     <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
-      Uyku ve not takibi.
+      Uyku, Antreman ve Not takibi.
     </p>
   </div>
 
@@ -215,6 +215,60 @@
 
 <div class="card" style="margin-top:12px">
   <div id="sleepList"></div>
+</div>
+
+    <div class="section">
+  <div class="sec-head">
+    <span class="sec-title">Antreman</span>
+  </div>
+
+  <div class="card" style="padding:16px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input
+        type="date"
+        id="workoutDateInput"
+        style="flex:1;min-width:140px;padding:10px;border:1px solid var(--border);border-radius:8px"
+      />
+
+      <select
+        id="workoutTypeInput"
+        style="flex:1;min-width:160px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"
+      >
+        <option value="Full Body A">Full Body A</option>
+        <option value="Full Body B">Full Body B</option>
+        <option value="Core / Tabata">Core / Tabata</option>
+        <option value="Kardiyo">Kardiyo</option>
+        <option value="Yürüyüş">Yürüyüş</option>
+        <option value="Recovery">Recovery</option>
+      </select>
+
+      <input
+        type="number"
+        id="workoutDurationInput"
+        placeholder="Dakika"
+        step="5"
+        min="1"
+        style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px"
+      />
+
+      <input
+        type="text"
+        id="workoutNoteInput"
+        placeholder="Not opsiyonel"
+        style="flex:1;min-width:180px;padding:10px;border:1px solid var(--border);border-radius:8px"
+      />
+
+      <button class="btn" id="saveWorkoutBtn">Kaydet</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div id="workoutSummary"></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div id="workoutList"></div>
+  </div>
 </div>
 
   </div>
@@ -275,6 +329,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=40" defer></script>
+  <script src="scripts/app.js?v=41" defer></script>
 </body>
 </html>
