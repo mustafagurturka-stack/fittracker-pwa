@@ -166,9 +166,19 @@ function goPanel(idx) {
     if (btn) btn.classList.toggle('active', i === idx);
   });
 
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    const appShell = document.querySelector('.app-shell');
+    if (appShell) appShell.scrollTop = 0;
+
+    const panels = document.getElementById('panels');
+    if (panels) panels.scrollTop = 0;
+
+    const activePanel = document.querySelector('.panel.active');
+    if (activePanel) activePanel.scrollTop = 0;
   });
 }
 
