@@ -60,6 +60,8 @@ body {
   min-height: 100dvh;
   padding-bottom: 88px;
   transition: background .25s, color .25s;
+  overflow-x: hidden;
+  scroll-behavior: auto;
 }
 
 /* ── LAYOUT ── */
