@@ -165,6 +165,11 @@ function goPanel(idx) {
     const btn = document.getElementById(id);
     if (btn) btn.classList.toggle('active', i === idx);
   });
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
 }
 
 // ── RENDER ──
