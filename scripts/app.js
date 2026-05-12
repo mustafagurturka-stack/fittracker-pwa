@@ -268,18 +268,13 @@ function renderStats() {
   if (statSleepPct) statSleepPct.textContent = sleepPct + '%';
   if (sleepBar) sleepBar.style.width = sleepPct + '%';
   
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-
-  const workoutsThisWeek = (state.workouts || []).filter(
-    w => w.date >= weekAgo.toISOString().slice(0, 10)
-  ).length;
+  const currentWeekWorkoutTotal = getCurrentWeekWorkoutTotal();
 
   const statWorkouts = document.getElementById('statWorkouts');
-  if (statWorkouts) statWorkouts.textContent = workoutsThisWeek;
-}
+  if (statWorkouts) statWorkouts.textContent = currentWeekWorkoutTotal;
+  }
 
-function renderMeasurementChart() {
+  function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
   if (!canvas || typeof Chart === 'undefined') return;
 
@@ -530,6 +525,108 @@ function renderSleepList() {
   `).join('');
 }
 
+function getCurrentWeekWorkoutTotal() {
+  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
+  const range = getWeekRange(today());
+
+  return workouts
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .reduce((total, item) => total + Number(item.duration || 0), 0);
+}
+
+function renderWorkoutSummary() {
+  const el = document.getElementById('workoutSummary');
+  if (!el) return;
+
+  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
+
+  if (!workouts.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🏋️</div>
+        Henüz antreman kaydı yok.
+      </div>
+    `;
+    return;
+  }
+
+  const groups = {};
+
+  workouts.forEach(item => {
+    const range = getWeekRange(item.date);
+    const key = `${range.start}_${range.end}`;
+
+    if (!groups[key]) {
+      groups[key] = {
+        start: range.start,
+        end: range.end,
+        total: 0,
+        count: 0,
+        types: {},
+      };
+    }
+
+    groups[key].total += Number(item.duration || 0);
+    groups[key].count += 1;
+    groups[key].types[item.type] = (groups[key].types[item.type] || 0) + 1;
+  });
+
+  el.innerHTML = Object.values(groups)
+    .sort((a, b) => b.start.localeCompare(a.start))
+    .map(week => {
+      const typeText = Object.entries(week.types)
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(' · ');
+
+      return `
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-weight:700">
+            ${formatDate(week.start)} - ${formatDate(week.end)}
+          </div>
+
+          <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+            Toplam: ${week.total} dk · Kayıt: ${week.count}
+          </div>
+
+          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:4px">
+            ${typeText}
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function renderWorkoutList() {
+  const list = document.getElementById('workoutList');
+  if (!list) return;
+
+  const workouts = [...(state.workouts || [])].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  );
+
+  if (!workouts.length) {
+    list.innerHTML = '';
+    return;
+  }
+
+  list.innerHTML = workouts.map((item, index) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:700">${item.type} · ${Number(item.duration)} dk</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+          ${formatDate(item.date)}
+          ${item.note ? ` · ${item.note}` : ''}
+        </div>
+      </div>
+
+      <button onclick="deleteWorkout(${index})"
+        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+        aria-label="Sil">✕</button>
+    </div>
+  `).join('');
+}
+
 function renderAll() {
   renderHero();
   renderMoti();
@@ -539,6 +636,8 @@ function renderAll() {
   renderNotes();
   renderSleepSummary();
   renderSleepList();
+  renderWorkoutSummary();
+  renderWorkoutList();
   applyTheme();
 }
 
@@ -745,6 +844,67 @@ function saveSleep() {
   dateInput.value = today();
 }
 
+function saveWorkout() {
+  const dateInput = document.getElementById('workoutDateInput');
+  const typeInput = document.getElementById('workoutTypeInput');
+  const durationInput = document.getElementById('workoutDurationInput');
+  const noteInput = document.getElementById('workoutNoteInput');
+
+  if (!dateInput || !typeInput || !durationInput) return;
+
+  const date = dateInput.value || today();
+  const type = typeInput.value;
+  const duration = parseInt(durationInput.value, 10);
+  const note = noteInput ? noteInput.value.trim() : '';
+
+  if (!duration || duration <= 0) {
+    alert('Geçerli bir antreman süresi gir');
+    return;
+  }
+
+  if (!Array.isArray(state.workouts)) state.workouts = [];
+
+  state.workouts.push({
+    date,
+    type,
+    duration,
+    note,
+  });
+
+  stateSave();
+  renderStats();
+  renderWorkoutSummary();
+  renderWorkoutList();
+
+  setStatus('Antreman kaydedildi ✓', 'ok');
+
+  durationInput.value = '';
+  if (noteInput) noteInput.value = '';
+  dateInput.value = today();
+}
+
+function deleteWorkout(sortedIdx) {
+  if (!confirm('Bu antreman kaydını silmek istediğinden emin misin?')) return;
+
+  if (!Array.isArray(state.workouts)) state.workouts = [];
+
+  const sorted = [...state.workouts]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const target = sorted[sortedIdx];
+  if (!target) return;
+
+  state.workouts.splice(target.originalIndex, 1);
+
+  stateSave();
+  renderStats();
+  renderWorkoutSummary();
+  renderWorkoutList();
+
+  setStatus('Antreman kaydı silindi ✓', 'ok');
+}
+
 function editName() {
   const newName = prompt('İsmini gir:', state.name || 'Sporcu');
   if (!newName) return;
@@ -818,6 +978,12 @@ if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
   const sleepDateInput = document.getElementById('sleepDateInput');
 if (sleepDateInput) sleepDateInput.value = today();
 
+  const workoutDateInput = document.getElementById('workoutDateInput');
+if (workoutDateInput) workoutDateInput.value = today();
+
+const workoutBtn = document.getElementById('saveWorkoutBtn');
+if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
+
 window.addEventListener('focus', () => {
   loadMeasurementsFromSupabase();
 });
@@ -885,5 +1051,6 @@ window.goPanel = goPanel;
 window.deleteWeight = deleteWeight;
 window.deleteNote = deleteNote;
 window.deleteSleep = deleteSleep;
+window.deleteWorkout = deleteWorkout;
 
 init();
