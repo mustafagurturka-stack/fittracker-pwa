@@ -666,6 +666,77 @@ async function loadMeasurementsFromSupabase() {
   console.log('Supabase veriler yüklendi:', data);
 }
 
+async function loadSleepFromSupabase() {
+  const { data, error } = await db
+    .from('sleep_logs')
+    .select('*')
+    .eq('user_id', 'demo-user')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Sleep load hatası:', error);
+    setStatus('Uyku verileri yüklenemedi', 'error');
+    return;
+  }
+
+  state.sleep = (data || []).map(item => ({
+    id: item.id,
+    date: item.date,
+    hours: parseFloat(item.hours),
+  }));
+
+  stateSave();
+  renderAll();
+}
+
+async function loadWorkoutsFromSupabase() {
+  const { data, error } = await db
+    .from('workout_logs')
+    .select('*')
+    .eq('user_id', 'demo-user')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Workout load hatası:', error);
+    setStatus('Antreman verileri yüklenemedi', 'error');
+    return;
+  }
+
+  state.workouts = (data || []).map(item => ({
+    id: item.id,
+    date: item.date,
+    type: item.type,
+    duration: Number(item.duration),
+    note: item.note || '',
+  }));
+
+  stateSave();
+  renderAll();
+}
+
+async function loadNotesFromSupabase() {
+  const { data, error } = await db
+    .from('notes')
+    .select('*')
+    .eq('user_id', 'demo-user')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Notes load hatası:', error);
+    setStatus('Notlar yüklenemedi', 'error');
+    return;
+  }
+
+  state.notes = (data || []).map(item => ({
+    id: item.id,
+    date: item.date,
+    text: item.text,
+  }));
+
+  stateSave();
+  renderAll();
+}
+
 // ── ACTIONS ──
 async function addMeasurement() {
   const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
@@ -756,57 +827,73 @@ async function deleteWeight(sortedIdx) {
   setStatus('Ölçüm silindi ✓', 'ok');
 }
 
-function deleteNote(index) {
+async function deleteNote(index) {
   if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
 
-  if (!Array.isArray(state.notes)) state.notes = [];
+  const target = state.notes[index];
+  if (!target) return;
 
-  state.notes.splice(index, 1);
+  const { error } = await db
+    .from('notes')
+    .delete()
+    .eq('id', target.id);
 
-  stateSave();
-  renderNotes();
+  if (error) {
+    console.error('Note silme hatası:', error);
+    alert('Not cloud silme hatası: ' + error.message);
+    return;
+  }
+
+  await loadNotesFromSupabase();
   setStatus('Not silindi ✓', 'ok');
 }
 
-function deleteSleep(sortedIdx) {
+async function deleteSleep(sortedIdx) {
   if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
 
-  if (!Array.isArray(state.sleep)) state.sleep = [];
-
-  const sorted = [...state.sleep]
-    .map((item, originalIndex) => ({ ...item, originalIndex }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-
+  const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
   const target = sorted[sortedIdx];
   if (!target) return;
 
-  state.sleep.splice(target.originalIndex, 1);
+  const { error } = await db
+    .from('sleep_logs')
+    .delete()
+    .eq('id', target.id);
 
-  stateSave();
-  renderStats();
-  renderSleepSummary();
-  renderSleepList();
+  if (error) {
+    console.error('Sleep silme hatası:', error);
+    alert('Uyku cloud silme hatası: ' + error.message);
+    return;
+  }
 
+  await loadSleepFromSupabase();
   setStatus('Uyku kaydı silindi ✓', 'ok');
 }
 
-function addNote() {
+async function addNote() {
   const text = prompt('Not gir:');
   if (!text || !text.trim()) return;
 
-  if (!Array.isArray(state.notes)) state.notes = [];
+  const { error } = await db
+    .from('notes')
+    .insert([{
+      user_id: 'demo-user',
+      date: today(),
+      text: text.trim(),
+    }]);
 
-  state.notes.push({
-    text: text.trim(),
-    date: today(),
-  });
+  if (error) {
+    console.error('Note kayıt hatası:', error);
+    alert('Not cloud kayıt hatası: ' + error.message);
+    return;
+  }
 
-  stateSave();
-  renderNotes();
+  await loadNotesFromSupabase();
+
   setStatus('Not eklendi ✓', 'ok');
 }
 
-function saveSleep() {
+async function saveSleep() {
   const dateInput = document.getElementById('sleepDateInput');
   const hourInput = document.getElementById('sleepInput');
 
@@ -820,31 +907,30 @@ function saveSleep() {
     return;
   }
 
-  if (!Array.isArray(state.sleep)) state.sleep = [];
+  const payload = {
+    user_id: 'demo-user',
+    date,
+    hours: parseFloat(hours.toFixed(1)),
+  };
 
-  const existing = state.sleep.find(item => item.date === date);
+  const { error } = await db
+    .from('sleep_logs')
+    .upsert(payload, { onConflict: 'user_id,date' });
 
-  if (existing) {
-    existing.hours = parseFloat(hours.toFixed(1));
-  } else {
-    state.sleep.push({
-      date,
-      hours: parseFloat(hours.toFixed(1)),
-    });
+  if (error) {
+    console.error('Sleep kayıt hatası:', error);
+    alert('Uyku cloud kayıt hatası: ' + error.message);
+    return;
   }
 
-  stateSave();
-  renderStats();
-  renderSleepSummary();
-  renderSleepList();
+  await loadSleepFromSupabase();
 
   setStatus('Uyku kaydedildi ✓', 'ok');
-
   hourInput.value = '';
   dateInput.value = today();
 }
 
-function saveWorkout() {
+async function saveWorkout() {
   const dateInput = document.getElementById('workoutDateInput');
   const typeInput = document.getElementById('workoutTypeInput');
   const durationInput = document.getElementById('workoutDurationInput');
@@ -862,46 +948,49 @@ function saveWorkout() {
     return;
   }
 
-  if (!Array.isArray(state.workouts)) state.workouts = [];
+  const { error } = await db
+    .from('workout_logs')
+    .insert([{
+      user_id: 'demo-user',
+      date,
+      type,
+      duration,
+      note,
+    }]);
 
-  state.workouts.push({
-    date,
-    type,
-    duration,
-    note,
-  });
+  if (error) {
+    console.error('Workout kayıt hatası:', error);
+    alert('Antreman cloud kayıt hatası: ' + error.message);
+    return;
+  }
 
-  stateSave();
-  renderStats();
-  renderWorkoutSummary();
-  renderWorkoutList();
+  await loadWorkoutsFromSupabase();
 
   setStatus('Antreman kaydedildi ✓', 'ok');
-
   durationInput.value = '';
   if (noteInput) noteInput.value = '';
   dateInput.value = today();
 }
 
-function deleteWorkout(sortedIdx) {
+async function deleteWorkout(sortedIdx) {
   if (!confirm('Bu antreman kaydını silmek istediğinden emin misin?')) return;
 
-  if (!Array.isArray(state.workouts)) state.workouts = [];
-
-  const sorted = [...state.workouts]
-    .map((item, originalIndex) => ({ ...item, originalIndex }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-
+  const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
   const target = sorted[sortedIdx];
   if (!target) return;
 
-  state.workouts.splice(target.originalIndex, 1);
+  const { error } = await db
+    .from('workout_logs')
+    .delete()
+    .eq('id', target.id);
 
-  stateSave();
-  renderStats();
-  renderWorkoutSummary();
-  renderWorkoutList();
+  if (error) {
+    console.error('Workout silme hatası:', error);
+    alert('Antreman cloud silme hatası: ' + error.message);
+    return;
+  }
 
+  await loadWorkoutsFromSupabase();
   setStatus('Antreman kaydı silindi ✓', 'ok');
 }
 
@@ -969,6 +1058,9 @@ function init() {
   document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     loadMeasurementsFromSupabase();
+    loadSleepFromSupabase();
+    loadWorkoutsFromSupabase();
+    loadNotesFromSupabase();
   }
 });
 
