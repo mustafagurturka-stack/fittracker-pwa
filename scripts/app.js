@@ -212,7 +212,16 @@ function renderDashboardWeekLabel() {
 
   const range = getDashboardWeekRange();
 
-  el.textContent = `📅 Gösterilen hafta: ${formatDate(range.start)} - ${formatDate(range.end)}`;
+  el.innerHTML = `
+    <div class="week-chip-top">
+      <span>📅</span>
+      <span>${formatDate(range.start)} - ${formatDate(range.end)}</span>
+    </div>
+
+    <div class="week-chip-sub">
+      WEEKLY PROGRESS
+    </div>
+  `;
 }
 
 function renderStats() {
