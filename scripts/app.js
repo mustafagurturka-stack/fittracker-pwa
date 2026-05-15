@@ -434,9 +434,24 @@ function getWeekRange(dateValue) {
   };
 }
 
+function getDashboardWeekRange() {
+  const dates = [
+    ...(state.sleep || []).map(item => item.date),
+    ...(state.workouts || []).map(item => item.date),
+    ...(state.measurements || []).map(item => item.date),
+  ].filter(Boolean);
+
+  if (!dates.length) {
+    return getWeekRange(today());
+  }
+
+  const latestDate = dates.sort((a, b) => b.localeCompare(a))[0];
+  return getWeekRange(latestDate);
+}
+
 function getCurrentWeekSleepTotal() {
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
-  const range = getWeekRange(today());
+  const range = getDashboardWeekRange();
 
   return sleep
     .filter(item => item.date >= range.start && item.date <= range.end)
@@ -527,7 +542,7 @@ function renderSleepList() {
 
 function getCurrentWeekWorkoutTotal() {
   const workouts = Array.isArray(state.workouts) ? state.workouts : [];
-  const range = getWeekRange(today());
+  const range = getDashboardWeekRange();
 
   return workouts
     .filter(item => item.date >= range.start && item.date <= range.end)
