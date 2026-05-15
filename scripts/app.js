@@ -743,6 +743,7 @@ function loadAllCloudData() {
   loadWorkoutsFromSupabase();
   loadNotesFromSupabase();
 
+}
 // ── ACTIONS ──
 async function addMeasurement() {
   const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
@@ -1059,7 +1060,7 @@ function init() {
   updateOnlineStatus();
   setStatus('Hazır', 'ok');
 
-  loadMeasurementsFromSupabase();
+  loadAllCloudData();
 
   document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
