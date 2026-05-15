@@ -206,6 +206,15 @@ function renderMoti() {
   el.textContent = MOTIVATIONS[idx];
 }
 
+function renderDashboardWeekLabel() {
+  const el = document.getElementById('dashboardWeekLabel');
+  if (!el) return;
+
+  const range = getDashboardWeekRange();
+
+  el.textContent = `📅 Gösterilen hafta: ${formatDate(range.start)} - ${formatDate(range.end)}`;
+}
+
 function renderStats() {
   const measurements = [...(state.measurements || [])].sort((a, b) =>
     a.date.localeCompare(b.date)
@@ -644,6 +653,7 @@ function renderWorkoutList() {
 function renderAll() {
   renderHero();
   renderMoti();
+  renderDashboardWeekLabel();
   renderStats();
   renderMeasurementChart();
   renderWeightList();
