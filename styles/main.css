@@ -64,6 +64,21 @@ body {
   scroll-behavior: auto;
 }
 
+.week-chip {
+  margin: 12px 16px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ── LAYOUT ── */
 .app-shell {
   width: 100%;
