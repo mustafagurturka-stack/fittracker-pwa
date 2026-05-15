@@ -438,7 +438,6 @@ function getDashboardWeekRange() {
   const dates = [
     ...(state.sleep || []).map(item => item.date),
     ...(state.workouts || []).map(item => item.date),
-    ...(state.measurements || []).map(item => item.date),
   ].filter(Boolean);
 
   if (!dates.length) {
