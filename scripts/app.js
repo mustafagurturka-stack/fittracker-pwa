@@ -737,6 +737,12 @@ async function loadNotesFromSupabase() {
   renderAll();
 }
 
+function loadAllCloudData() {
+  loadMeasurementsFromSupabase();
+  loadSleepFromSupabase();
+  loadWorkoutsFromSupabase();
+  loadNotesFromSupabase();
+
 // ── ACTIONS ──
 async function addMeasurement() {
   const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
@@ -1057,10 +1063,7 @@ function init() {
 
   document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    loadMeasurementsFromSupabase();
-    loadSleepFromSupabase();
-    loadWorkoutsFromSupabase();
-    loadNotesFromSupabase();
+    loadAllCloudData();
   }
 });
 
@@ -1077,7 +1080,7 @@ const workoutBtn = document.getElementById('saveWorkoutBtn');
 if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
 
 window.addEventListener('focus', () => {
-  loadMeasurementsFromSupabase();
+  loadAllCloudData();
 });
 
   function setupRealtime() {
