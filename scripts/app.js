@@ -345,6 +345,57 @@ function renderStats() {
   });
 }
 
+function renderWeightSummary() {
+  const el = document.getElementById('weightSummary');
+  if (!el) return;
+
+  const data = [...(state.measurements || [])].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  const weightDiff = last.weight - first.weight;
+  const waistDiff = last.waist - first.waist;
+  const goalLeft = state.goalWeight ? last.weight - state.goalWeight : null;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">SON KİLO</div>
+        <div style="font-size:24px;font-weight:900;margin-top:6px">${last.weight} kg</div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">TOPLAM DEĞİŞİM</div>
+        <div style="font-size:24px;font-weight:900;margin-top:6px;color:${weightDiff <= 0 ? 'var(--green)' : 'var(--red)'}">
+          ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">SON BEL</div>
+        <div style="font-size:24px;font-weight:900;margin-top:6px">${last.waist} cm</div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">HEDEFE KALAN</div>
+        <div style="font-size:24px;font-weight:900;margin-top:6px">
+          ${goalLeft !== null ? goalLeft.toFixed(1) + ' kg' : '—'}
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
 function renderWeightList() {
   const list = document.getElementById('weightList');
   const empty = document.getElementById('weightEmpty');
@@ -866,6 +917,7 @@ function renderAll() {
   renderDashboardWeekLabel();
   renderStats();
   renderMeasurementChart();
+  renderWeightSummary();
   renderWeightList();
   renderNotes();
   renderSleepSummary();
