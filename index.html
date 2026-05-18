@@ -275,6 +275,54 @@
 
 </section>
 
+    <!-- PANEL: PROGRESS -->
+<section class="panel" id="pProgress" aria-label="Progress">
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Progress</span>
+    </div>
+    <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
+      Haftalık uyku, antreman ve gelişim analizi.
+    </p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Haftalık Özet</span>
+    </div>
+    <div class="card">
+      <div id="progressSummary"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Uyku Grafiği</span>
+    </div>
+    <div class="card" style="padding:16px;height:240px;">
+      <canvas id="sleepChart"></canvas>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Antreman Grafiği</span>
+    </div>
+    <div class="card" style="padding:16px;height:240px;">
+      <canvas id="workoutChart"></canvas>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Haftalık Liste</span>
+    </div>
+    <div class="card">
+      <div id="progressList"></div>
+    </div>
+  </div>
+</section>
+
     <!-- PANEL: SETTINGS -->
     <section class="panel" id="pSettings" aria-label="Ayarlar">
       <div class="section">
@@ -306,10 +354,15 @@
       <span class="bn-icon">📋</span>
       <span>Günlük</span>
     </button>
-    <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="Ayarlar">
-      <span class="bn-icon">⚙️</span>
-      <span>Ayarlar</span>
-    </button>
+    <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="Progress">
+  <span class="bn-icon">📈</span>
+  <span>Progress</span>
+</button>
+
+<button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Ayarlar">
+  <span class="bn-icon">⚙️</span>
+  <span>Ayarlar</span>
+</button>
   </nav>
 
 </div><!-- /.app-shell -->
@@ -318,6 +371,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=51" defer></script>
+  <script src="scripts/app.js?v=52" defer></script>
 </body>
 </html>
