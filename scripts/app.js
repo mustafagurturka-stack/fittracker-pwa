@@ -719,31 +719,52 @@ function renderProgressSummary() {
   const current = data[data.length - 1];
   const prev = data[data.length - 2];
 
-  const sleepDiff = prev
-    ? (current.sleep - prev.sleep).toFixed(1)
-    : 0;
+  const sleepTarget = 49;
+  const workoutTarget = 180;
 
-  const workoutDiff = prev
-    ? current.workouts - prev.workouts
-    : 0;
+  const sleepPct = Math.min(100, Math.round((current.sleep / sleepTarget) * 100));
+  const workoutPct = Math.min(100, Math.round((current.workouts / workoutTarget) * 100));
+
+  const sleepDiff = prev ? current.sleep - prev.sleep : 0;
+  const workoutDiff = prev ? current.workouts - prev.workouts : 0;
 
   el.innerHTML = `
-    <div style="padding:16px">
-      <div style="font-weight:700;margin-bottom:10px">
-        ${formatDate(current.start)} - ${formatDate(current.end)}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:14px">
+
+      <div style="border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--card)">
+        <div style="font-size:24px">😴</div>
+        <div style="font-weight:800;margin-top:6px">Uyku</div>
+        <div style="font-size:22px;font-weight:900;margin-top:8px">
+          ${current.sleep.toFixed(1)} / ${sleepTarget} saat
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:999px;margin-top:10px;overflow:hidden">
+          <div style="height:100%;width:${sleepPct}%;background:var(--blue);border-radius:999px"></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">
+          ${sleepPct >= 100 ? 'Hedef tamamlandı ✅' : `%${sleepPct} tamamlandı`}
+        </div>
+        <div style="font-size:12px;color:${sleepDiff >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:4px">
+          Geçen haftaya göre ${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat
+        </div>
       </div>
 
-      <div style="font-size:13px;color:var(--muted)">
-        Uyku:
-        ${current.sleep.toFixed(1)} saat
-        (${sleepDiff >= 0 ? '+' : ''}${sleepDiff})
+      <div style="border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--card)">
+        <div style="font-size:24px">🏋️</div>
+        <div style="font-weight:800;margin-top:6px">Antreman</div>
+        <div style="font-size:22px;font-weight:900;margin-top:8px">
+          ${current.workouts} / ${workoutTarget} dk
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:999px;margin-top:10px;overflow:hidden">
+          <div style="height:100%;width:${workoutPct}%;background:var(--blue);border-radius:999px"></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">
+          ${workoutPct >= 100 ? 'Hedef tamamlandı ✅' : `%${workoutPct} tamamlandı`}
+        </div>
+        <div style="font-size:12px;color:${workoutDiff >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:4px">
+          Geçen haftaya göre ${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk
+        </div>
       </div>
 
-      <div style="font-size:13px;color:var(--muted);margin-top:6px">
-        Antreman:
-        ${current.workouts} dk
-        (${workoutDiff >= 0 ? '+' : ''}${workoutDiff})
-      </div>
     </div>
   `;
 }
@@ -765,13 +786,15 @@ function renderProgressCharts() {
 
   if (sleepCanvas) {
     sleepChart = new Chart(sleepCanvas, {
-      type: 'bar',
+      type: 'line',
       data: {
         labels,
         datasets: [{
           label: 'Uyku Saati',
           data: data.map(item => item.sleep),
-          borderWidth: 1
+          borderWidth: 3,
+          tension: 0.35,
+          pointRadius: 5
         }]
       },
       options: {
@@ -789,13 +812,15 @@ function renderProgressCharts() {
 
   if (workoutCanvas) {
     workoutChart = new Chart(workoutCanvas, {
-      type: 'bar',
+      type: 'line',
       data: {
         labels,
         datasets: [{
           label: 'Antreman Dakikası',
           data: data.map(item => item.workouts),
-          borderWidth: 1
+          borderWidth: 3,
+          tension: 0.35,
+          pointRadius: 5
         }]
       },
       options: {
