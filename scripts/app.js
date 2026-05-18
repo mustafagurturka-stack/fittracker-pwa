@@ -8,8 +8,8 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 console.log('Supabase hazır:', db);
 
 // ── CONSTANTS ──
-const PANELS = ['pHome', 'pWeight', 'pDaily', 'pSettings'];
-const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3'];
+const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
+const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
 const STORAGE_KEY = 'ft_state_v1';
 
 const MOTIVATIONS = [
@@ -34,6 +34,8 @@ let state = {
 };
 
 let measurementChart = null;
+let sleepChart = null;
+let workoutChart = null;
 // ── HELPERS ──
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -659,6 +661,180 @@ function renderWorkoutList() {
   `).join('');
 }
 
+function getWeeklyProgressData() {
+  const weeks = {};
+
+  (state.sleep || []).forEach(item => {
+    const range = getWeekRange(item.date);
+    const key = `${range.start}_${range.end}`;
+
+    if (!weeks[key]) {
+      weeks[key] = {
+        start: range.start,
+        end: range.end,
+        sleep: 0,
+        workouts: 0,
+      };
+    }
+
+    weeks[key].sleep += Number(item.hours || 0);
+  });
+
+  (state.workouts || []).forEach(item => {
+    const range = getWeekRange(item.date);
+    const key = `${range.start}_${range.end}`;
+
+    if (!weeks[key]) {
+      weeks[key] = {
+        start: range.start,
+        end: range.end,
+        sleep: 0,
+        workouts: 0,
+      };
+    }
+
+    weeks[key].workouts += Number(item.duration || 0);
+  });
+
+  return Object.values(weeks)
+    .sort((a, b) => a.start.localeCompare(b.start));
+}
+
+function renderProgressSummary() {
+  const el = document.getElementById('progressSummary');
+  if (!el) return;
+
+  const data = getWeeklyProgressData();
+
+  if (!data.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📈</div>
+        Henüz progress verisi yok.
+      </div>
+    `;
+    return;
+  }
+
+  const current = data[data.length - 1];
+  const prev = data[data.length - 2];
+
+  const sleepDiff = prev
+    ? (current.sleep - prev.sleep).toFixed(1)
+    : 0;
+
+  const workoutDiff = prev
+    ? current.workouts - prev.workouts
+    : 0;
+
+  el.innerHTML = `
+    <div style="padding:16px">
+      <div style="font-weight:700;margin-bottom:10px">
+        ${formatDate(current.start)} - ${formatDate(current.end)}
+      </div>
+
+      <div style="font-size:13px;color:var(--muted)">
+        Uyku:
+        ${current.sleep.toFixed(1)} saat
+        (${sleepDiff >= 0 ? '+' : ''}${sleepDiff})
+      </div>
+
+      <div style="font-size:13px;color:var(--muted);margin-top:6px">
+        Antreman:
+        ${current.workouts} dk
+        (${workoutDiff >= 0 ? '+' : ''}${workoutDiff})
+      </div>
+    </div>
+  `;
+}
+
+function renderProgressCharts() {
+  if (typeof Chart === 'undefined') return;
+
+  const data = getWeeklyProgressData();
+
+  const labels = data.map(item =>
+    `${formatDate(item.start)}`
+  );
+
+  const sleepCanvas = document.getElementById('sleepChart');
+
+  if (sleepChart) {
+    sleepChart.destroy();
+  }
+
+  if (sleepCanvas) {
+    sleepChart = new Chart(sleepCanvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Uyku Saati',
+          data: data.map(item => item.sleep),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  }
+
+  const workoutCanvas = document.getElementById('workoutChart');
+
+  if (workoutChart) {
+    workoutChart.destroy();
+  }
+
+  if (workoutCanvas) {
+    workoutChart = new Chart(workoutCanvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Antreman Dakikası',
+          data: data.map(item => item.workouts),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  }
+}
+
+function renderProgressList() {
+  const el = document.getElementById('progressList');
+  if (!el) return;
+
+  const data = getWeeklyProgressData()
+    .sort((a, b) => b.start.localeCompare(a.start));
+
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = data.map(item => `
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:700">
+        ${formatDate(item.start)} - ${formatDate(item.end)}
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+        Uyku: ${item.sleep.toFixed(1)} saat
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+        Antreman: ${item.workouts} dk
+      </div>
+    </div>
+  `).join('');
+}
+
 function renderAll() {
   renderHero();
   renderMoti();
@@ -671,6 +847,9 @@ function renderAll() {
   renderSleepList();
   renderWorkoutSummary();
   renderWorkoutList();
+  renderProgressSummary();
+  renderProgressCharts();
+  renderProgressList();
   applyTheme();
 }
 
