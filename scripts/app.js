@@ -412,7 +412,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          ŞU ANKİ HEDEF
+          İLK ARA HEDEF
         </div>
 
         <div style="font-size:24px;font-weight:900;margin-top:6px">
@@ -420,7 +420,7 @@ function renderWeightSummary() {
         </div>
 
         <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          Kalan: ${kgLeft} kg
+          İlk hedefe kalan: ${kgLeft} kg · Final hedef: ${state.goalWeight} kg
         </div>
 
         <div style="
