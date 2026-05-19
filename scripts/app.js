@@ -31,6 +31,7 @@ let state = {
   notes: [],
   sleep: [],
   goalWeight: 85,
+  milestones: [95, 90, 85]
 };
 
 let measurementChart = null;
@@ -349,9 +350,8 @@ function renderWeightSummary() {
   const el = document.getElementById('weightSummary');
   if (!el) return;
 
-  const data = [...(state.measurements || [])].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
+  const data = [...(state.measurements || [])]
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   if (!data.length) {
     el.innerHTML = '';
@@ -363,32 +363,98 @@ function renderWeightSummary() {
 
   const weightDiff = last.weight - first.weight;
   const waistDiff = last.waist - first.waist;
-  const goalLeft = state.goalWeight ? last.weight - state.goalWeight : null;
+
+  const milestones = state.milestones || [95, 90, 85, 80, 75];
+
+  let currentGoal = milestones.find(goal => last.weight > goal);
+
+  if (!currentGoal) {
+    currentGoal = milestones[milestones.length - 1];
+  }
+
+  const kgLeft = Math.max(0, (last.weight - currentGoal).toFixed(1));
+
+  const startWeight = first.weight;
+  const totalNeeded = startWeight - currentGoal;
+  const completed = startWeight - last.weight;
+
+  const progressPct = totalNeeded > 0
+    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
+    : 100;
 
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">
 
       <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">SON KİLO</div>
-        <div style="font-size:24px;font-weight:900;margin-top:6px">${last.weight} kg</div>
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          SON KİLO
+        </div>
+
+        <div style="font-size:24px;font-weight:900;margin-top:6px">
+          ${last.weight} kg
+        </div>
       </div>
 
       <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">TOPLAM DEĞİŞİM</div>
-        <div style="font-size:24px;font-weight:900;margin-top:6px;color:${weightDiff <= 0 ? 'var(--green)' : 'var(--red)'}">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          TOPLAM DEĞİŞİM
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:900;
+          margin-top:6px;
+          color:${weightDiff <= 0 ? 'var(--green)' : 'var(--red)'}
+        ">
           ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
         </div>
       </div>
 
       <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">SON BEL</div>
-        <div style="font-size:24px;font-weight:900;margin-top:6px">${last.waist} cm</div>
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          ŞU ANKİ HEDEF
+        </div>
+
+        <div style="font-size:24px;font-weight:900;margin-top:6px">
+          ${currentGoal} kg
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">
+          Kalan: ${kgLeft} kg
+        </div>
+
+        <div style="
+          height:8px;
+          background:var(--border);
+          border-radius:999px;
+          overflow:hidden;
+          margin-top:10px
+        ">
+          <div style="
+            height:100%;
+            width:${progressPct}%;
+            background:linear-gradient(90deg,#3b82f6,#06b6d4);
+            border-radius:999px
+          "></div>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">
+          %${progressPct} tamamlandı
+        </div>
       </div>
 
       <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">HEDEFE KALAN</div>
-        <div style="font-size:24px;font-weight:900;margin-top:6px">
-          ${goalLeft !== null ? goalLeft.toFixed(1) + ' kg' : '—'}
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          BEL DEĞİŞİMİ
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:900;
+          margin-top:6px;
+          color:${waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
+        ">
+          ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm
         </div>
       </div>
 
