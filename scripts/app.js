@@ -1048,7 +1048,6 @@ function renderAll() {
   renderMoti();
   renderDashboardWeekLabel();
   renderStats();
-  renderMeasurementChart();
   renderWeightSummary();
   renderWeightList();
   renderNotes();
