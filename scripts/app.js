@@ -123,6 +123,8 @@ function stateLoad() {
     state = {
       ...state,
       ...savedState,
+      goalWeight: 85,
+      milestones: [95, 90, 85],
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
