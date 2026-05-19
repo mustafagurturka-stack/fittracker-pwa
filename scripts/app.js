@@ -229,6 +229,80 @@ function renderDashboardWeekLabel() {
   `;
 }
 
+function renderDashboardGoalCard() {
+  const el = document.getElementById('dashboardGoalCard');
+  if (!el) return;
+
+  const data = [...(state.measurements || [])].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  const milestones = state.milestones || [95, 90, 85];
+  let currentGoal = milestones.find(goal => last.weight > goal);
+
+  if (!currentGoal) {
+    currentGoal = milestones[milestones.length - 1];
+  }
+
+  const kgLeft = Math.max(0, (last.weight - currentGoal).toFixed(1));
+  const totalNeeded = first.weight - currentGoal;
+  const completed = first.weight - last.weight;
+
+  const progressPct = totalNeeded > 0
+    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
+    : 100;
+
+  el.innerHTML = `
+    <div class="card" style="
+      padding:16px;
+      margin:14px 0;
+      border:none;
+      background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+      color:white;
+      box-shadow:0 14px 34px rgba(59,130,246,.25);
+    ">
+      <div style="font-size:13px;opacity:.9;font-family:var(--font-mono)">
+        🎯 ŞU ANKİ ARA HEDEF
+      </div>
+
+      <div style="font-size:30px;font-weight:900;margin-top:8px">
+        ${currentGoal} kg
+      </div>
+
+      <div style="font-size:14px;opacity:.9;margin-top:4px">
+        ${kgLeft} kg kaldı · Final hedef: ${state.goalWeight} kg
+      </div>
+
+      <div style="
+        height:9px;
+        background:rgba(255,255,255,.25);
+        border-radius:999px;
+        overflow:hidden;
+        margin-top:14px;
+      ">
+        <div style="
+          height:100%;
+          width:${progressPct}%;
+          background:white;
+          border-radius:999px;
+        "></div>
+      </div>
+
+      <div style="font-size:12px;opacity:.9;margin-top:7px">
+        %${progressPct} tamamlandı
+      </div>
+    </div>
+  `;
+}
+
 function renderStats() {
   const measurements = [...(state.measurements || [])].sort((a, b) =>
     a.date.localeCompare(b.date)
@@ -1047,6 +1121,7 @@ function renderAll() {
   renderHero();
   renderMoti();
   renderDashboardWeekLabel();
+  renderDashboardGoalCard();
   renderStats();
   renderWeightSummary();
   renderWeightList();
