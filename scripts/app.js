@@ -262,18 +262,18 @@ function renderDashboardGoalCard() {
 
   el.innerHTML = `
     <div class="card" style="
-      padding:16px;
+      padding:14px 16px;
       margin:14px 0;
-      border:none;
-      background:linear-gradient(135deg,#3b82f6,#8b5cf6);
-      color:white;
-      box-shadow:0 14px 34px rgba(59,130,246,.25);
+      border:1px solid rgba(59,130,246,.18);
+      background:linear-gradient(135deg,#eff6ff,#f5f3ff);
+      color:var(--text);
+      box-shadow:0 8px 24px rgba(15,23,42,.08);
     ">
       <div style="font-size:13px;opacity:.9;font-family:var(--font-mono)">
         🎯 ŞU ANKİ ARA HEDEF
       </div>
 
-      <div style="font-size:30px;font-weight:900;margin-top:8px">
+      <div style="font-size:24px;font-weight:900;margin-top:6px">
         ${currentGoal} kg
       </div>
 
@@ -283,7 +283,7 @@ function renderDashboardGoalCard() {
 
       <div style="
         height:9px;
-        background:rgba(255,255,255,.25);
+        background:rgba(59,130,246,.15);
         border-radius:999px;
         overflow:hidden;
         margin-top:14px;
@@ -291,7 +291,7 @@ function renderDashboardGoalCard() {
         <div style="
           height:100%;
           width:${progressPct}%;
-          background:white;
+          background:linear-gradient(90deg,#3b82f6,#8b5cf6);
           border-radius:999px;
         "></div>
       </div>
