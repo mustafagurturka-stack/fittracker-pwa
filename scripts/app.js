@@ -889,67 +889,131 @@ function renderProgressSummary() {
 }
 
 function renderProgressCharts() {
-  if (typeof Chart === 'undefined') return;
+  const weekly = getWeeklyProgressData();
 
-  const data = getWeeklyProgressData();
+  const latestWeek = weekly[weekly.length - 1];
 
-  const labels = data.map(item =>
-    `${formatDate(item.start)}`
-  );
+  if (!latestWeek) return;
 
-  const sleepCanvas = document.getElementById('sleepChart');
+  const sleepWrap = document.getElementById('sleepBars');
+  const workoutWrap = document.getElementById('workoutBars');
 
-  if (sleepChart) {
-    sleepChart.destroy();
+  if (sleepWrap) {
+    const sleepData = (state.sleep || [])
+      .filter(item =>
+        item.date >= latestWeek.start &&
+        item.date <= latestWeek.end
+      )
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    sleepWrap.innerHTML = `
+      <div style="
+        display:flex;
+        align-items:flex-end;
+        gap:12px;
+        height:180px;
+        padding:12px;
+      ">
+        ${sleepData.map(item => {
+          const h = Math.max(16, item.hours * 14);
+
+          return `
+            <div style="
+              flex:1;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              gap:8px;
+            ">
+              <div style="
+                width:100%;
+                border-radius:16px;
+                background:linear-gradient(180deg,#06b6d4,#3b82f6);
+                height:${h}px;
+                min-height:16px;
+                transition:.3s;
+              "></div>
+
+              <div style="
+                font-size:11px;
+                color:var(--muted);
+                font-family:var(--font-mono)
+              ">
+                ${new Date(item.date)
+                  .toLocaleDateString('tr-TR', { weekday: 'short' })}
+              </div>
+
+              <div style="
+                font-size:11px;
+                font-weight:700;
+              ">
+                ${item.hours}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 
-  if (sleepCanvas) {
-    sleepChart = new Chart(sleepCanvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Uyku Saati',
-          data: data.map(item => item.sleep),
-          borderWidth: 3,
-          tension: 0.35,
-          pointRadius: 5
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
-  }
+  if (workoutWrap) {
+    const workoutData = (state.workouts || [])
+      .filter(item =>
+        item.date >= latestWeek.start &&
+        item.date <= latestWeek.end
+      )
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-  const workoutCanvas = document.getElementById('workoutChart');
+    workoutWrap.innerHTML = `
+      <div style="
+        display:flex;
+        align-items:flex-end;
+        gap:12px;
+        height:180px;
+        padding:12px;
+      ">
+        ${workoutData.map(item => {
+          const h = Math.max(12, item.duration * 1.2);
 
-  if (workoutChart) {
-    workoutChart.destroy();
-  }
+          return `
+            <div style="
+              flex:1;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              gap:8px;
+            ">
+              <div style="
+                width:100%;
+                border-radius:16px;
+                background:linear-gradient(180deg,#8b5cf6,#ec4899);
+                height:${h}px;
+                min-height:12px;
+                transition:.3s;
+              "></div>
 
-  if (workoutCanvas) {
-    workoutChart = new Chart(workoutCanvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Antreman Dakikası',
-          data: data.map(item => item.workouts),
-          borderWidth: 3,
-          tension: 0.35,
-          pointRadius: 5
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
+              <div style="
+                font-size:11px;
+                color:var(--muted);
+                font-family:var(--font-mono)
+              ">
+                ${new Date(item.date)
+                  .toLocaleDateString('tr-TR', { weekday: 'short' })}
+              </div>
+
+              <div style="
+                font-size:11px;
+                font-weight:700;
+              ">
+                ${item.duration} dk
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 }
-
 function renderProgressList() {
   const el = document.getElementById('progressList');
   if (!el) return;
