@@ -252,7 +252,7 @@ function renderDashboardGoalCard() {
     currentGoal = milestones[milestones.length - 1];
   }
 
-  const kgLeft = Math.max(0, (last.weight - currentGoal).toFixed(1));
+  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
   const totalNeeded = first.weight - currentGoal;
   const completed = first.weight - last.weight;
 
@@ -261,44 +261,100 @@ function renderDashboardGoalCard() {
     : 100;
 
   el.innerHTML = `
-    <div class="card" style="
-      padding:14px 16px;
+    <div style="
+      display:grid;
+      grid-template-columns:1.5fr 1fr;
+      gap:14px;
       margin:14px 0;
-      border:1px solid rgba(59,130,246,.18);
-      background:linear-gradient(135deg,#eff6ff,#f5f3ff);
-      color:var(--text);
-      box-shadow:0 8px 24px rgba(15,23,42,.08);
     ">
-      <div style="font-size:13px;opacity:.9;font-family:var(--font-mono)">
-        🎯 ŞU ANKİ ARA HEDEF
-      </div>
 
-      <div style="font-size:24px;font-weight:900;margin-top:6px">
-        ${currentGoal} kg
-      </div>
-
-      <div style="font-size:14px;opacity:.9;margin-top:4px">
-        ${kgLeft} kg kaldı · Final hedef: ${state.goalWeight} kg
-      </div>
-
-      <div style="
-        height:9px;
-        background:rgba(59,130,246,.15);
-        border-radius:999px;
+      <div class="card" style="
+        padding:18px;
+        border:1px solid rgba(34,197,94,.18);
+        background:linear-gradient(135deg,#f0fdf4,#ecfdf5);
+        box-shadow:0 10px 28px rgba(15,23,42,.08);
+        min-height:160px;
+        position:relative;
         overflow:hidden;
-        margin-top:14px;
       ">
+        <div style="font-size:13px;color:var(--muted);font-family:var(--font-mono);font-weight:800">
+          🎯 ŞU ANKİ ARA HEDEF
+        </div>
+
+        <div style="font-size:30px;font-weight:900;margin-top:10px">
+          ${currentGoal} kg
+        </div>
+
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">
+          ${kgLeft} kg kaldı · Final hedef: ${state.goalWeight} kg
+        </div>
+
         <div style="
-          height:100%;
-          width:${progressPct}%;
-          background:linear-gradient(90deg,#3b82f6,#8b5cf6);
+          height:8px;
+          background:rgba(34,197,94,.14);
           border-radius:999px;
-        "></div>
+          overflow:hidden;
+          margin-top:18px;
+          max-width:70%;
+        ">
+          <div style="
+            height:100%;
+            width:${progressPct}%;
+            background:linear-gradient(90deg,#22c55e,#16a34a);
+            border-radius:999px;
+          "></div>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">
+          %${progressPct} tamamlandı
+        </div>
       </div>
 
-      <div style="font-size:12px;opacity:.9;margin-top:7px">
-        %${progressPct} tamamlandı
+      <div class="card" style="
+        padding:18px;
+        min-height:160px;
+        border:1px solid var(--border);
+        box-shadow:0 10px 28px rgba(15,23,42,.08);
+      ">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;color:var(--muted);font-family:var(--font-mono);font-weight:800">
+            SON ÖLÇÜM
+          </div>
+          <span style="
+            font-size:11px;
+            font-weight:800;
+            color:#16a34a;
+            background:#dcfce7;
+            padding:4px 9px;
+            border-radius:999px;
+          ">KİLO</span>
+        </div>
+
+        <div style="font-size:30px;font-weight:900;margin-top:18px">
+          ${last.weight} <span style="font-size:16px;color:var(--muted)">kg</span>
+        </div>
+
+        <div style="font-size:13px;color:var(--muted);margin-top:8px">
+          Hedefe göre
+          <span style="float:right">${last.weight > currentGoal ? '+' : ''}${(last.weight - currentGoal).toFixed(1)} kg</span>
+        </div>
+
+        <div style="
+          height:8px;
+          background:rgba(34,197,94,.12);
+          border-radius:999px;
+          overflow:hidden;
+          margin-top:12px;
+        ">
+          <div style="
+            height:100%;
+            width:${progressPct}%;
+            background:linear-gradient(90deg,#22c55e,#16a34a);
+            border-radius:999px;
+          "></div>
+        </div>
       </div>
+
     </div>
   `;
 }
