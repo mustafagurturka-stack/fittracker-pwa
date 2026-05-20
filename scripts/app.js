@@ -263,9 +263,9 @@ function renderDashboardGoalCard() {
   el.innerHTML = `
     <div style="
       display:grid;
-      grid-template-columns:1.6fr 1fr;
+      grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
       gap:14px;
-      margin:14px 0;
+      margin:14px 16px;
     ">
 
       <div class="card" style="
@@ -295,7 +295,7 @@ function renderDashboardGoalCard() {
           border-radius:999px;
           overflow:hidden;
           margin-top:18px;
-          max-width:62%;
+          max-width:100%;
         ">
           <div style="
             height:100%;
