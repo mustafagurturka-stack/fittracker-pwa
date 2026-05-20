@@ -263,7 +263,7 @@ function renderDashboardGoalCard() {
   el.innerHTML = `
     <div style="
       display:grid;
-      grid-template-columns:1.5fr 1fr;
+      grid-template-columns:1.6fr 1fr;
       gap:14px;
       margin:14px 0;
     ">
@@ -273,7 +273,7 @@ function renderDashboardGoalCard() {
         border:1px solid rgba(34,197,94,.18);
         background:linear-gradient(135deg,#f0fdf4,#ecfdf5);
         box-shadow:0 10px 28px rgba(15,23,42,.08);
-        min-height:160px;
+        min-height:150px;
         position:relative;
         overflow:hidden;
       ">
@@ -295,7 +295,7 @@ function renderDashboardGoalCard() {
           border-radius:999px;
           overflow:hidden;
           margin-top:18px;
-          max-width:70%;
+          max-width:62%;
         ">
           <div style="
             height:100%;
@@ -312,7 +312,7 @@ function renderDashboardGoalCard() {
 
       <div class="card" style="
         padding:18px;
-        min-height:160px;
+        min-height:150px;
         border:1px solid var(--border);
         box-shadow:0 10px 28px rgba(15,23,42,.08);
       ">
@@ -336,7 +336,7 @@ function renderDashboardGoalCard() {
 
         <div style="font-size:13px;color:var(--muted);margin-top:8px">
           Hedefe göre
-          <span style="float:right">${last.weight > currentGoal ? '+' : ''}${(last.weight - currentGoal).toFixed(1)} kg</span>
+          <span style="float:right">${last.weight > currentGoal ? '+' : ''}${(last.weight - currentGoal).toFixed(1)} kg kaldı</span>
         </div>
 
         <div style="
