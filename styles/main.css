@@ -654,3 +654,42 @@ body{
     padding: 14px;
   }
 }
+
+/* v66 — Dashboard responsive polish */
+.dashboard-wrap {
+  max-width: 1280px;
+}
+
+@media (max-width: 700px) {
+  #dashboardGoalCard > div {
+    grid-template-columns: 1fr !important;
+  }
+
+  #dashboardGoalCard .card {
+    min-height: auto !important;
+  }
+
+  body {
+    padding-bottom: calc(130px + env(safe-area-inset-bottom));
+  }
+}
+
+/* v66 — Dark mode dashboard cards */
+[data-theme="dark"] #dashboardGoalCard .card:first-child {
+  background: linear-gradient(135deg, rgba(34,197,94,.12), rgba(16,185,129,.08)) !important;
+  border-color: rgba(34,197,94,.22) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .week-chip {
+  background: rgba(24,28,39,.92) !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
+
+[data-theme="dark"] .week-chip-top {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .moti-card {
+  box-shadow: 0 18px 42px rgba(34,197,94,.12);
+}
