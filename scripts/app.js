@@ -367,27 +367,6 @@ function renderStats() {
   const last = measurements[measurements.length - 1];
   const prev = measurements[measurements.length - 2];
 
-  const statWeight = document.getElementById('statWeight');
-  const statWeightPct = document.getElementById('statWeightPct');
-  const weightBar = document.getElementById('weightBar');
-
-  if (last) {
-    if (statWeight) statWeight.textContent = last.weight ?? '—';
-
-    if (prev) {
-      const diff = (last.weight - prev.weight).toFixed(1);
-      if (statWeightPct) statWeightPct.textContent = diff > 0 ? `+${diff} kg` : `${diff} kg`;
-    } else {
-      if (statWeightPct) statWeightPct.textContent = 'İlk kayıt';
-    }
-
-    if (weightBar) weightBar.style.width = '100%';
-  } else {
-    if (statWeight) statWeight.textContent = '—';
-    if (statWeightPct) statWeightPct.textContent = '—';
-    if (weightBar) weightBar.style.width = '0%';
-  }
-
   const statWaist = document.getElementById('statWaist');
   const statWaistDiff = document.getElementById('statWaistDiff');
   const waistBar = document.getElementById('waistBar');
