@@ -425,6 +425,7 @@ function renderStats() {
     if (statWaistDiff) statWaistDiff.textContent = '—';
     if (waistBar) waistBar.style.width = '0%';
   }
+}
 
   function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
