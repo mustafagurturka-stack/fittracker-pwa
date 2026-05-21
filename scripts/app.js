@@ -13,11 +13,16 @@ const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
 const STORAGE_KEY = 'ft_state_v1';
 
 const MOTIVATIONS = [
-  'Her adım seni hedefe yaklaştırıyor. 🎯',
-  'Bugün verdiğin mücadele yarın gücüne dönüşür. 💪',
-  'Küçük adımlar büyük değişimlerin temelidir. 🌱',
-  'Vücuduna verdiğin özen, geleceğine yapılan yatırımdır. 🏆',
-  'Disiplin, motivasyonun bittiği yerde devreye girer. 🔥',
+  'Bugün küçük bir adım at, yarın farkı hissedeceksin. 🌱',
+  'Mükemmel olmak zorunda değilsin; devam etmek yeterli. 💪',
+  'Her kayıt, hedefe biraz daha yaklaştığının kanıtı. 🎯',
+  'Bugün kendine yatırım yaptığın bir gün olsun. ✨',
+  'Disiplin, motivasyonun bittiği yerde seni taşır. 🔥',
+  'Uyku, hareket ve istikrar: değişimin üç anahtarı. 🔑',
+  'Vücudun emeğini hatırlar; bugün boşa gitmez. 🏆',
+  'Küçük kazanımlar büyük dönüşümlerin temelidir. ✅',
+  'Bugün bırakırsan aynı yerde kalırsın; devam edersen değişirsin. 🚀',
+  'Hedef uzak görünse de sıradaki adım çok yakın. 👣',
 ];
 
 // ── STATE ──
@@ -217,14 +222,46 @@ function renderDashboardWeekLabel() {
 
   const range = getDashboardWeekRange();
 
+  const sleepTotal = getCurrentWeekSleepTotal();
+  const sleepTarget = 49;
+  const sleepPct = Math.min(100, Math.round((sleepTotal / sleepTarget) * 100));
+
+  const workoutTotal = getCurrentWeekWorkoutTotal();
+  const workoutTarget = 180;
+  const workoutPct = Math.min(100, Math.round((workoutTotal / workoutTarget) * 100));
+
   el.innerHTML = `
-    <div class="week-chip-top">
-      <span>📅</span>
-      <span>${formatDate(range.start)} - ${formatDate(range.end)}</span>
+    <div class="week-card-head">
+      <div>
+        <div class="week-card-title">Bu Hafta</div>
+        <div class="week-card-date">${formatDate(range.start)} - ${formatDate(range.end)}</div>
+      </div>
+
+      <div class="week-card-pill">
+        ${sleepPct >= 100 || workoutPct >= 100 ? 'İyi gidiyorsun' : 'Devam et'}
+      </div>
     </div>
 
-    <div class="week-chip-sub">
-      WEEKLY PROGRESS
+    <div class="week-metrics">
+      <div class="week-metric">
+        <div class="week-metric-top">
+          <span>😴 Uyku</span>
+          <strong>${sleepTotal.toFixed(1)} / ${sleepTarget} saat</strong>
+        </div>
+        <div class="week-track">
+          <div class="week-fill sleep" style="width:${sleepPct}%"></div>
+        </div>
+      </div>
+
+      <div class="week-metric">
+        <div class="week-metric-top">
+          <span>🏋️ Antreman</span>
+          <strong>${workoutTotal} / ${workoutTarget} dk</strong>
+        </div>
+        <div class="week-track">
+          <div class="week-fill workout" style="width:${workoutPct}%"></div>
+        </div>
+      </div>
     </div>
   `;
 }
