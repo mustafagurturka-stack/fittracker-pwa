@@ -677,11 +677,6 @@ body {
   pointer-events:none;
 }
 
-body{
-  background:#eef4ff;
-  padding-bottom: calc(110px + env(safe-area-inset-bottom));
-}
-
 /* v65 — Dashboard premium grid */
 .dashboard-wrap {
   max-width: 1120px;
@@ -860,4 +855,75 @@ body{
     width: 100%;
     padding: 13px 14px;
   }
+}
+
+/* v70 — App/Web theme consistency */
+html,
+body,
+.app-shell {
+  background: var(--bg) !important;
+}
+
+#panels {
+  background: var(--bg);
+  min-height: calc(100dvh - 56px);
+}
+
+[data-theme="light"] {
+  --bg: #eef4ff;
+  --surface: #ffffff;
+  --surface2: #f5f8ff;
+  --border: #dfe8f5;
+  --text: #0f1724;
+  --text2: #43516a;
+  --muted: #7f8da8;
+}
+
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --surface: #181c27;
+  --surface2: #121826;
+  --border: #283044;
+  --text: #f2f6ff;
+  --text2: #c7d0e6;
+  --muted: #8490aa;
+}
+
+.hero {
+  padding-top: 18px;
+  padding-bottom: 0;
+}
+
+.hero-title {
+  margin-bottom: 0;
+}
+
+.dashboard-wrap {
+  padding-bottom: 96px !important;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding-bottom: 112px !important;
+  }
+
+  body {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #panels {
+    min-height: calc(100dvh - 96px);
+  }
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: #151a26;
+  border-top-color: #283044;
+}
+
+[data-theme="dark"] .quick-actions-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .card {
+  background: #181c27;
+  border-color: #283044;
 }
