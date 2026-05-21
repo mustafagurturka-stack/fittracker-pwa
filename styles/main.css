@@ -17,6 +17,11 @@
   --yellow:    #f59e0b;
   --cyan:      #06b6d4;
 
+  --brand-green: #22c55e;
+  --brand-green-dark: #16a34a;
+  --brand-green-soft: rgba(34,197,94,.12);
+  --brand-green-border: rgba(34,197,94,.22);
+
   --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.04);
   --radius:    14px;
   --radius-sm: 9px;
@@ -926,4 +931,24 @@ body,
 [data-theme="dark"] .card {
   background: #181c27;
   border-color: #283044;
+}
+
+/* v71 — Unified green system */
+.moti-card {
+  background:
+    radial-gradient(circle at 90% 20%, rgba(255,255,255,.22), transparent 28%),
+    linear-gradient(135deg,var(--brand-green-dark),var(--brand-green)) !important;
+}
+
+.week-card-pill,
+.stat-badge.sb-g {
+  color: var(--brand-green-dark) !important;
+  background: var(--brand-green-soft) !important;
+}
+
+.week-fill.workout,
+#dashboardGoalCard .card:first-child .prog-fill,
+#dashboardGoalCard .card:first-child div[style*="background:linear-gradient"],
+#dashboardGoalCard .card:nth-child(2) div[style*="background:linear-gradient"] {
+  background: linear-gradient(90deg,var(--brand-green),var(--brand-green-dark)) !important;
 }
