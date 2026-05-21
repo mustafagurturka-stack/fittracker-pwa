@@ -386,13 +386,48 @@ function renderDashboardGoalCard() {
         ">
           <div style="
             height:100%;
-            width:${progressPct}%;
-            background:linear-gradient(90deg,#22c55e,#16a34a);
-            border-radius:999px;
-          "></div>
-        </div>
+            width:${prfunction renderDashboardGoalCard() {
+  const el = document.getElementById('dashboardGoalCard');
+  if (!el) return;
+
+  const data = [...(state.measurements || [])].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  const milestones = state.milestones || [95, 90, 85];
+  let currentGoal = milestones.find(goal => last.weight > goal);
+
+  if (!currentGoal) {
+    currentGoal = milestones[milestones.length - 1];
+  }
+
+  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
+  const totalNeeded = first.weight - currentGoal;
+  const completed = first.weight - last.weight;
+
+  const progressPct = totalNeeded > 0
+    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
+    : 100;
+
+  el.innerHTML = `
+    <div class="goal-hero-card">
+      <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
+      <div class="goal-value">${currentGoal} kg</div>
+      <div class="goal-sub">${kgLeft} kg kaldı · Final hedef: ${state.goalWeight} kg</div>
+
+      <div class="goal-track">
+        <div class="goal-fill" style="width:${progressPct}%"></div>
       </div>
 
+      <div class="goal-percent">%${progressPct} tamamlandı</div>
     </div>
   `;
 }
@@ -406,33 +441,33 @@ function renderStats() {
   const prev = measurements[measurements.length - 2];
 
   const dashWeight = document.getElementById('dashWeight');
+  const dashWaist = document.getElementById('statWaist');
+  const waistDiffEl = document.getElementById('statWaistDiff');
 
-if (dashWeight) {
-  dashWeight.textContent = last && last.weight != null ? last.weight : '—';
-}
+  if (!last) {
+    if (dashWeight) dashWeight.textContent = '—';
+    if (dashWaist) dashWaist.textContent = '—';
+    if (waistDiffEl) waistDiffEl.textContent = '—';
+    return;
+  }
 
-  const statWaist = document.getElementById('statWaist');
-  const statWaistDiff = document.getElementById('statWaistDiff');
-  const waistBar = document.getElementById('waistBar');
+  if (dashWeight) {
+    dashWeight.textContent = last.weight ?? '—';
+  }
 
-  if (last && last.waist != null) {
-    if (statWaist) statWaist.textContent = last.waist;
+  if (dashWaist) {
+    dashWaist.textContent = last.waist ?? '—';
+  }
 
-    if (prev && prev.waist != null) {
+  if (waistDiffEl) {
+    if (prev && prev.waist != null && last.waist != null) {
       const diff = (last.waist - prev.waist).toFixed(1);
-      if (statWaistDiff) statWaistDiff.textContent = diff > 0 ? `+${diff} cm` : `${diff} cm`;
-      if (waistBar) waistBar.style.width = Math.min(100, Math.abs(diff) * 20) + '%';
+      waistDiffEl.textContent = diff > 0 ? `+${diff} cm` : `${diff} cm`;
     } else {
-      if (statWaistDiff) statWaistDiff.textContent = 'İlk kayıt';
-      if (waistBar) waistBar.style.width = '0%';
+      waistDiffEl.textContent = 'İlk kayıt';
     }
-  } else {
-    if (statWaist) statWaist.textContent = '—';
-    if (statWaistDiff) statWaistDiff.textContent = '—';
-    if (waistBar) waistBar.style.width = '0%';
   }
 }
-
   function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
   if (!canvas || typeof Chart === 'undefined') return;
