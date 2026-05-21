@@ -205,7 +205,7 @@ function renderHero() {
   }
 
   if (nameEl) {
-    nameEl.textContent = state.name || 'Sporcu';
+    nameEl.textContent = 'Mustafa Gürtürk Avcı';
   }
 }
 
