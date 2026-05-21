@@ -1574,7 +1574,7 @@ function editName() {
 
   state.name = newName.trim();
   stateSave();
-  renderHero();
+  renderAll();
   setStatus('İsim güncellendi ✓', 'ok');
 }
 
