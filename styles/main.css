@@ -952,3 +952,37 @@ body,
 #dashboardGoalCard .card:nth-child(2) div[style*="background:linear-gradient"] {
   background: linear-gradient(90deg,var(--brand-green),var(--brand-green-dark)) !important;
 }
+
+/* v71 — Scroll / safe area fix */
+html,
+body {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  padding-bottom: 0 !important;
+}
+
+#panels {
+  min-height: auto !important;
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+
+.dashboard-wrap {
+  padding-bottom: 24px !important;
+}
+
+@media (max-width: 700px) {
+  #panels {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .dashboard-wrap {
+    padding-bottom: 16px !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+}
