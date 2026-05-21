@@ -986,3 +986,188 @@ body {
     margin-bottom: 0 !important;
   }
 }
+
+/* v72 — Premium Dashboard Reset */
+
+:root {
+  --bg: #f3f7ff;
+  --surface: #ffffff;
+  --surface2: #f7faff;
+  --border: #e5edf8;
+  --text: #101828;
+  --text2: #475467;
+  --muted: #8a98ad;
+
+  --brand: #22c55e;
+  --brand2: #16a34a;
+  --brand-soft: #eafaf1;
+}
+
+[data-theme="dark"] {
+  --bg: #0b0f17;
+  --surface: #151b26;
+  --surface2: #101621;
+  --border: #273244;
+  --text: #f5f7fb;
+  --text2: #c8d1e1;
+  --muted: #7f8aa3;
+
+  --brand-soft: rgba(34,197,94,.12);
+}
+
+html,
+body,
+.app-shell,
+#panels {
+  background: var(--bg) !important;
+}
+
+body {
+  padding-bottom: 0 !important;
+  overflow-x: hidden;
+}
+
+#panels {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  min-height: auto !important;
+}
+
+.dashboard-wrap {
+  width: 100%;
+  max-width: 1180px !important;
+  margin: 0 auto !important;
+  padding: 0 18px 18px !important;
+}
+
+.hero {
+  padding: 18px 0 0 !important;
+}
+
+.hero-title {
+  font-size: 26px;
+  line-height: 1.15;
+  margin: 0 !important;
+}
+
+.hero-title span {
+  color: #2f80ed;
+}
+
+.hero-date {
+  margin-bottom: 6px;
+}
+
+.moti-card {
+  margin: 20px 0 0 !important;
+  padding: 16px 18px !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, #22c55e, #4ade80) !important;
+  box-shadow: 0 16px 36px rgba(34,197,94,.18) !important;
+}
+
+.moti-emoji {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  border-radius: 16px !important;
+  font-size: 22px !important;
+}
+
+.moti-text {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+.week-chip {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .quick-actions-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+#dashboardGoalCard .card:first-child {
+  background: var(--brand-soft) !important;
+  border-color: rgba(34,197,94,.22) !important;
+}
+
+#dashboardGoalCard > div {
+  margin: 18px 0 !important;
+}
+
+.stats-grid {
+  margin: 16px 0 0 !important;
+}
+
+.stat-card,
+.card,
+.quick-actions-card {
+  border-radius: 24px !important;
+  box-shadow: 0 10px 30px rgba(16,24,40,.06) !important;
+}
+
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .quick-actions-card {
+  box-shadow: none !important;
+}
+
+.quick-actions-card {
+  margin: 18px 0 0 !important;
+}
+
+.bottom-nav {
+  background: var(--surface) !important;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: #151b26 !important;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding: 0 14px 8px !important;
+  }
+
+  #panels {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .hero {
+    padding-top: 16px !important;
+  }
+
+  .hero-title {
+    font-size: 23px !important;
+  }
+
+  .moti-card {
+    padding: 14px 15px !important;
+    border-radius: 22px !important;
+  }
+
+  .week-chip {
+    border-radius: 22px !important;
+  }
+
+  #dashboardGoalCard > div {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin: 14px 0 !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+}
