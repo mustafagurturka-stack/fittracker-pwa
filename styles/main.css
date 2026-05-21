@@ -65,35 +65,122 @@ body {
 }
 
 .week-chip {
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   width: 100%;
-  padding: 14px 16px;
-  border-radius: 24px;
-  background: rgba(255,255,255,.82);
+  padding: 18px;
+  border-radius: 28px;
+  background: rgba(255,255,255,.88);
   border: 1px solid rgba(15,23,42,.06);
-  box-shadow: 0 10px 28px rgba(15,23,42,.06);
+  box-shadow: 0 14px 34px rgba(15,23,42,.06);
+  display: block;
+}
+
+.week-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  font-family: var(--font-body);
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.week-chip-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 800;
+.week-card-title {
+  font-size: 18px;
+  font-weight: 900;
   color: var(--text);
 }
 
-.week-chip-sub {
+.week-card-date {
   font-size: 12px;
-  color: var(--green);
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+.week-card-pill {
+  font-size: 12px;
   font-weight: 800;
+  color: #16a34a;
   background: rgba(34,197,94,.12);
-  padding: 5px 10px;
+  padding: 7px 11px;
   border-radius: 999px;
+  white-space: nowrap;
+}
+
+.week-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.week-metric {
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(248,250,252,.9);
+  border: 1px solid rgba(15,23,42,.05);
+}
+
+.week-metric-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+
+.week-metric-top strong {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.week-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15,23,42,.07);
+  overflow: hidden;
+}
+
+.week-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.week-fill.sleep {
+  background: linear-gradient(90deg,#06b6d4,#3b82f6);
+}
+
+.week-fill.workout {
+  background: linear-gradient(90deg,#22c55e,#16a34a);
+}
+
+[data-theme="dark"] .week-chip {
+  background: rgba(24,28,39,.92);
+  border-color: rgba(255,255,255,.08);
+}
+
+[data-theme="dark"] .week-metric {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.06);
+}
+
+@media (max-width: 700px) {
+  .week-chip {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .week-card-head {
+    align-items: flex-start;
+  }
+
+  .week-metrics {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .week-metric {
+    padding: 13px;
+  }
 }
 
 /* ── LAYOUT ── */
