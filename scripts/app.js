@@ -426,24 +426,6 @@ function renderStats() {
     if (waistBar) waistBar.style.width = '0%';
   }
 
-  const weekSleepTotal = getCurrentWeekSleepTotal();
-  const sleepTarget = 49;
-  const sleepPct = Math.min(100, Math.round((weekSleepTotal / sleepTarget) * 100));
-
-  const statSleep = document.getElementById('statSleep');
-  const statSleepPct = document.getElementById('statSleepPct');
-  const sleepBar = document.getElementById('sleepBar');
-
-  if (statSleep) statSleep.textContent = weekSleepTotal.toFixed(1);
-  if (statSleepPct) statSleepPct.textContent = sleepPct + '%';
-  if (sleepBar) sleepBar.style.width = sleepPct + '%';
-  
-  const currentWeekWorkoutTotal = getCurrentWeekWorkoutTotal();
-
-  const statWorkouts = document.getElementById('statWorkouts');
-  if (statWorkouts) statWorkouts.textContent = currentWeekWorkoutTotal;
-  }
-
   function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
   if (!canvas || typeof Chart === 'undefined') return;
