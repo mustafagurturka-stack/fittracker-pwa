@@ -81,12 +81,24 @@
         <p class="moti-text" id="motiText">Her adım seni hedefe yaklaştırıyor.</p>
       </div>
 
-      <div class="week-chip" id="dashboardWeekLabel">Gösterilen hafta: —</div>
       <div id="dashboardGoalCard"></div>
 
       <!-- STAT CARDS -->
       <div class="stats-grid" id="statsGrid">
-  <div class="stat-card">
+        <div class="stat-card stat-card-blue">
+  <div class="stat-top">
+    <span class="stat-icon">⚖️</span>
+    <span class="stat-badge sb-b">KİLO</span>
+  </div>
+
+  <div>
+    <span class="stat-val" id="dashWeight">—</span>
+    <span class="stat-unit">kg</span>
+  </div>
+
+  <div class="stat-lbl">Son ölçüm</div>
+</div>
+  <div class="stat-card stat-card-amber">
   <div class="stat-top">
     <span class="stat-icon">📏</span>
     <span class="stat-badge sb-o">BEL</span>
@@ -108,6 +120,8 @@
 </div>
 
         </div>
+        <div class="week-chip" id="dashboardWeekLabel">Gösterilen hafta: —</div>
+
         <div class="quick-actions-card">
   <div>
     <div class="quick-title">Bugün ne eklemek istersin?</div>
