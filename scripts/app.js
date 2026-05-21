@@ -28,7 +28,7 @@ const MOTIVATIONS = [
 // ── STATE ──
 let state = {
   theme: 'light',
-  name: 'Sporcu',
+  name: 'Mustafa Gürtürk Avcı',
   measurements: [],
   weights: [],
   nutrition: [],
@@ -128,6 +128,7 @@ function stateLoad() {
     state = {
       ...state,
       ...savedState,
+      name: 'Mustafa Gürtürk Avcı',
       goalWeight: 85,
       milestones: [95, 90, 85],
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
