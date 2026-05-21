@@ -405,6 +405,12 @@ function renderStats() {
   const last = measurements[measurements.length - 1];
   const prev = measurements[measurements.length - 2];
 
+  const dashWeight = document.getElementById('dashWeight');
+
+if (dashWeight) {
+  dashWeight.textContent = last && last.weight != null ? last.weight : '—';
+}
+
   const statWaist = document.getElementById('statWaist');
   const statWaistDiff = document.getElementById('statWaistDiff');
   const waistBar = document.getElementById('waistBar');
