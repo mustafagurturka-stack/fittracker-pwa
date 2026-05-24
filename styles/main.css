@@ -2056,3 +2056,91 @@ body,
     padding: 13px;
   }
 }
+/* v86 — Goal card premium layout */
+
+.goal-card-layout {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.goal-main {
+  min-width: 0;
+}
+
+.goal-side {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.goal-caption {
+  margin-top: -4px;
+  color: var(--premium-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.goal-progress-block.primary {
+  margin-top: 18px !important;
+}
+
+.goal-progress-block.secondary {
+  margin-top: 2px !important;
+}
+
+.goal-side-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.54);
+  border: 1px solid rgba(148,163,184,.10);
+}
+
+.goal-side-item span {
+  font-size: 13px;
+  color: var(--premium-muted);
+  font-weight: 700;
+}
+
+.goal-side-item strong {
+  font-size: 18px;
+  color: var(--premium-text);
+  font-weight: 900;
+}
+
+.goal-progress-block {
+  background: rgba(255,255,255,.50) !important;
+}
+
+.goal-percent {
+  margin-top: 0 !important;
+  font-size: 12px !important;
+  color: var(--premium-muted) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .goal-side-item,
+[data-theme="dark"] .goal-progress-block {
+  background: rgba(255,255,255,.04) !important;
+  border-color: rgba(255,255,255,.06) !important;
+}
+
+@media (max-width: 700px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .goal-side {
+    gap: 10px;
+  }
+
+  .goal-side-item {
+    padding: 11px 12px;
+  }
+}
