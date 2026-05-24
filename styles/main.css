@@ -1688,3 +1688,279 @@ body {
 
   border-color: rgba(255,255,255,.04) !important;
 }
+
+/* v82 — Unified Premium Dashboard */
+
+:root {
+  --premium-bg: #f4f7fb;
+  --premium-surface: #ffffff;
+  --premium-border: #e6edf5;
+  --premium-text: #0f172a;
+  --premium-muted: #64748b;
+
+  --premium-green: #22c55e;
+  --premium-green-soft: #ecfdf5;
+  --premium-blue: #3b82f6;
+  --premium-blue-soft: #eff6ff;
+
+  --premium-shadow: 0 18px 44px rgba(15,23,42,.055);
+}
+
+[data-theme="dark"] {
+  --premium-bg: #0b1020;
+  --premium-surface: #151b26;
+  --premium-border: #273244;
+  --premium-text: #f8fafc;
+  --premium-muted: #94a3b8;
+  --premium-green-soft: #102218;
+  --premium-blue-soft: #111c2f;
+  --premium-shadow: 0 18px 44px rgba(0,0,0,.26);
+}
+
+body,
+.app-shell,
+#panels {
+  background:
+    radial-gradient(circle at top left, rgba(34,197,94,.035), transparent 28%),
+    radial-gradient(circle at top right, rgba(59,130,246,.04), transparent 28%),
+    var(--premium-bg) !important;
+}
+
+.dashboard-wrap {
+  max-width: 1080px !important;
+  padding: 0 18px 90px !important;
+}
+
+.hero {
+  padding: 22px 0 0 !important;
+}
+
+.hero-title {
+  font-size: 28px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.8px !important;
+  color: var(--premium-text) !important;
+}
+
+.hero-title span {
+  color: var(--premium-blue) !important;
+}
+
+.hero-date {
+  color: var(--premium-muted) !important;
+  font-size: 11px !important;
+  letter-spacing: 2.4px !important;
+}
+
+/* Motivation */
+.moti-card {
+  margin-top: 22px !important;
+  padding: 15px 18px !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, #bbf7d0, #86efac) !important;
+  color: #064e3b !important;
+  box-shadow: 0 14px 34px rgba(34,197,94,.10) !important;
+}
+
+.moti-emoji {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.45) !important;
+  font-size: 20px !important;
+}
+
+.moti-text {
+  color: #064e3b !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+/* Goal */
+.goal-hero-card {
+  margin-top: 20px !important;
+  padding: 24px !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 92% 15%, rgba(34,197,94,.09), transparent 34%),
+    linear-gradient(135deg, #f0fdf4, #ffffff) !important;
+  border: 1px solid rgba(34,197,94,.16) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.goal-label {
+  color: var(--premium-muted) !important;
+}
+
+.goal-value {
+  color: var(--premium-text) !important;
+  font-size: 38px !important;
+  font-weight: 900 !important;
+}
+
+.goal-sub,
+.goal-percent {
+  color: var(--premium-muted) !important;
+}
+
+.goal-track {
+  height: 7px !important;
+  background: rgba(34,197,94,.14) !important;
+}
+
+.goal-fill {
+  background: linear-gradient(90deg, #22c55e, #16a34a) !important;
+}
+
+/* Progress Summary */
+.progress-summary-card {
+  margin-top: 18px;
+  padding: 24px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 92% 18%, rgba(59,130,246,.10), transparent 34%),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+  border: 1px solid rgba(59,130,246,.13);
+  box-shadow: var(--premium-shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.progress-summary-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--premium-muted);
+  font-family: var(--font-mono);
+  letter-spacing: .5px;
+}
+
+.progress-summary-value {
+  margin-top: 10px;
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--premium-text);
+  letter-spacing: -.8px;
+}
+
+.progress-summary-value span {
+  font-size: 16px;
+  color: var(--premium-muted);
+}
+
+.progress-summary-side {
+  text-align: right;
+}
+
+.progress-summary-small {
+  font-size: 12px;
+  color: var(--premium-muted);
+}
+
+.progress-summary-diff {
+  margin-top: 5px;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.progress-summary-diff.good {
+  color: #16a34a;
+}
+
+.progress-summary-diff.bad {
+  color: #ef4444;
+}
+
+/* Week */
+.week-chip {
+  margin-top: 18px !important;
+  padding: 22px !important;
+  border-radius: 28px !important;
+  background: linear-gradient(135deg, #ffffff, #fbfdff) !important;
+  border: 1px solid var(--premium-border) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.week-metric {
+  background: #f8fafc !important;
+  border-color: rgba(148,163,184,.14) !important;
+  border-radius: 18px !important;
+}
+
+/* Quick */
+.quick-actions-card {
+  margin-top: 18px !important;
+  padding: 20px !important;
+  border-radius: 28px !important;
+  background: linear-gradient(135deg, #ffffff, #fbfdff) !important;
+  border: 1px solid var(--premium-border) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.quick-btn {
+  border-radius: 999px !important;
+  padding: 11px 16px !important;
+  font-size: 13px !important;
+}
+
+/* Dark */
+[data-theme="dark"] .moti-card {
+  background: linear-gradient(135deg, #14532d, #166534) !important;
+  color: #dcfce7 !important;
+}
+
+[data-theme="dark"] .moti-text {
+  color: #dcfce7 !important;
+}
+
+[data-theme="dark"] .goal-hero-card,
+[data-theme="dark"] .progress-summary-card,
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .quick-actions-card {
+  background: linear-gradient(135deg, #151b26, #171f2d) !important;
+  border-color: var(--premium-border) !important;
+}
+
+[data-theme="dark"] .week-metric {
+  background: #1b2230 !important;
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding: 0 14px 78px !important;
+  }
+
+  .hero-title {
+    font-size: 24px !important;
+  }
+
+  .goal-hero-card,
+  .progress-summary-card,
+  .week-chip,
+  .quick-actions-card {
+    border-radius: 24px !important;
+    padding: 18px !important;
+  }
+
+  .progress-summary-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .progress-summary-side {
+    text-align: left;
+  }
+
+  .progress-summary-value,
+  .goal-value {
+    font-size: 32px !important;
+  }
+
+  .week-metrics {
+    grid-template-columns: 1fr !important;
+  }
+}
