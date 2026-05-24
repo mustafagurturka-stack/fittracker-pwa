@@ -1983,3 +1983,36 @@ body,
 .goal-percent {
   font-weight: 700 !important;
 }
+
+/* v84 — Dual goal progress */
+
+.goal-progress-block {
+  margin-top: 14px;
+}
+
+.goal-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--premium-muted);
+  margin-bottom: 7px;
+}
+
+.goal-progress-row strong {
+  color: var(--premium-text);
+  font-weight: 900;
+}
+
+.goal-track.final {
+  background: rgba(59,130,246,.12) !important;
+}
+
+.goal-fill.final {
+  background: linear-gradient(90deg, #38bdf8, #3b82f6) !important;
+}
+
+.goal-percent {
+  margin-top: 12px !important;
+}
