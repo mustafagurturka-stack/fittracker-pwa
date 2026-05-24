@@ -1340,3 +1340,44 @@ body {
     padding: 16px !important;
   }
 }
+
+/* v78 — Simplified premium dashboard */
+
+.stats-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.stat-card {
+  min-height: 132px !important;
+}
+
+.stat-card-blue {
+  background:
+    radial-gradient(circle at top right, rgba(59,130,246,.10), transparent 30%),
+    linear-gradient(135deg,#f8fbff,#ffffff) !important;
+
+  border: 1px solid rgba(59,130,246,.10) !important;
+}
+
+[data-theme="dark"] .stat-card-blue {
+  background:
+    linear-gradient(135deg,#182131,#151b26) !important;
+
+  border-color: #273244 !important;
+}
+
+.stat-card-blue .stat-val {
+  font-size: 34px !important;
+}
+
+.stat-card-blue .stat-unit {
+  font-size: 15px !important;
+}
+
+.week-chip {
+  margin-top: 18px !important;
+}
+
+.quick-actions-card {
+  margin-top: 18px !important;
+}
