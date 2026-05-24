@@ -2219,3 +2219,19 @@ body,
   align-items: center;
   justify-content: space-between;
 }
+
+.week-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.week-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right,
+      rgba(59,130,246,.06),
+      transparent 35%);
+  pointer-events: none;
+}
