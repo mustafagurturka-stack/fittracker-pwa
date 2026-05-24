@@ -307,31 +307,53 @@ function renderDashboardGoalCard() {
 
   el.innerHTML = `
     <div class="goal-hero-card">
-      <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
-      <div class="goal-value">${currentGoal} kg</div>
-      <div class="goal-sub">
-  İlk hedefe kalan: ${kgLeft} kg · Final hedefe kalan: ${finalKgLeft} kg
-</div>
+      <div class="goal-card-layout">
 
-      <div class="goal-progress-grid">
-  <div class="goal-progress-block">
-    <div class="goal-progress-row">
-      <span>İlk hedef ilerlemesi</span>
-      <strong>%${progressPct}</strong>
-    </div>
-    <div class="goal-track">
-      <div class="goal-fill" style="width:${progressPct}%"></div>
+  <div class="goal-main">
+    <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
+
+    <div class="goal-value">${currentGoal} kg</div>
+
+    <div class="goal-caption">İlk hedef</div>
+
+    <div class="goal-progress-block primary">
+      <div class="goal-progress-row">
+        <span>İlk hedef ilerlemesi</span>
+        <strong>%${progressPct}</strong>
+      </div>
+      <div class="goal-track">
+        <div class="goal-fill" style="width:${progressPct}%"></div>
+      </div>
     </div>
   </div>
 
-  <div class="goal-progress-block">
-    <div class="goal-progress-row">
-      <span>Final hedef ilerlemesi</span>
-      <strong>%${finalProgressPct}</strong>
+  <div class="goal-side">
+    <div class="goal-side-item">
+      <span>İlk hedefe kalan</span>
+      <strong>${kgLeft} kg</strong>
     </div>
-    <div class="goal-track final">
-      <div class="goal-fill final" style="width:${finalProgressPct}%"></div>
+
+    <div class="goal-side-item">
+      <span>Final hedefe kalan</span>
+      <strong>${finalKgLeft} kg</strong>
     </div>
+
+    <div class="goal-progress-block secondary">
+      <div class="goal-progress-row">
+        <span>Final ilerleme</span>
+        <strong>%${finalProgressPct}</strong>
+      </div>
+      <div class="goal-track final">
+        <div class="goal-fill final" style="width:${finalProgressPct}%"></div>
+      </div>
+    </div>
+
+    <div class="goal-percent">
+      Final hedef: ${state.goalWeight} kg
+    </div>
+  </div>
+
+</div>
   </div>
 </div>
 
