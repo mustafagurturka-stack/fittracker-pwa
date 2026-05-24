@@ -64,65 +64,80 @@
   <main id="panels">
 
     <!-- PANEL: HOME -->
-    <section class="panel active" id="pHome" aria-label="Ana sayfa">
-      <div class="dashboard-wrap">
-      <div class="hero">
-        <div class="hero-date" id="heroDate">—</div>
-        <h1 class="hero-title">
-  Merhaba, 
-<span id="heroName">Mustafa Gürtürk Avcı</span>
-</h1>
-      
-      </div>
+<section class="panel active" id="pHome" aria-label="Ana sayfa">
+  <div class="dashboard-wrap">
 
-      <!-- MOTIVATION CARD -->
-      <div class="moti-card" id="motiCard">
-        <span class="moti-emoji">💪</span>
-        <p class="moti-text" id="motiText">Her adım seni hedefe yaklaştırıyor.</p>
-      </div>
-
-      <div id="dashboardGoalCard"></div>
-
-      <!-- STAT CARDS -->
-      <div class="stats-grid" id="statsGrid">
-
-  <div class="stat-card stat-card-blue">
-    <div class="stat-top">
-      <span class="stat-icon">⚖️</span>
-      <span class="stat-badge sb-b">KİLO</span>
+    <div class="hero">
+      <div class="hero-date" id="heroDate">—</div>
+      <h1 class="hero-title">
+        Merhaba, <span id="heroName">Mustafa Gürtürk Avcı</span>
+      </h1>
     </div>
 
-    <div>
-      <span class="stat-val" id="dashWeight">—</span>
-      <span class="stat-unit">kg</span>
+    <div class="moti-card" id="motiCard">
+      <span class="moti-emoji">💪</span>
+      <p class="moti-text" id="motiText">Her adım seni hedefe yaklaştırıyor.</p>
     </div>
 
-    <div class="stat-lbl">Son ölçüm</div>
+    <div id="dashboardGoalCard"></div>
+
+    <div class="stats-grid" id="statsGrid">
+
+      <div class="stat-card stat-card-blue">
+        <div class="stat-top">
+          <span class="stat-icon">⚖️</span>
+          <span class="stat-badge sb-b">KİLO</span>
+        </div>
+
+        <div>
+          <span class="stat-val" id="dashWeight">—</span>
+          <span class="stat-unit">kg</span>
+        </div>
+
+        <div class="stat-lbl">Son ölçüm</div>
+      </div>
+
+      <div class="stat-card stat-card-amber">
+        <div class="stat-top">
+          <span class="stat-icon">📏</span>
+          <span class="stat-badge sb-o">BEL</span>
+        </div>
+
+        <div>
+          <span class="stat-val" id="statWaist">—</span>
+          <span class="stat-unit">cm</span>
+        </div>
+
+        <div class="stat-lbl">Son ölçüm</div>
+
+        <div class="prog-wrap">
+          <div class="prog-meta">
+            <span>Değişim</span>
+            <span id="statWaistDiff">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="week-chip" id="dashboardWeekLabel">Gösterilen hafta: —</div>
+
+    <div class="quick-actions-card">
+      <div>
+        <div class="quick-title">Bugün ne eklemek istersin?</div>
+        <div class="quick-sub">Uyku, antreman veya not ekleyerek bugünü tamamla.</div>
+      </div>
+
+      <div class="quick-actions">
+        <button onclick="goPanel(2)" class="quick-btn sleep">😴 Uyku Ekle</button>
+        <button onclick="goPanel(2)" class="quick-btn workout">🏋️ Antreman Ekle</button>
+        <button onclick="goPanel(2)" class="quick-btn note">📝 Not Ekle</button>
+      </div>
+    </div>
+
   </div>
-
-  <div class="stat-card stat-card-amber">
-    <div class="stat-top">
-      <span class="stat-icon">📏</span>
-      <span class="stat-badge sb-o">BEL</span>
-    </div>
-
-    <div>
-      <span class="stat-val" id="statWaist">—</span>
-      <span class="stat-unit">cm</span>
-    </div>
-
-    <div class="stat-lbl">Son ölçüm</div>
-
-    <div class="prog-wrap">
-      <div class="prog-meta">
-        <span>Değişim</span>
-        <span id="statWaistDiff">—</span>
-      </div>
-    </div>
-  </div>
-
-</div>
 </section>
+
 
     <!-- PANEL: DAILY -->
  <section class="panel" id="pDaily" aria-label="Günlük takip">
