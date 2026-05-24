@@ -2272,3 +2272,83 @@ body,
 .quick-actions-card:hover {
   transform: translateY(-2px);
 }
+
+/* v91 — Goal card final balance */
+
+.goal-hero-card {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 260px;
+}
+
+.goal-hero-card::before {
+  content: "";
+  position: absolute;
+  right: -90px;
+  top: -110px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,197,94,.13), transparent 68%);
+  pointer-events: none;
+}
+
+.goal-card-layout {
+  position: relative;
+  z-index: 1;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 360px !important;
+  gap: 36px !important;
+  align-items: center !important;
+}
+
+.goal-main {
+  max-width: 380px;
+}
+
+.goal-side {
+  width: 100%;
+  display: grid !important;
+  gap: 14px !important;
+}
+
+.goal-side-item,
+.goal-progress-block {
+  background: rgba(255,255,255,.58) !important;
+  border: 1px solid rgba(148,163,184,.12) !important;
+  backdrop-filter: blur(14px);
+}
+
+.goal-side-item {
+  min-height: 58px;
+}
+
+.goal-progress-block.primary {
+  max-width: 340px;
+}
+
+.goal-progress-block.secondary {
+  width: 100%;
+}
+
+[data-theme="dark"] .goal-side-item,
+[data-theme="dark"] .goal-progress-block {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.07) !important;
+}
+
+@media (max-width: 700px) {
+  .goal-hero-card {
+    min-height: auto;
+  }
+
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .goal-main,
+  .goal-progress-block.primary {
+    max-width: 100%;
+  }
+}
