@@ -314,22 +314,42 @@ function renderDashboardGoalCard() {
 }
 
 function renderStats() {
-  const measurements = [...(state.measurements || [])].sort((a, b) =>
+  const el = document.getElementById('dashboardProgressCard');
+  if (!el) return;
+
+  const data = [...(state.measurements || [])].sort((a, b) =>
     a.date.localeCompare(b.date)
   );
 
-  const last = measurements[measurements.length - 1];
-
-  const dashWeight = document.getElementById('dashWeight');
-
-  if (!last) {
-    if (dashWeight) dashWeight.textContent = '—';
+  if (!data.length) {
+    el.innerHTML = '';
     return;
   }
 
-  if (dashWeight) {
-    dashWeight.textContent = last.weight ?? '—';
-  }
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  const diff = Number(last.weight - first.weight);
+  const diffText = `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`;
+  const isGood = diff <= 0;
+
+  el.innerHTML = `
+    <div class="progress-summary-card">
+      <div>
+        <div class="progress-summary-label">⚖️ SON ÖLÇÜM</div>
+        <div class="progress-summary-value">
+          ${last.weight} <span>kg</span>
+        </div>
+      </div>
+
+      <div class="progress-summary-side">
+        <div class="progress-summary-small">Başlangıçtan beri</div>
+        <div class="progress-summary-diff ${isGood ? 'good' : 'bad'}">
+          ${diffText}
+        </div>
+      </div>
+    </div>
+  `;
 }
   function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
