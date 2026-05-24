@@ -2415,3 +2415,69 @@ body,
     grid-template-columns: 1fr !important;
   }
 }
+
+/* v93 — Goal card balanced final fix */
+
+#dashboardGoalCard > div {
+  display: block !important;
+}
+
+.goal-hero-card {
+  min-height: auto !important;
+  padding: 28px !important;
+}
+
+.goal-card-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) !important;
+  gap: 28px !important;
+  align-items: center !important;
+}
+
+.goal-main {
+  max-width: none !important;
+}
+
+.goal-side {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 14px !important;
+}
+
+.goal-side-item,
+.goal-progress-block.secondary {
+  min-height: auto !important;
+  padding: 16px !important;
+  border-radius: 20px !important;
+}
+
+.goal-progress-block.secondary {
+  grid-column: 1 / -1 !important;
+}
+
+.goal-side-item {
+  display: block !important;
+}
+
+.goal-side-item span {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.goal-side-item strong {
+  font-size: 22px !important;
+}
+
+.goal-progress-block.primary {
+  max-width: 100% !important;
+}
+
+@media (max-width: 700px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side {
+    grid-template-columns: 1fr !important;
+  }
+}
