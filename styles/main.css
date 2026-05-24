@@ -1964,3 +1964,22 @@ body,
     grid-template-columns: 1fr !important;
   }
 }
+/* v83 — Goal clarity polish */
+
+.goal-hero-card {
+  grid-template-columns: 1fr !important;
+}
+
+.goal-track {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.goal-sub {
+  margin-top: 8px !important;
+  font-weight: 600 !important;
+}
+
+.goal-percent {
+  font-weight: 700 !important;
+}
