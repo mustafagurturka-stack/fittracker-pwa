@@ -285,7 +285,6 @@ function renderDashboardGoalCard() {
 
   const milestones = state.milestones || [95, 90, 85];
   let currentGoal = milestones.find(goal => last.weight > goal);
-
   if (!currentGoal) currentGoal = milestones[milestones.length - 1];
 
   const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
@@ -309,7 +308,12 @@ function renderDashboardGoalCard() {
 
         <div class="goal-main">
           <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
-          <div class="goal-value">${currentGoal} kg</div>
+
+          <div class="goal-big-row">
+            <span class="goal-value">${currentGoal}</span>
+            <span class="goal-kg">kg</span>
+          </div>
+
           <div class="goal-caption">İlk hedef</div>
 
           <div class="goal-progress-block primary">
@@ -324,14 +328,16 @@ function renderDashboardGoalCard() {
         </div>
 
         <div class="goal-side">
-          <div class="goal-side-item">
-            <span>İlk hedefe kalan</span>
-            <strong>${kgLeft} kg</strong>
-          </div>
+          <div class="goal-side-top">
+            <div class="goal-side-item">
+              <span>İlk hedefe kalan</span>
+              <strong>${kgLeft} kg</strong>
+            </div>
 
-          <div class="goal-side-item">
-            <span>Final hedefe kalan</span>
-            <strong>${finalKgLeft} kg</strong>
+            <div class="goal-side-item">
+              <span>Final hedefe kalan</span>
+              <strong>${finalKgLeft} kg</strong>
+            </div>
           </div>
 
           <div class="goal-progress-block secondary">
