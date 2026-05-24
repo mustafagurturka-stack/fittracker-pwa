@@ -319,29 +319,16 @@ function renderStats() {
   );
 
   const last = measurements[measurements.length - 1];
-  const prev = measurements[measurements.length - 2];
 
   const dashWeight = document.getElementById('dashWeight');
-  const dashWaist = document.getElementById('statWaist');
-  const waistDiffEl = document.getElementById('statWaistDiff');
 
   if (!last) {
     if (dashWeight) dashWeight.textContent = '—';
-    if (dashWaist) dashWaist.textContent = '—';
-    if (waistDiffEl) waistDiffEl.textContent = '—';
     return;
   }
 
-  if (dashWeight) dashWeight.textContent = last.weight ?? '—';
-  if (dashWaist) dashWaist.textContent = last.waist ?? '—';
-
-  if (waistDiffEl) {
-    if (prev && prev.waist != null && last.waist != null) {
-      const diff = (last.waist - prev.waist).toFixed(1);
-      waistDiffEl.textContent = diff > 0 ? `+${diff} cm` : `${diff} cm`;
-    } else {
-      waistDiffEl.textContent = 'İlk kayıt';
-    }
+  if (dashWeight) {
+    dashWeight.textContent = last.weight ?? '—';
   }
 }
   function renderMeasurementChart() {
