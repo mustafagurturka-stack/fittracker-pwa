@@ -2214,3 +2214,8 @@ body,
       rgba(17,24,39,.98)
     ) !important;
 }
+.progress-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
