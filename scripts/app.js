@@ -313,23 +313,25 @@ function renderDashboardGoalCard() {
   İlk hedefe kalan: ${kgLeft} kg · Final hedefe kalan: ${finalKgLeft} kg
 </div>
 
-      <div class="goal-progress-block">
-  <div class="goal-progress-row">
-    <span>İlk hedef ilerlemesi</span>
-    <strong>%${progressPct}</strong>
+      <div class="goal-progress-grid">
+  <div class="goal-progress-block">
+    <div class="goal-progress-row">
+      <span>İlk hedef ilerlemesi</span>
+      <strong>%${progressPct}</strong>
+    </div>
+    <div class="goal-track">
+      <div class="goal-fill" style="width:${progressPct}%"></div>
+    </div>
   </div>
-  <div class="goal-track">
-    <div class="goal-fill" style="width:${progressPct}%"></div>
-  </div>
-</div>
 
-<div class="goal-progress-block">
-  <div class="goal-progress-row">
-    <span>Final hedef ilerlemesi</span>
-    <strong>%${finalProgressPct}</strong>
-  </div>
-  <div class="goal-track final">
-    <div class="goal-fill final" style="width:${finalProgressPct}%"></div>
+  <div class="goal-progress-block">
+    <div class="goal-progress-row">
+      <span>Final hedef ilerlemesi</span>
+      <strong>%${finalProgressPct}</strong>
+    </div>
+    <div class="goal-track final">
+      <div class="goal-fill final" style="width:${finalProgressPct}%"></div>
+    </div>
   </div>
 </div>
 
