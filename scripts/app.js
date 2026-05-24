@@ -299,125 +299,6 @@ function renderDashboardGoalCard() {
     : 100;
 
   el.innerHTML = `
-    <div style="
-      display:grid;
-      grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
-      gap:14px;
-      margin:14px 16px;
-    ">
-
-      <div class="card" style="
-        padding:18px;
-        border:1px solid rgba(34,197,94,.18);
-        background:linear-gradient(135deg,#f0fdf4,#ecfdf5);
-        box-shadow:0 10px 28px rgba(15,23,42,.08);
-        min-height:150px;
-        position:relative;
-        overflow:hidden;
-      ">
-        <div style="font-size:13px;color:var(--muted);font-family:var(--font-mono);font-weight:800">
-          🎯 ŞU ANKİ ARA HEDEF
-        </div>
-
-        <div style="font-size:30px;font-weight:900;margin-top:10px">
-          ${currentGoal} kg
-        </div>
-
-        <div style="font-size:13px;color:var(--muted);margin-top:6px">
-          ${kgLeft} kg kaldı · Final hedef: ${state.goalWeight} kg
-        </div>
-
-        <div style="
-          height:8px;
-          background:rgba(34,197,94,.14);
-          border-radius:999px;
-          overflow:hidden;
-          margin-top:18px;
-          max-width:100%;
-        ">
-          <div style="
-            height:100%;
-            width:${progressPct}%;
-            background:linear-gradient(90deg,#22c55e,#16a34a);
-            border-radius:999px;
-          "></div>
-        </div>
-
-        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          %${progressPct} tamamlandı
-        </div>
-      </div>
-
-      <div class="card" style="
-        padding:18px;
-        min-height:150px;
-        border:1px solid var(--border);
-        box-shadow:0 10px 28px rgba(15,23,42,.08);
-      ">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:13px;color:var(--muted);font-family:var(--font-mono);font-weight:800">
-            SON ÖLÇÜM
-          </div>
-          <span style="
-            font-size:11px;
-            font-weight:800;
-            color:#16a34a;
-            background:#dcfce7;
-            padding:4px 9px;
-            border-radius:999px;
-          ">KİLO</span>
-        </div>
-
-        <div style="font-size:30px;font-weight:900;margin-top:18px">
-          ${last.weight} <span style="font-size:16px;color:var(--muted)">kg</span>
-        </div>
-
-        <div style="font-size:13px;color:var(--muted);margin-top:8px">
-          Hedefe göre
-          <span style="float:right">${last.weight > currentGoal ? '+' : ''}${(last.weight - currentGoal).toFixed(1)} kg kaldı</span>
-        </div>
-
-        <div style="
-          height:8px;
-          background:rgba(34,197,94,.12);
-          border-radius:999px;
-          overflow:hidden;
-          margin-top:12px;
-        ">
-          <div style="
-            height:100%;
-            width:${prfunction renderDashboardGoalCard() {
-  const el = document.getElementById('dashboardGoalCard');
-  if (!el) return;
-
-  const data = [...(state.measurements || [])].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
-
-  if (!data.length) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-
-  const milestones = state.milestones || [95, 90, 85];
-  let currentGoal = milestones.find(goal => last.weight > goal);
-
-  if (!currentGoal) {
-    currentGoal = milestones[milestones.length - 1];
-  }
-
-  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
-  const totalNeeded = first.weight - currentGoal;
-  const completed = first.weight - last.weight;
-
-  const progressPct = totalNeeded > 0
-    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
-    : 100;
-
-  el.innerHTML = `
     <div class="goal-hero-card">
       <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
       <div class="goal-value">${currentGoal} kg</div>
@@ -451,13 +332,8 @@ function renderStats() {
     return;
   }
 
-  if (dashWeight) {
-    dashWeight.textContent = last.weight ?? '—';
-  }
-
-  if (dashWaist) {
-    dashWaist.textContent = last.waist ?? '—';
-  }
+  if (dashWeight) dashWeight.textContent = last.weight ?? '—';
+  if (dashWaist) dashWaist.textContent = last.waist ?? '—';
 
   if (waistDiffEl) {
     if (prev && prev.waist != null && last.waist != null) {
