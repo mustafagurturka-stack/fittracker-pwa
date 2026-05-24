@@ -352,10 +352,6 @@ function renderDashboardGoalCard() {
 </div>
   </div>
 </div>
-
-<div class="goal-percent">
-  İlk hedef: ${currentGoal} kg · Final hedef: ${state.goalWeight} kg
-</div>
     </div>
   `;
 }
