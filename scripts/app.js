@@ -291,6 +291,8 @@ function renderDashboardGoalCard() {
   }
 
   const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
+  const startDateText = formatDate(first.date);
+  const finalKgLeft = Math.max(0, Number(last.weight - state.goalWeight).toFixed(1));
   const totalNeeded = first.weight - currentGoal;
   const completed = first.weight - last.weight;
 
@@ -302,13 +304,17 @@ function renderDashboardGoalCard() {
     <div class="goal-hero-card">
       <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
       <div class="goal-value">${currentGoal} kg</div>
-      <div class="goal-sub">${kgLeft} kg kaldı · Final hedef: ${state.goalWeight} kg</div>
+      <div class="goal-sub">
+  İlk hedefe kalan: ${kgLeft} kg · Final hedefe kalan: ${finalKgLeft} kg
+</div>
 
       <div class="goal-track">
         <div class="goal-fill" style="width:${progressPct}%"></div>
       </div>
 
-      <div class="goal-percent">%${progressPct} tamamlandı</div>
+      <div class="goal-percent">
+  İlk hedef: ${currentGoal} kg · Final hedef: ${state.goalWeight} kg
+</div>
     </div>
   `;
 }
@@ -330,6 +336,7 @@ function renderStats() {
   const last = data[data.length - 1];
 
   const diff = Number(last.weight - first.weight);
+  const startDateText = formatDate(first.date);
   const diffText = `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`;
   const isGood = diff <= 0;
 
@@ -343,7 +350,7 @@ function renderStats() {
       </div>
 
       <div class="progress-summary-side">
-        <div class="progress-summary-small">Başlangıçtan beri</div>
+        <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
         <div class="progress-summary-diff ${isGood ? 'good' : 'bad'}">
           ${diffText}
         </div>
