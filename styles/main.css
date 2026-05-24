@@ -2352,3 +2352,66 @@ body,
     max-width: 100%;
   }
 }
+
+/* v92 — Fix empty right area in goal card */
+
+#dashboardGoalCard > div {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+}
+
+.goal-hero-card {
+  min-height: auto !important;
+  padding: 28px !important;
+}
+
+.goal-card-layout {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.1fr) !important;
+  gap: 32px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.goal-main {
+  max-width: none !important;
+}
+
+.goal-side {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.goal-side-item,
+.goal-progress-block.secondary {
+  min-height: 92px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.goal-side-item {
+  align-items: flex-start !important;
+}
+
+.goal-side-item strong {
+  font-size: 24px !important;
+  margin-top: 6px !important;
+}
+
+.goal-progress-block.primary {
+  max-width: 100% !important;
+}
+
+@media (max-width: 900px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side {
+    grid-template-columns: 1fr !important;
+  }
+}
