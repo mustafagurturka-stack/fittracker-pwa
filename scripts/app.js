@@ -300,6 +300,11 @@ function renderDashboardGoalCard() {
     ? Math.min(100, Math.round((completed / totalNeeded) * 100))
     : 100;
 
+  const finalTotalNeeded = first.weight - state.goalWeight;
+  const finalProgressPct = finalTotalNeeded > 0
+  ? Math.min(100, Math.round((completed / finalTotalNeeded) * 100))
+  : 100;
+
   el.innerHTML = `
     <div class="goal-hero-card">
       <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
@@ -308,11 +313,27 @@ function renderDashboardGoalCard() {
   İlk hedefe kalan: ${kgLeft} kg · Final hedefe kalan: ${finalKgLeft} kg
 </div>
 
-      <div class="goal-track">
-        <div class="goal-fill" style="width:${progressPct}%"></div>
-      </div>
+      <div class="goal-progress-block">
+  <div class="goal-progress-row">
+    <span>İlk hedef ilerlemesi</span>
+    <strong>%${progressPct}</strong>
+  </div>
+  <div class="goal-track">
+    <div class="goal-fill" style="width:${progressPct}%"></div>
+  </div>
+</div>
 
-      <div class="goal-percent">
+<div class="goal-progress-block">
+  <div class="goal-progress-row">
+    <span>Final hedef ilerlemesi</span>
+    <strong>%${finalProgressPct}</strong>
+  </div>
+  <div class="goal-track final">
+    <div class="goal-fill final" style="width:${finalProgressPct}%"></div>
+  </div>
+</div>
+
+<div class="goal-percent">
   İlk hedef: ${currentGoal} kg · Final hedef: ${state.goalWeight} kg
 </div>
     </div>
