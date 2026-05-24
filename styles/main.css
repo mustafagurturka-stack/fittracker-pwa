@@ -90,7 +90,7 @@ body {
 
 .week-card-title {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -135,7 +135,7 @@ body {
 
 .week-metric-top strong {
   color: var(--text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .week-track {
@@ -797,7 +797,7 @@ body {
 
 .quick-title {
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -1251,7 +1251,7 @@ body {
 
 .goal-label {
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   color: var(--muted);
   font-family: var(--font-mono);
   letter-spacing: .5px;
@@ -1259,7 +1259,7 @@ body {
 
 .goal-value {
   font-size: 34px;
-  font-weight: 900;
+  font-weight: 800;
   margin-top: 10px;
   color: var(--text);
 }
@@ -1841,7 +1841,7 @@ body,
 .progress-summary-value {
   margin-top: 10px;
   font-size: 36px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--premium-text);
   letter-spacing: -.8px;
 }
@@ -1863,7 +1863,7 @@ body,
 .progress-summary-diff {
   margin-top: 5px;
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .progress-summary-diff.good {
@@ -2002,7 +2002,7 @@ body,
 
 .goal-progress-row strong {
   color: var(--premium-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .goal-track.final {
@@ -2110,7 +2110,7 @@ body,
 .goal-side-item strong {
   font-size: 18px;
   color: var(--premium-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .goal-progress-block {
