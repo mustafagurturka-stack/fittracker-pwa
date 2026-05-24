@@ -286,72 +286,66 @@ function renderDashboardGoalCard() {
   const milestones = state.milestones || [95, 90, 85];
   let currentGoal = milestones.find(goal => last.weight > goal);
 
-  if (!currentGoal) {
-    currentGoal = milestones[milestones.length - 1];
-  }
+  if (!currentGoal) currentGoal = milestones[milestones.length - 1];
 
   const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
-  const startDateText = formatDate(first.date);
   const finalKgLeft = Math.max(0, Number(last.weight - state.goalWeight).toFixed(1));
-  const totalNeeded = first.weight - currentGoal;
+
   const completed = first.weight - last.weight;
 
-  const progressPct = totalNeeded > 0
-    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
+  const firstGoalNeeded = first.weight - currentGoal;
+  const firstGoalPct = firstGoalNeeded > 0
+    ? Math.min(100, Math.round((completed / firstGoalNeeded) * 100))
     : 100;
 
-  const finalTotalNeeded = first.weight - state.goalWeight;
-  const finalProgressPct = finalTotalNeeded > 0
-  ? Math.min(100, Math.round((completed / finalTotalNeeded) * 100))
-  : 100;
+  const finalNeeded = first.weight - state.goalWeight;
+  const finalPct = finalNeeded > 0
+    ? Math.min(100, Math.round((completed / finalNeeded) * 100))
+    : 100;
 
   el.innerHTML = `
     <div class="goal-hero-card">
       <div class="goal-card-layout">
 
-  <div class="goal-main">
-    <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
+        <div class="goal-main">
+          <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
+          <div class="goal-value">${currentGoal} kg</div>
+          <div class="goal-caption">İlk hedef</div>
 
-    <div class="goal-value">${currentGoal} kg</div>
+          <div class="goal-progress-block primary">
+            <div class="goal-progress-row">
+              <span>İlk hedef ilerlemesi</span>
+              <strong>%${firstGoalPct}</strong>
+            </div>
+            <div class="goal-track">
+              <div class="goal-fill" style="width:${firstGoalPct}%"></div>
+            </div>
+          </div>
+        </div>
 
-    <div class="goal-caption">İlk hedef</div>
+        <div class="goal-side">
+          <div class="goal-side-item">
+            <span>İlk hedefe kalan</span>
+            <strong>${kgLeft} kg</strong>
+          </div>
 
-    <div class="goal-progress-block primary">
-      <div class="goal-progress-row">
-        <span>İlk hedef ilerlemesi</span>
-        <strong>%${progressPct}</strong>
+          <div class="goal-side-item">
+            <span>Final hedefe kalan</span>
+            <strong>${finalKgLeft} kg</strong>
+          </div>
+
+          <div class="goal-progress-block secondary">
+            <div class="goal-progress-row">
+              <span>Final ilerleme</span>
+              <strong>%${finalPct}</strong>
+            </div>
+            <div class="goal-track final">
+              <div class="goal-fill final" style="width:${finalPct}%"></div>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div class="goal-track">
-        <div class="goal-fill" style="width:${progressPct}%"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="goal-side">
-    <div class="goal-side-item">
-      <span>İlk hedefe kalan</span>
-      <strong>${kgLeft} kg</strong>
-    </div>
-
-    <div class="goal-side-item">
-      <span>Final hedefe kalan</span>
-      <strong>${finalKgLeft} kg</strong>
-    </div>
-
-    <div class="goal-progress-block secondary">
-      <div class="goal-progress-row">
-        <span>Final ilerleme</span>
-        <strong>%${finalProgressPct}</strong>
-      </div>
-      <div class="goal-track final">
-        <div class="goal-fill final" style="width:${finalProgressPct}%"></div>
-      </div>
-    </div>
-  </div>
-
-</div>
-  </div>
-</div>
     </div>
   `;
 }
