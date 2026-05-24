@@ -1381,3 +1381,24 @@ body {
 .quick-actions-card {
   margin-top: 18px !important;
 }
+
+
+  }
+
+  .stat-card-blue {
+    min-height: 128px !important;
+    padding: 18px !important;
+  }
+
+  .week-chip {
+    padding: 16px !important;
+  }
+
+  .week-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  .quick-actions-card {
+    padding: 16px !important;
+  }
+}
