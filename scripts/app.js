@@ -327,29 +327,39 @@ function renderDashboardGoalCard() {
           </div>
         </div>
 
-        <div class="goal-side">
-          <div class="goal-side-top">
-            <div class="goal-side-item">
-              <span>İlk hedefe kalan</span>
-              <strong>${kgLeft} kg</strong>
-            </div>
+        <div class="goal-side goal-side-grid">
 
-            <div class="goal-side-item">
-              <span>Final hedefe kalan</span>
-              <strong>${finalKgLeft} kg</strong>
-            </div>
-          </div>
+  <div class="goal-side-item">
+    <span>İlk hedefe kalan</span>
+    <strong>${kgLeft} kg</strong>
+  </div>
 
-          <div class="goal-progress-block secondary">
-            <div class="goal-progress-row">
-              <span>Final ilerleme</span>
-              <strong>%${finalPct}</strong>
-            </div>
-            <div class="goal-track final">
-              <div class="goal-fill final" style="width:${finalPct}%"></div>
-            </div>
-          </div>
-        </div>
+  <div class="goal-side-item">
+    <span>Final hedefe kalan</span>
+    <strong>${finalKgLeft} kg</strong>
+  </div>
+
+  <div class="goal-progress-block secondary">
+    <div class="goal-progress-row">
+      <span>İlk ilerleme</span>
+      <strong>%${firstGoalPct}</strong>
+    </div>
+    <div class="goal-track">
+      <div class="goal-fill" style="width:${firstGoalPct}%"></div>
+    </div>
+  </div>
+
+  <div class="goal-progress-block secondary">
+    <div class="goal-progress-row">
+      <span>Final ilerleme</span>
+      <strong>%${finalPct}</strong>
+    </div>
+    <div class="goal-track final">
+      <div class="goal-fill final" style="width:${finalPct}%"></div>
+    </div>
+  </div>
+
+</div>
 
       </div>
     </div>
