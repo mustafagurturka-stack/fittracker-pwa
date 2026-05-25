@@ -2690,3 +2690,88 @@ body,
     margin-bottom: 0 !important;
   }
 }
+/* v98 — Premium compact rhythm */
+
+.goal-hero-card {
+  padding: 26px 30px !important;
+}
+
+.goal-card-layout {
+  gap: 26px !important;
+}
+
+.goal-main {
+  padding-right: 8px !important;
+}
+
+.goal-big-row {
+  margin-top: 4px !important;
+}
+
+.goal-value {
+  font-size: 58px !important;
+  letter-spacing: -2px !important;
+}
+
+.goal-progress-block.primary {
+  margin-top: 14px !important;
+}
+
+.goal-side {
+  gap: 14px !important;
+}
+
+.goal-side-item {
+  min-height: 92px !important;
+}
+
+.goal-side-item strong {
+  font-size: 26px !important;
+}
+
+.goal-progress-block.secondary {
+  min-height: 92px !important;
+}
+/* v98 — Measurement card */
+
+.measurement-card {
+  min-height: 150px !important;
+  padding: 28px 32px !important;
+}
+
+.measurement-card .stat-val {
+  font-size: 54px !important;
+  letter-spacing: -2px !important;
+}
+
+.measurement-card .progress-summary-diff {
+  font-size: 20px !important;
+}
+/* v98 — Week compact */
+
+.week-card {
+  padding: 24px !important;
+}
+
+.week-metric {
+  padding: 14px 16px !important;
+}
+
+.week-track {
+  height: 8px !important;
+}
+
+.week-card-title {
+  margin-bottom: 2px !important;
+}
+/* v99 — Premium blur override */
+
+#pHome .dashboard-card,
+#pHome .goal-hero-card,
+#pHome .week-card,
+#pHome .measurement-card,
+#pHome .quick-actions-card,
+#pHome .motivation-banner {
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
