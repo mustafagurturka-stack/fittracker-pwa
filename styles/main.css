@@ -3156,3 +3156,18 @@ body,
 [data-theme="dark"] .quick-btn.note{
   background:rgba(34,197,94,.16);
 }
+
+.dashboard-wrap,
+.dashboard-screen,
+main{
+  padding-bottom:110px !important;
+  min-height:auto !important;
+}
+
+.quick-actions-card{
+  margin-bottom:20px !important;
+}
+
+body{
+  overflow-x:hidden;
+}
