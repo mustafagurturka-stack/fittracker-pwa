@@ -3106,3 +3106,19 @@ body,
 .week-track {
   height: 9px !important;
 }
+
+.goal-hero-card {
+  padding: 26px 30px !important;
+}
+
+.last-meas-card,
+.progress-summary-card {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.week-track {
+  height: 9px !important;
+}
