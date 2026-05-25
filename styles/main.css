@@ -2599,3 +2599,54 @@ body,
     font-size: 48px !important;
   }
 }
+/* v95 — Goal progress compact alignment */
+
+.goal-caption {
+  margin-top: 6px !important;
+  padding: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.goal-progress-block.primary,
+.goal-progress-block.secondary {
+  min-height: auto !important;
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
+}
+
+.goal-progress-block.primary {
+  margin-top: 16px !important;
+}
+
+.goal-progress-block.secondary {
+  margin-top: 0 !important;
+}
+
+.goal-progress-row {
+  margin-bottom: 8px !important;
+  line-height: 1.2 !important;
+}
+
+.goal-track {
+  height: 7px !important;
+  margin-top: 0 !important;
+}
+
+.goal-side-item {
+  min-height: 92px !important;
+  padding: 18px 20px !important;
+}
+
+.goal-side {
+  gap: 14px !important;
+}
+
+.goal-side-top {
+  gap: 14px !important;
+}
+
+@media (max-width: 900px) {
+  .goal-side-item {
+    min-height: auto !important;
+  }
+}
