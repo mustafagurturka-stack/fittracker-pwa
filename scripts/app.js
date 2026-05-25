@@ -217,7 +217,56 @@ function renderMoti() {
   el.textContent = MOTIVATIONS[idx];
 }
 
-/* ─── HEDEF KARTI ─────────────────────────────────── */
+function renderDashboardWeekLabel() {
+  const el = document.getElementById('dashboardWeekLabel');
+  if (!el) return;
+
+  const range = getDashboardWeekRange();
+
+  const sleepTotal = getCurrentWeekSleepTotal();
+  const sleepTarget = 49;
+  const sleepPct = Math.min(100, Math.round((sleepTotal / sleepTarget) * 100));
+
+  const workoutTotal = getCurrentWeekWorkoutTotal();
+  const workoutTarget = 180;
+  const workoutPct = Math.min(100, Math.round((workoutTotal / workoutTarget) * 100));
+
+  el.innerHTML = `
+    <div class="week-card-head">
+      <div>
+        <div class="week-card-title">Bu Hafta</div>
+        <div class="week-card-date">${formatDate(range.start)} - ${formatDate(range.end)}</div>
+      </div>
+
+      <div class="week-card-pill">
+        ${sleepPct >= 100 || workoutPct >= 100 ? 'İyi gidiyorsun' : 'Devam et'}
+      </div>
+    </div>
+
+    <div class="week-metrics">
+      <div class="week-metric">
+        <div class="week-metric-top">
+          <span>😴 Uyku</span>
+          <strong>${sleepTotal.toFixed(1)} / ${sleepTarget} saat</strong>
+        </div>
+        <div class="week-track">
+          <div class="week-fill sleep" style="width:${sleepPct}%"></div>
+        </div>
+      </div>
+
+      <div class="week-metric">
+        <div class="week-metric-top">
+          <span>🏋️ Antreman</span>
+          <strong>${workoutTotal} / ${workoutTarget} dk</strong>
+        </div>
+        <div class="week-track">
+          <div class="week-fill workout" style="width:${workoutPct}%"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderDashboardGoalCard() {
   const el = document.getElementById('dashboardGoalCard');
   if (!el) return;
@@ -226,80 +275,77 @@ function renderDashboardGoalCard() {
     a.date.localeCompare(b.date)
   );
 
-  if (!data.length) { el.innerHTML = ''; return; }
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
 
   const first = data[0];
-  const last  = data[data.length - 1];
+  const last = data[data.length - 1];
 
   const milestones = state.milestones || [95, 90, 85];
-  let currentGoal = milestones.find(g => last.weight > g);
+  let currentGoal = milestones.find(goal => last.weight > goal);
   if (!currentGoal) currentGoal = milestones[milestones.length - 1];
 
-  const completed   = first.weight - last.weight;
-  const kgLeft      = Math.max(0, (last.weight - currentGoal).toFixed(1));
-  const finalKgLeft = Math.max(0, (last.weight - state.goalWeight).toFixed(1));
+  const completed = first.weight - last.weight;
+
+  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
+  const finalKgLeft = Math.max(0, Number(last.weight - state.goalWeight).toFixed(1));
 
   const firstNeeded = first.weight - currentGoal;
-  const firstPct    = firstNeeded > 0
-    ? Math.min(100, Math.round((completed / firstNeeded) * 100)) : 100;
+  const firstPct = firstNeeded > 0
+    ? Math.min(100, Math.round((completed / firstNeeded) * 100))
+    : 100;
 
   const finalNeeded = first.weight - state.goalWeight;
-  const finalPct    = finalNeeded > 0
-    ? Math.min(100, Math.round((completed / finalNeeded) * 100)) : 100;
+  const finalPct = finalNeeded > 0
+    ? Math.min(100, Math.round((completed / finalNeeded) * 100))
+    : 100;
 
   el.innerHTML = `
     <div class="goal-hero-card">
-
-      <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
-
       <div class="goal-card-layout">
 
-        <!-- SOL -->
-        <div>
+        <div class="goal-left">
+          <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
+
           <div class="goal-big">
-            <span class="goal-big-num">${currentGoal}</span>
-            <span class="goal-big-unit">kg</span>
+            <span>${currentGoal}</span>
+            <small>kg</small>
           </div>
 
-          <div class="goal-caption">İlk ara hedef</div>
+          <div class="goal-caption">İlk hedef</div>
 
-          <div class="goal-mini">
-            <div class="prog-row">
+          <div class="goal-mini-card">
+            <div class="goal-progress-row">
               <span>İlk hedef ilerlemesi</span>
               <strong>%${firstPct}</strong>
             </div>
-
-            <div class="prog-track">
-              <div class="prog-fill" style="width:${firstPct}%"></div>
+            <div class="goal-track">
+              <div class="goal-fill" style="width:${firstPct}%"></div>
             </div>
           </div>
         </div>
 
-        <!-- SAĞ -->
-        <div>
-          <div class="goal-info-grid">
+        <div class="goal-right">
+          <div class="goal-info-card">
+            <span>İlk hedefe kalan</span>
+            <strong>${kgLeft} kg</strong>
+          </div>
 
-            <div class="goal-info-card">
-              <div class="goal-info-label">HEDEFE KALAN</div>
-              <div class="goal-info-val">${kgLeft} <small>kg</small></div>
+          <div class="goal-info-card">
+            <span>Final hedefe kalan</span>
+            <strong>${finalKgLeft} kg</strong>
+          </div>
+
+          <div class="goal-mini-card goal-final-card">
+            <div class="goal-progress-row">
+              <span>Final ilerleme</span>
+              <strong>%${finalPct}</strong>
             </div>
-
-            <div class="goal-info-card">
-              <div class="goal-info-label">FİNAL HEDEF</div>
-              <div class="goal-info-val">${finalKgLeft} <small>kg</small></div>
+            <div class="goal-track final">
+              <div class="goal-fill final" style="width:${finalPct}%"></div>
             </div>
-
-            <div class="goal-final-card">
-              <div class="prog-row">
-                <span>Final ilerleme</span>
-                <strong>%${finalPct}</strong>
-              </div>
-
-              <div class="prog-track blue-track">
-                <div class="prog-fill blue-fill" style="width:${finalPct}%"></div>
-              </div>
-            </div>
-
           </div>
         </div>
 
@@ -308,6 +354,45 @@ function renderDashboardGoalCard() {
   `;
 }
 
+function renderStats() {
+  const el = document.getElementById('dashboardProgressCard');
+  if (!el) return;
+
+  const data = [...(state.measurements || [])].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  const diff = Number(last.weight - first.weight);
+  const startDateText = formatDate(first.date);
+  const diffText = `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`;
+  const isGood = diff <= 0;
+
+  el.innerHTML = `
+    <div class="progress-summary-card">
+      <div>
+        <div class="progress-summary-label">⚖️ SON ÖLÇÜM</div>
+        <div class="progress-summary-value">
+          ${last.weight} <span>kg</span>
+        </div>
+      </div>
+
+      <div class="progress-summary-side">
+        <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
+        <div class="progress-summary-diff ${isGood ? 'good' : 'bad'}">
+          ${diffText}
+        </div>
+      </div>
+    </div>
+  `;
+}
   function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
   if (!canvas || typeof Chart === 'undefined') return;
