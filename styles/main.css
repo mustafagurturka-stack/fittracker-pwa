@@ -2669,3 +2669,24 @@ body,
     margin-bottom: 36px !important;
   }
 }
+/* v97 — FINAL dashboard spacing override */
+
+#pHome .dashboard-wrap {
+  padding: 0 18px 28px !important;
+  max-width: 1080px !important;
+  min-height: auto !important;
+}
+
+#pHome .quick-actions-card {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 700px) {
+  #pHome .dashboard-wrap {
+    padding: 0 14px calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+}
