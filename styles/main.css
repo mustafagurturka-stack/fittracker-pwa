@@ -2775,3 +2775,62 @@ body,
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
 }
+/* v100 — Final goal card 2x2 balance */
+
+.goal-card-layout {
+  grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr) !important;
+  gap: 34px !important;
+}
+
+.goal-side-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.goal-side-grid .goal-side-item,
+.goal-side-grid .goal-progress-block.secondary {
+  min-height: 104px !important;
+  padding: 18px 20px !important;
+  border-radius: 24px !important;
+  margin: 0 !important;
+}
+
+.goal-side-grid .goal-progress-block.secondary {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.goal-side-grid .goal-progress-row {
+  margin-bottom: 10px !important;
+}
+
+.goal-side-grid .goal-track {
+  height: 7px !important;
+}
+
+.goal-progress-block.primary {
+  display: none !important;
+}
+
+.goal-caption {
+  margin-top: 8px !important;
+}
+
+@media (max-width: 900px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .goal-side-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
