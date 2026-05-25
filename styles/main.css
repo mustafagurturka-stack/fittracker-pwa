@@ -1,163 +1,68 @@
-/* vFinal — Dashboard premium tightening */
+/* SAFE POLISH PATCH */
 
-.goal-hero-card {
-  padding: 32px !important;
-  border-radius: 34px !important;
-  background:
-    radial-gradient(circle at 18% 12%, rgba(34,197,94,.16), transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(34,197,94,.10), transparent 30%),
-    linear-gradient(135deg, rgba(255,255,255,.92), rgba(244,253,248,.86)) !important;
-  border: 1px solid rgba(34,197,94,.18) !important;
-  box-shadow: 0 24px 60px rgba(15,23,42,.07) !important;
+.goal-hero-card{
+  padding:28px;
+  border-radius:32px;
 }
 
-.goal-card-layout {
-  gap: 28px !important;
-  align-items: center !important;
+.goal-card-layout{
+  display:grid;
+  grid-template-columns:1.2fr .9fr;
+  gap:22px;
+  align-items:start;
 }
 
-.goal-big span,
-.goal-big-num {
-  font-size: clamp(56px, 7vw, 78px) !important;
-  line-height: .9 !important;
-  letter-spacing: -4px !important;
+.goal-info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
 }
 
-.goal-big small,
-.goal-big-unit {
-  font-size: 24px !important;
-  font-weight: 900 !important;
+.goal-final-card{
+  grid-column:1 / -1;
 }
 
-.goal-info-card {
-  min-height: 108px !important;
-  padding: 22px !important;
-  border-radius: 24px !important;
-  background: rgba(255,255,255,.62) !important;
-  backdrop-filter: blur(14px);
-}
-
-.goal-mini-card,
+.goal-info-card,
 .goal-final-card,
-.goal-mini {
-  border-radius: 24px !important;
-  background: rgba(255,255,255,.68) !important;
-  backdrop-filter: blur(14px);
+.goal-mini{
+  background:rgba(255,255,255,.55);
+  backdrop-filter:blur(10px);
+  border-radius:22px;
+  padding:18px;
 }
 
-.prog-track,
+.week-track,
 .goal-track,
-.week-track {
-  height: 10px !important;
-  border-radius: 999px !important;
+.prog-track{
+  height:10px;
 }
 
-.progress-summary-card,
-.last-meas-card {
-  padding: 28px !important;
-  border-radius: 28px !important;
-  background:
-    radial-gradient(circle at 88% 35%, rgba(59,130,246,.18), transparent 34%),
-    linear-gradient(135deg, rgba(255,255,255,.95), rgba(239,246,255,.85)) !important;
-  border: 1px solid rgba(59,130,246,.14) !important;
-  box-shadow: 0 20px 50px rgba(15,23,42,.06) !important;
+.last-meas-card{
+  border-radius:28px;
+  padding:26px;
 }
 
-.week-chip {
-  padding: 26px !important;
-  border-radius: 30px !important;
-  background: rgba(255,255,255,.78) !important;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 22px 52px rgba(15,23,42,.065) !important;
+.quick-actions-card{
+  border-radius:28px;
+  padding:22px;
 }
 
-.week-metric {
-  border-radius: 22px !important;
-  padding: 16px 18px !important;
-  background: rgba(255,255,255,.58) !important;
+.quick-btn{
+  border-radius:999px;
 }
 
-.quick-actions-card {
-  padding: 22px !important;
-  border-radius: 28px !important;
-  background: rgba(255,255,255,.76) !important;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 18px 44px rgba(15,23,42,.06) !important;
-}
+@media (max-width:700px){
 
-.quick-btn {
-  border-radius: 999px !important;
-  padding: 12px 18px !important;
-  font-size: 13px !important;
-}
-
-@media (max-width: 700px) {
-  .goal-hero-card {
-    padding: 24px !important;
-    border-radius: 28px !important;
+  .goal-card-layout{
+    grid-template-columns:1fr;
   }
 
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-    gap: 18px !important;
+  .goal-info-grid{
+    grid-template-columns:1fr 1fr;
   }
 
-  .goal-big span,
-  .goal-big-num {
-    font-size: 58px !important;
+  .goal-final-card{
+    grid-column:1 / -1;
   }
 
-  .goal-info-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-  }
-
-  .goal-final-card {
-    grid-column: 1 / -1 !important;
-  }
-
-  .progress-summary-card,
-  .last-meas-card {
-    padding: 22px !important;
-  }
-
-  .week-chip {
-    padding: 20px !important;
-  }
-
-  .quick-actions-card {
-    align-items: stretch !important;
-  }
-
-  .quick-actions {
-    grid-template-columns: 1fr !important;
-  }
-
-  .quick-btn {
-    width: 100% !important;
-  }
-}
-
-[data-theme="dark"] .goal-hero-card {
-  background:
-    radial-gradient(circle at 18% 12%, rgba(34,197,94,.16), transparent 34%),
-    linear-gradient(135deg, rgba(21,27,38,.96), rgba(16,22,31,.92)) !important;
-}
-
-[data-theme="dark"] .goal-info-card,
-[data-theme="dark"] .goal-mini-card,
-[data-theme="dark"] .goal-final-card,
-[data-theme="dark"] .goal-mini,
-[data-theme="dark"] .week-metric,
-[data-theme="dark"] .quick-actions-card,
-[data-theme="dark"] .week-chip {
-  background: rgba(21,27,38,.78) !important;
-  border-color: rgba(255,255,255,.07) !important;
-}
-
-[data-theme="dark"] .progress-summary-card,
-[data-theme="dark"] .last-meas-card {
-  background:
-    radial-gradient(circle at 88% 35%, rgba(59,130,246,.16), transparent 34%),
-    linear-gradient(135deg, rgba(21,27,38,.96), rgba(16,22,31,.92)) !important;
 }
