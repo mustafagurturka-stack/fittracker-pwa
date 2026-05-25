@@ -3139,3 +3139,20 @@ body,
   }
 
 }
+[data-theme="dark"] .goal-info-card,
+[data-theme="dark"] .goal-final-card,
+[data-theme="dark"] .week-metric{
+  border-color:rgba(255,255,255,.05) !important;
+}
+
+[data-theme="dark"] .quick-btn.sleep{
+  background:rgba(6,182,212,.18);
+}
+
+[data-theme="dark"] .quick-btn.workout{
+  background:rgba(139,92,246,.18);
+}
+
+[data-theme="dark"] .quick-btn.note{
+  background:rgba(34,197,94,.16);
+}
