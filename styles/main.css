@@ -3122,3 +3122,20 @@ body,
 .week-track {
   height: 9px !important;
 }
+
+@media (max-width:700px){
+
+  .last-meas-card,
+  .progress-summary-card{
+    text-align:center;
+    flex-direction:column;
+    justify-content:center;
+    gap:14px;
+  }
+
+  .last-meas-card > div:last-child,
+  .progress-summary-card > div:last-child{
+    text-align:center !important;
+  }
+
+}
