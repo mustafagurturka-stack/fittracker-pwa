@@ -2650,3 +2650,22 @@ body,
     min-height: auto !important;
   }
 }
+/* v96 — Bottom nav overlap fix */
+
+.dashboard-wrap {
+  padding-bottom: 150px !important;
+}
+
+.quick-actions-card {
+  margin-bottom: 28px !important;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 36px !important;
+  }
+}
