@@ -1,34 +1,81 @@
 'use strict';
 
-// ── SUPABASE ──
+// â”€â”€ SUPABASE â”€â”€
 const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-console.log('Supabase hazır:', db);
+console.log('Supabase hazÄ±r:', db);
 
-// ── CONSTANTS ──
+// â”€â”€ CONSTANTS â”€â”€
 const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
 const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
-const STORAGE_KEY = 'ft_state_v1';
+const STORAGE_KEY = 'ft_state_v2';
+const START_DATE = '2026-05-31';
+const WEEKLY_MEASURE_DAY = 0;
+const SLEEP_TARGET = 49;
+const WORKOUT_TARGET = 180;
+
+const WORKOUT_CATALOG = {
+  Kuvvet: [
+    'Full Body A',
+    'Full Body B',
+    'Full Body C',
+    'Squat Odaklı',
+    'Deadlift Odaklı',
+    'Üst Vücut',
+    'Alt Vücut',
+  ],
+  Core: [
+    'Core Temel',
+    'Core / Tabata',
+    'Karın Bölgesi',
+    'Bel ve Stabilizasyon',
+    'Plank Serisi',
+  ],
+  Challenge: [
+    'Sabah Yağ Yakım',
+    'GrowWithJo Challenge',
+    'Squat Challenge',
+    'Deadlift Challenge',
+    'Core Challenge',
+    'HIIT Challenge',
+    '30 Gün Challenge',
+  ],
+  Kardiyo: [
+    'GrowWithJo',
+    'Yürüyüş',
+    'Koşu',
+    'Bisiklet',
+    'Eliptik',
+    'HIIT',
+    'Zone 2 Kardiyo',
+  ],
+  Recovery: ['Esneme', 'Mobility', 'Yoga', 'Foam Rolling', 'Aktif Dinlenme'],
+};
 
 const MOTIVATIONS = [
-  'Bugün küçük bir adım at, yarın farkı hissedeceksin. 🌱',
-  'Mükemmel olmak zorunda değilsin; devam etmek yeterli. 💪',
-  'Her kayıt, hedefe biraz daha yaklaştığının kanıtı. 🎯',
-  'Bugün kendine yatırım yaptığın bir gün olsun. ✨',
-  'Disiplin, motivasyonun bittiği yerde seni taşır. 🔥',
-  'Uyku, hareket ve istikrar: değişimin üç anahtarı. 🔑',
-  'Vücudun emeğini hatırlar; bugün boşa gitmez. 🏆',
-  'Küçük kazanımlar büyük dönüşümlerin temelidir. ✅',
-  'Bugün bırakırsan aynı yerde kalırsın; devam edersen değişirsin. 🚀',
-  'Hedef uzak görünse de sıradaki adım çok yakın. 👣',
+  'BugÃ¼n kÃ¼Ã§Ã¼k bir adÄ±m at, yarÄ±n farkÄ± hissedeceksin. ğŸŒ±',
+  'MÃ¼kemmel olmak zorunda deÄŸilsin; devam etmek yeterli. ğŸ’ª',
+  'Her kayÄ±t, hedefe biraz daha yaklaÅŸtÄ±ÄŸÄ±nÄ±n kanÄ±tÄ±. ğŸ¯',
+  'BugÃ¼n kendine yatÄ±rÄ±m yaptÄ±ÄŸÄ±n bir gÃ¼n olsun. âœ¨',
+  'Disiplin, motivasyonun bittiÄŸi yerde seni taÅŸÄ±r. ğŸ”¥',
+  'Uyku, hareket ve istikrar: deÄŸiÅŸimin Ã¼Ã§ anahtarÄ±. ğŸ”‘',
+  'VÃ¼cudun emeÄŸini hatÄ±rlar; bugÃ¼n boÅŸa gitmez. ğŸ†',
+  'KÃ¼Ã§Ã¼k kazanÄ±mlar bÃ¼yÃ¼k dÃ¶nÃ¼ÅŸÃ¼mlerin temelidir. âœ…',
+  'BugÃ¼n bÄ±rakÄ±rsan aynÄ± yerde kalÄ±rsÄ±n; devam edersen deÄŸiÅŸirsin. ğŸš€',
+  'Hedef uzak gÃ¶rÃ¼nse de sÄ±radaki adÄ±m Ã§ok yakÄ±n. ğŸ‘£',
 ];
 
-// ── STATE ──
+// â”€â”€ STATE â”€â”€
 let state = {
   theme: 'light',
-  name: 'Mustafa Gürtürk Avcı',
+  userId: '',
+  onboarded: false,
+  name: '',
+  startDate: START_DATE,
+  startWeight: null,
+  startWaist: null,
   measurements: [],
   weights: [],
   nutrition: [],
@@ -36,15 +83,71 @@ let state = {
   notes: [],
   sleep: [],
   goalWeight: 85,
-  milestones: [95, 90, 85]
+  milestones: [95, 85]
 };
 
 let measurementChart = null;
 let sleepChart = null;
 let workoutChart = null;
-// ── HELPERS ──
+let authMode = 'signIn';
+// â”€â”€ HELPERS â”€â”€
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getSuggestedMeasureDate() {
+  const date = new Date();
+  const diff = (date.getDay() - WEEKLY_MEASURE_DAY + 7) % 7;
+  date.setDate(date.getDate() - diff);
+  return date.toISOString().slice(0, 10);
+}
+
+function getUserId() {
+  return state.userId;
+}
+
+function getStateStorageKey() {
+  return state.userId ? `${STORAGE_KEY}_${state.userId}` : `${STORAGE_KEY}_anonymous`;
+}
+
+function getWorkoutCategory(type) {
+  return Object.entries(WORKOUT_CATALOG)
+    .find(([, items]) => items.includes(type))?.[0] || 'Kuvvet';
+}
+
+function updateWorkoutTypes() {
+  const categoryInput = document.getElementById('workoutCategoryInput');
+  const typeInput = document.getElementById('workoutTypeInput');
+  if (!categoryInput || !typeInput) return;
+
+  const items = WORKOUT_CATALOG[categoryInput.value] || WORKOUT_CATALOG.Kuvvet;
+  const current = typeInput.value;
+  typeInput.innerHTML = items
+    .map(item => `<option value="${item}">${item}</option>`)
+    .join('');
+
+  if (items.includes(current)) {
+    typeInput.value = current;
+  }
+}
+
+function getWorkoutIntensityFromNote(note = '') {
+  const match = String(note).match(/Zorluk:\s*(Kolay|Orta|Zor)/i);
+  return match ? match[1] : 'Orta';
+}
+
+function getWorkoutCategoryFromNote(note = '', type = '') {
+  const match = String(note).match(/Kategori:\s*([^·]+)/i);
+  return match ? match[1].trim() : getWorkoutCategory(type);
+}
+
+function getCleanWorkoutNote(note = '') {
+  return String(note)
+    .replace(/^Kategori:\s*[^·]+·\s*/i, '')
+    .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*·\s*/i, '')
+    .replace(/^Kategori:\s*[^·]+\s*/i, '')
+    .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*/i, '')
+    .trim();
 }
 
 function todayDisplay() {
@@ -106,21 +209,21 @@ function setSyncDot(cls) {
   dot.className = 'sync-dot ' + cls;
 }
 
-// ── PERSISTENCE ──
+// â”€â”€ PERSISTENCE â”€â”€
 function stateSave() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
     setSyncDot('ok');
   } catch (e) {
     console.error('State kaydedilemedi:', e);
     setSyncDot('err');
-    setStatus('Kayıt hatası: ' + e.message, 'error');
+    setStatus('KayÄ±t hatasÄ±: ' + e.message, 'error');
   }
 }
 
 function stateLoad() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStateStorageKey());
     if (!raw) return;
 
     const savedState = JSON.parse(raw);
@@ -128,9 +231,14 @@ function stateLoad() {
     state = {
       ...state,
       ...savedState,
-      name: 'Mustafa Gürtürk Avcı',
-      goalWeight: 85,
-      milestones: [95, 90, 85],
+      userId: savedState.userId || '',
+      onboarded: Boolean(savedState.onboarded),
+      name: savedState.name || '',
+      startDate: savedState.startDate || START_DATE,
+      startWeight: savedState.startWeight ?? null,
+      startWaist: savedState.startWaist ?? null,
+      goalWeight: Number(savedState.goalWeight || 85),
+      milestones: Array.isArray(savedState.milestones) ? savedState.milestones : [95, 85],
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
@@ -139,11 +247,11 @@ function stateLoad() {
       sleep: Array.isArray(savedState.sleep) ? savedState.sleep : [],
     };
   } catch (e) {
-    console.warn('State yüklenemedi:', e);
+    console.warn('State yÃ¼klenemedi:', e);
   }
 }
 
-// ── THEME ──
+// â”€â”€ THEME â”€â”€
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.theme);
 
@@ -151,7 +259,7 @@ function applyTheme() {
   const themeMeta = document.getElementById('themeColorMeta');
 
   if (themeBtn) {
-    themeBtn.textContent = state.theme === 'dark' ? '☀️' : '🌙';
+    themeBtn.textContent = state.theme === 'dark' ? 'â˜€ï¸' : 'ğŸŒ™';
   }
 
   if (themeMeta) {
@@ -165,7 +273,7 @@ function toggleTheme() {
   stateSave();
 }
 
-// ── NAVIGATION ──
+// â”€â”€ NAVIGATION â”€â”€
 function goPanel(idx) {
   PANELS.forEach((id, i) => {
     const panel = document.getElementById(id);
@@ -193,7 +301,7 @@ function goPanel(idx) {
   });
 }
 
-// ── RENDER ──
+// â”€â”€ RENDER â”€â”€
 function renderHero() {
   const dateEl = document.getElementById('heroDate');
   const nameEl = document.getElementById('heroName');
@@ -205,7 +313,7 @@ function renderHero() {
   }
 
   if (nameEl) {
-    nameEl.textContent = 'Mustafa Gürtürk Avcı';
+    nameEl.textContent = state.name || 'Sporcu';
   }
 }
 
@@ -224,12 +332,15 @@ function renderDashboardWeekLabel() {
   const range = getDashboardWeekRange();
 
   const sleepTotal = getCurrentWeekSleepTotal();
-  const sleepTarget = 49;
-  const sleepPct = Math.min(100, Math.round((sleepTotal / sleepTarget) * 100));
+  const sleepPct = Math.min(100, Math.round((sleepTotal / SLEEP_TARGET) * 100));
 
   const workoutTotal = getCurrentWeekWorkoutTotal();
-  const workoutTarget = 180;
-  const workoutPct = Math.min(100, Math.round((workoutTotal / workoutTarget) * 100));
+  const workoutPct = Math.min(100, Math.round((workoutTotal / WORKOUT_TARGET) * 100));
+  const insight = sleepPct < 70
+    ? 'Uyku toparlanmaya ihtiyaç duyuyor'
+    : workoutPct < 70
+      ? 'Hareket hedefini tamamla'
+      : 'Hafta dengeli ilerliyor';
 
   el.innerHTML = `
     <div class="week-card-head">
@@ -239,15 +350,15 @@ function renderDashboardWeekLabel() {
       </div>
 
       <div class="week-card-pill">
-        ${sleepPct >= 100 || workoutPct >= 100 ? 'İyi gidiyorsun' : 'Devam et'}
+        ${sleepPct >= 100 || workoutPct >= 100 ? 'Ä°yi gidiyorsun' : 'Devam et'}
       </div>
     </div>
 
     <div class="week-metrics">
       <div class="week-metric">
         <div class="week-metric-top">
-          <span>😴 Uyku</span>
-          <strong>${sleepTotal.toFixed(1)} / ${sleepTarget} saat</strong>
+          <span>ğŸ˜´ Uyku</span>
+          <strong>${sleepTotal.toFixed(1)} / ${SLEEP_TARGET} saat</strong>
         </div>
         <div class="week-track">
           <div class="week-fill sleep" style="width:${sleepPct}%"></div>
@@ -256,8 +367,8 @@ function renderDashboardWeekLabel() {
 
       <div class="week-metric">
         <div class="week-metric-top">
-          <span>🏋️ Antreman</span>
-          <strong>${workoutTotal} / ${workoutTarget} dk</strong>
+          <span>ğŸ‹ï¸ Antreman</span>
+          <strong>${workoutTotal} / ${WORKOUT_TARGET} dk</strong>
         </div>
         <div class="week-track">
           <div class="week-fill workout" style="width:${workoutPct}%"></div>
@@ -307,18 +418,18 @@ function renderDashboardGoalCard() {
       <div class="goal-card-layout">
 
         <div class="goal-left">
-          <div class="goal-label">🎯 ŞU ANKİ ARA HEDEF</div>
+          <div class="goal-label">ğŸ¯ ÅU ANKÄ° ARA HEDEF</div>
 
           <div class="goal-big">
             <span>${currentGoal}</span>
             <small>kg</small>
           </div>
 
-          <div class="goal-caption">İlk hedef</div>
+          <div class="goal-caption">Ä°lk hedef</div>
 
           <div class="goal-mini-card">
             <div class="goal-progress-row">
-              <span>İlk hedef ilerlemesi</span>
+              <span>Ä°lk hedef ilerlemesi</span>
               <strong>%${firstPct}</strong>
             </div>
             <div class="goal-track">
@@ -329,7 +440,7 @@ function renderDashboardGoalCard() {
 
         <div class="goal-right">
           <div class="goal-info-card">
-            <span>İlk hedefe kalan</span>
+            <span>Ä°lk hedefe kalan</span>
             <strong>${kgLeft} kg</strong>
           </div>
 
@@ -378,14 +489,14 @@ function renderStats() {
   el.innerHTML = `
     <div class="progress-summary-card">
       <div>
-        <div class="progress-summary-label">⚖️ SON ÖLÇÜM</div>
+        <div class="progress-summary-label">âš–ï¸ SON Ã–LÃ‡ÃœM</div>
         <div class="progress-summary-value">
           ${last.weight} <span>kg</span>
         </div>
       </div>
 
       <div class="progress-summary-side">
-        <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
+        <div class="progress-summary-small">${startDateText} baÅŸlangÄ±cÄ±ndan beri</div>
         <div class="progress-summary-diff ${isGood ? 'good' : 'bad'}">
           ${diffText}
         </div>
@@ -393,6 +504,62 @@ function renderStats() {
     </div>
   `;
 }
+function renderStats() {
+  const el = document.getElementById('dashboardProgressCard');
+  if (!el) return;
+
+  const data = [...(state.measurements || [])].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  if (!data.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        Ä°lk Ã¶lÃ§Ã¼mÃ¼nÃ¼ eklediÄŸinde kilo ve bel kartlarÄ± burada gÃ¶rÃ¼necek.
+      </div>
+    `;
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+  const weightDiff = Number(last.weight - first.weight);
+  const waistDiff = Number((last.waist || 0) - (first.waist || 0));
+  const startDateText = formatDate(first.date);
+
+  el.innerHTML = `
+    <div class="dashboard-measure-grid">
+      <div class="progress-summary-card">
+        <div>
+          <div class="progress-summary-label">Son Kilo</div>
+          <div class="progress-summary-value">${last.weight} <span>kg</span></div>
+        </div>
+        <div class="progress-summary-side">
+          <div class="progress-summary-small">${startDateText} baÅŸlangÄ±cÄ±ndan beri</div>
+          <div class="progress-summary-diff ${weightDiff <= 0 ? 'good' : 'bad'}">
+            ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-summary-card">
+        <div>
+          <div class="progress-summary-label">Son Bel Ã–lÃ§Ã¼mÃ¼</div>
+          <div class="progress-summary-value">${last.waist ?? 'â€”'} <span>cm</span></div>
+        </div>
+        <div class="progress-summary-side">
+          <div class="progress-summary-small">${startDateText} baÅŸlangÄ±cÄ±ndan beri</div>
+          <div class="progress-summary-diff ${waistDiff <= 0 ? 'good' : 'bad'}">
+            ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="week-insight">${insight}</div>
+  `;
+}
+
   function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
   if (!canvas || typeof Chart === 'undefined') return;
@@ -485,7 +652,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          SON KİLO
+          SON KÄ°LO
         </div>
 
         <div style="font-size:24px;font-weight:900;margin-top:6px">
@@ -495,7 +662,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          TOPLAM DEĞİŞİM
+          TOPLAM DEÄÄ°ÅÄ°M
         </div>
 
         <div style="
@@ -510,7 +677,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          İLK ARA HEDEF
+          Ä°LK ARA HEDEF
         </div>
 
         <div style="font-size:24px;font-weight:900;margin-top:6px">
@@ -518,7 +685,7 @@ function renderWeightSummary() {
         </div>
 
         <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          İlk hedefe kalan: ${kgLeft} kg · Final hedef: ${state.goalWeight} kg
+          Ä°lk hedefe kalan: ${kgLeft} kg Â· Final hedef: ${state.goalWeight} kg
         </div>
 
         <div style="
@@ -537,13 +704,13 @@ function renderWeightSummary() {
         </div>
 
         <div style="font-size:12px;color:var(--muted);margin-top:6px">
-          %${progressPct} tamamlandı
+          %${progressPct} tamamlandÄ±
         </div>
       </div>
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          BEL DEĞİŞİMİ
+          BEL DEÄÄ°ÅÄ°MÄ°
         </div>
 
         <div style="
@@ -590,19 +757,19 @@ function renderWeightList() {
 
     const weightDiffHtml = weightDiff
       ? `<span style="color:${weightDiff < 0 ? 'var(--green)' : 'var(--red)'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
-      : '<span style="color:var(--muted)">—</span>';
+      : '<span style="color:var(--muted)">â€”</span>';
 
     const waistDiffHtml = waistDiff
       ? `<span style="color:${waistDiff < 0 ? 'var(--green)' : 'var(--red)'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
-      : '<span style="color:var(--muted)">—</span>';
+      : '<span style="color:var(--muted)">â€”</span>';
 
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
         <div style="flex:1">
           <div style="font-weight:700">
-            ${m.weight ?? '—'} <span style="font-size:12px;color:var(--muted)">kg</span>
-            ·
-            ${m.waist ?? '—'} <span style="font-size:12px;color:var(--muted)">cm bel</span>
+            ${m.weight ?? 'â€”'} <span style="font-size:12px;color:var(--muted)">kg</span>
+            Â·
+            ${m.waist ?? 'â€”'} <span style="font-size:12px;color:var(--muted)">cm bel</span>
           </div>
           <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
             ${formatDate(m.date)}
@@ -616,7 +783,7 @@ function renderWeightList() {
 
         <button onclick="deleteWeight(${index})"
           style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-          aria-label="Sil">✕</button>
+          aria-label="Sil">âœ•</button>
       </div>
     `;
   }).join('');
@@ -626,33 +793,30 @@ function renderNotes() {
   const list = document.getElementById('noteList');
   if (!list) return;
 
-  const notes = Array.isArray(state.notes) ? state.notes : [];
+  const notes = (Array.isArray(state.notes) ? state.notes : [])
+    .map((note, stateIndex) => ({ ...note, stateIndex }))
+    .filter(note => note.date === today());
 
   if (!notes.length) {
     list.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📝</div>
-        Henüz not yok.
+        Bugün için not yok.
       </div>
     `;
     return;
   }
 
-  list.innerHTML = notes.map((note, index) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
-      <div style="flex:1">
-        <div style="font-weight:700">${note.text}</div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-          ${formatDate(note.date)}
-        </div>
+  list.innerHTML = notes.map(note => `
+    <div class="daily-row">
+      <div>
+        <div class="daily-row-title">${note.text}</div>
+        <div class="daily-row-meta">Bugün</div>
       </div>
-      <button onclick="deleteNote(${index})"
-        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-        aria-label="Sil">✕</button>
+      <button onclick="deleteNote(${note.stateIndex})" class="row-delete" aria-label="Sil">×</button>
     </div>
   `).join('');
 }
-
 function getWeekRange(dateValue) {
   const date = new Date(dateValue);
   const day = date.getDay() || 7;
@@ -697,83 +861,46 @@ function renderSleepSummary() {
   if (!el) return;
 
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
+  const todayTotal = sleep
+    .filter(item => item.date === today())
+    .reduce((total, item) => total + Number(item.hours || 0), 0);
+  const weekTotal = getCurrentWeekSleepTotal();
 
-  if (!sleep.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">😴</div>
-        Henüz uyku kaydı yok.
-      </div>
-    `;
-    return;
-  }
-
-  const groups = {};
-
-  sleep.forEach(item => {
-    const range = getWeekRange(item.date);
-    const key = `${range.start}_${range.end}`;
-
-    if (!groups[key]) {
-      groups[key] = {
-        start: range.start,
-        end: range.end,
-        total: 0,
-        count: 0,
-      };
-    }
-
-    groups[key].total += Number(item.hours || 0);
-    groups[key].count += 1;
-  });
-
-  el.innerHTML = Object.values(groups)
-    .sort((a, b) => b.start.localeCompare(a.start))
-    .map(week => {
-      const avg = (week.total / week.count).toFixed(1);
-
-      return `
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <div style="font-weight:700">
-            ${formatDate(week.start)} - ${formatDate(week.end)}
-          </div>
-
-          <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-            Toplam: ${week.total.toFixed(1)} saat · Ortalama: ${avg} saat · Kayıt: ${week.count} gün
-          </div>
-        </div>
-      `;
-    })
-    .join('');
+  el.innerHTML = `
+    <div class="daily-stat-line">
+      <span>Bugün</span>
+      <strong>${todayTotal.toFixed(1)} saat</strong>
+    </div>
+    <div class="daily-stat-line muted">
+      <span>Bu hafta</span>
+      <strong>${weekTotal.toFixed(1)} / 49 saat</strong>
+    </div>
+  `;
 }
-
 function renderSleepList() {
   const list = document.getElementById('sleepList');
   if (!list) return;
 
-  const sleep = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const sleep = sorted
+    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
+    .filter(item => item.date === today());
 
   if (!sleep.length) {
-    list.innerHTML = '';
+    list.innerHTML = '<div class="empty-state compact">Bugün uyku kaydı yok.</div>';
     return;
   }
 
-  list.innerHTML = sleep.map((item, index) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
-      <div style="flex:1">
-        <div style="font-weight:700">${Number(item.hours).toFixed(1)} saat</div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-          ${formatDate(item.date)}
-        </div>
+  list.innerHTML = sleep.map(item => `
+    <div class="daily-row">
+      <div>
+        <div class="daily-row-title">${Number(item.hours).toFixed(1)} saat</div>
+        <div class="daily-row-meta">Bugün</div>
       </div>
-
-      <button onclick="deleteSleep(${index})"
-        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-        aria-label="Sil">✕</button>
+      <button onclick="deleteSleep(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
     </div>
   `).join('');
 }
-
 function getCurrentWeekWorkoutTotal() {
   const workouts = Array.isArray(state.workouts) ? state.workouts : [];
   const range = getDashboardWeekRange();
@@ -788,94 +915,46 @@ function renderWorkoutSummary() {
   if (!el) return;
 
   const workouts = Array.isArray(state.workouts) ? state.workouts : [];
+  const todayTotal = workouts
+    .filter(item => item.date === today())
+    .reduce((total, item) => total + Number(item.duration || 0), 0);
+  const weekTotal = getCurrentWeekWorkoutTotal();
 
-  if (!workouts.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🏋️</div>
-        Henüz antreman kaydı yok.
-      </div>
-    `;
-    return;
-  }
-
-  const groups = {};
-
-  workouts.forEach(item => {
-    const range = getWeekRange(item.date);
-    const key = `${range.start}_${range.end}`;
-
-    if (!groups[key]) {
-      groups[key] = {
-        start: range.start,
-        end: range.end,
-        total: 0,
-        count: 0,
-        types: {},
-      };
-    }
-
-    groups[key].total += Number(item.duration || 0);
-    groups[key].count += 1;
-    groups[key].types[item.type] = (groups[key].types[item.type] || 0) + 1;
-  });
-
-  el.innerHTML = Object.values(groups)
-    .sort((a, b) => b.start.localeCompare(a.start))
-    .map(week => {
-      const typeText = Object.entries(week.types)
-        .map(([type, count]) => `${type}: ${count}`)
-        .join(' · ');
-
-      return `
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <div style="font-weight:700">
-            ${formatDate(week.start)} - ${formatDate(week.end)}
-          </div>
-
-          <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-            Toplam: ${week.total} dk · Kayıt: ${week.count}
-          </div>
-
-          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:4px">
-            ${typeText}
-          </div>
-        </div>
-      `;
-    })
-    .join('');
+  el.innerHTML = `
+    <div class="daily-stat-line">
+      <span>Bugün</span>
+      <strong>${todayTotal} dk</strong>
+    </div>
+    <div class="daily-stat-line muted">
+      <span>Bu hafta</span>
+      <strong>${weekTotal} / 180 dk</strong>
+    </div>
+  `;
 }
-
 function renderWorkoutList() {
   const list = document.getElementById('workoutList');
   if (!list) return;
 
-  const workouts = [...(state.workouts || [])].sort((a, b) =>
-    b.date.localeCompare(a.date)
-  );
+  const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const workouts = sorted
+    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
+    .filter(item => item.date === today());
 
   if (!workouts.length) {
-    list.innerHTML = '';
+    list.innerHTML = '<div class="empty-state compact">Bugün antrenman kaydı yok.</div>';
     return;
   }
 
-  list.innerHTML = workouts.map((item, index) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
-      <div style="flex:1">
-        <div style="font-weight:700">${item.type} · ${Number(item.duration)} dk</div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-          ${formatDate(item.date)}
-          ${item.note ? ` · ${item.note}` : ''}
-        </div>
+  list.innerHTML = workouts.map(item => `
+    <div class="daily-row">
+      <div>
+        <div class="daily-row-title">${item.type} · ${Number(item.duration)} dk</div>
+        <div class="daily-row-meta">${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
-
-      <button onclick="deleteWorkout(${index})"
-        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-        aria-label="Sil">✕</button>
+      <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
     </div>
   `).join('');
 }
-
 function getWeeklyProgressData() {
   const weeks = {};
 
@@ -915,75 +994,77 @@ function getWeeklyProgressData() {
     .sort((a, b) => a.start.localeCompare(b.start));
 }
 
+function getCurrentWeekWorkoutCategories() {
+  const range = getDashboardWeekRange();
+  const categories = {};
+
+  (state.workouts || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      const category = getWorkoutCategoryFromNote(item.note, item.type);
+      categories[category] = (categories[category] || 0) + Number(item.duration || 0);
+    });
+
+  return Object.entries(categories)
+    .sort((a, b) => b[1] - a[1]);
+}
+
 function renderProgressSummary() {
   const el = document.getElementById('progressSummary');
   if (!el) return;
 
-  const data = getWeeklyProgressData();
+  const weekly = getWeeklyProgressData();
+  const current = weekly[weekly.length - 1] || { sleep: 0, workouts: 0 };
+  const prev = weekly[weekly.length - 2];
+  const measurements = [...(state.measurements || [])].sort((a, b) => a.date.localeCompare(b.date));
+  const first = measurements[0];
+  const last = measurements[measurements.length - 1];
+  const previousMeasure = measurements[measurements.length - 2];
 
-  if (!data.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📈</div>
-        Henüz progress verisi yok.
-      </div>
-    `;
-    return;
-  }
-
-  const current = data[data.length - 1];
-  const prev = data[data.length - 2];
-
-  const sleepTarget = 49;
-  const workoutTarget = 180;
-
-  const sleepPct = Math.min(100, Math.round((current.sleep / sleepTarget) * 100));
-  const workoutPct = Math.min(100, Math.round((current.workouts / workoutTarget) * 100));
-
+  const sleepPct = Math.min(100, Math.round((current.sleep / SLEEP_TARGET) * 100));
+  const workoutPct = Math.min(100, Math.round((current.workouts / WORKOUT_TARGET) * 100));
   const sleepDiff = prev ? current.sleep - prev.sleep : 0;
   const workoutDiff = prev ? current.workouts - prev.workouts : 0;
+  const weightDiff = first && last ? last.weight - first.weight : 0;
+  const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
+  const waistDiff = first && last ? last.waist - first.waist : 0;
+  const lastWaistDiff = previousMeasure && last ? last.waist - previousMeasure.waist : 0;
+  const categories = getCurrentWeekWorkoutCategories();
+  const categoryText = categories.length
+    ? categories.map(([category, minutes]) => `${category}: ${minutes} dk`).join(' · ')
+    : 'Bu hafta kategori verisi yok';
 
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:14px">
-
-      <div style="border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--card)">
-        <div style="font-size:24px">😴</div>
-        <div style="font-weight:800;margin-top:6px">Uyku</div>
-        <div style="font-size:22px;font-weight:900;margin-top:8px">
-          ${current.sleep.toFixed(1)} / ${sleepTarget} saat
-        </div>
-        <div style="height:8px;background:var(--border);border-radius:999px;margin-top:10px;overflow:hidden">
-          <div style="height:100%;width:${sleepPct}%;background:var(--blue);border-radius:999px"></div>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          ${sleepPct >= 100 ? 'Hedef tamamlandı ✅' : `%${sleepPct} tamamlandı`}
-        </div>
-        <div style="font-size:12px;color:${sleepDiff >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:4px">
-          Geçen haftaya göre ${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat
-        </div>
+    <div class="progress-grid">
+      <div class="progress-metric-card">
+        <span>Uyku</span>
+        <strong>${current.sleep.toFixed(1)} saat</strong>
+        <div class="metric-track"><i style="width:${sleepPct}%"></i></div>
+        <small>${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / geçen hafta</small>
       </div>
 
-      <div style="border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--card)">
-        <div style="font-size:24px">🏋️</div>
-        <div style="font-weight:800;margin-top:6px">Antreman</div>
-        <div style="font-size:22px;font-weight:900;margin-top:8px">
-          ${current.workouts} / ${workoutTarget} dk
-        </div>
-        <div style="height:8px;background:var(--border);border-radius:999px;margin-top:10px;overflow:hidden">
-          <div style="height:100%;width:${workoutPct}%;background:var(--blue);border-radius:999px"></div>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          ${workoutPct >= 100 ? 'Hedef tamamlandı ✅' : `%${workoutPct} tamamlandı`}
-        </div>
-        <div style="font-size:12px;color:${workoutDiff >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:4px">
-          Geçen haftaya göre ${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk
-        </div>
+      <div class="progress-metric-card">
+        <span>Antrenman</span>
+        <strong>${current.workouts} dk</strong>
+        <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
+        <small>${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk / geçen hafta</small>
+        <small>${categoryText}</small>
       </div>
 
+      <div class="progress-metric-card">
+        <span>Kilo</span>
+        <strong>${last ? `${last.weight} kg` : '—'}</strong>
+        <small>Toplam: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg · Son: ${lastWeightDiff > 0 ? '+' : ''}${lastWeightDiff.toFixed(1)} kg</small>
+      </div>
+
+      <div class="progress-metric-card">
+        <span>Bel</span>
+        <strong>${last ? `${last.waist} cm` : '—'}</strong>
+        <small>Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm</small>
+      </div>
     </div>
   `;
 }
-
 function renderProgressCharts() {
   const weekly = getWeeklyProgressData();
 
@@ -1145,6 +1226,7 @@ function renderAll() {
   renderDashboardWeekLabel();
   renderDashboardGoalCard();
   renderStats();
+  renderMeasurementChart();
   renderWeightSummary();
   renderWeightList();
   renderNotes();
@@ -1158,17 +1240,17 @@ function renderAll() {
   applyTheme();
 }
 
-// ── SUPABASE DATA ──
+// â”€â”€ SUPABASE DATA â”€â”€
 async function loadMeasurementsFromSupabase() {
   const { data, error } = await db
     .from('measurements')
     .select('*')
-    .eq('user_id', 'demo-user')
+    .eq('user_id', getUserId())
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Supabase load hatası:', error);
-    setStatus('Cloud veri yüklenemedi', 'error');
+    console.error('Supabase load hatasÄ±:', error);
+    setStatus('Cloud veri yÃ¼klenemedi', 'error');
     return;
   }
 
@@ -1180,19 +1262,19 @@ async function loadMeasurementsFromSupabase() {
 
   stateSave();
   renderAll();
-  console.log('Supabase veriler yüklendi:', data);
+  console.log('Supabase veriler yÃ¼klendi:', data);
 }
 
 async function loadSleepFromSupabase() {
   const { data, error } = await db
     .from('sleep_logs')
     .select('*')
-    .eq('user_id', 'demo-user')
+    .eq('user_id', getUserId())
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Sleep load hatası:', error);
-    setStatus('Uyku verileri yüklenemedi', 'error');
+    console.error('Sleep load hatasÄ±:', error);
+    setStatus('Uyku verileri yÃ¼klenemedi', 'error');
     return;
   }
 
@@ -1210,12 +1292,12 @@ async function loadWorkoutsFromSupabase() {
   const { data, error } = await db
     .from('workout_logs')
     .select('*')
-    .eq('user_id', 'demo-user')
+    .eq('user_id', getUserId())
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Workout load hatası:', error);
-    setStatus('Antreman verileri yüklenemedi', 'error');
+    console.error('Workout load hatasÄ±:', error);
+    setStatus('Antreman verileri yÃ¼klenemedi', 'error');
     return;
   }
 
@@ -1235,12 +1317,12 @@ async function loadNotesFromSupabase() {
   const { data, error } = await db
     .from('notes')
     .select('*')
-    .eq('user_id', 'demo-user')
+    .eq('user_id', getUserId())
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Notes load hatası:', error);
-    setStatus('Notlar yüklenemedi', 'error');
+    console.error('Notes load hatasÄ±:', error);
+    setStatus('Notlar yÃ¼klenemedi', 'error');
     return;
   }
 
@@ -1255,20 +1337,79 @@ async function loadNotesFromSupabase() {
 }
 
 function loadAllCloudData() {
+  if (!state.onboarded) return;
+
   loadMeasurementsFromSupabase();
   loadSleepFromSupabase();
   loadWorkoutsFromSupabase();
   loadNotesFromSupabase();
 
 }
-// ── ACTIONS ──
+// â”€â”€ ACTIONS â”€â”€
+async function saveMeasurementFromForm() {
+  const dateInput = document.getElementById('measureDateInput');
+  const weightInput = document.getElementById('measureWeightInput');
+  const waistInput = document.getElementById('measureWaistInput');
+
+  if (!dateInput || !weightInput || !waistInput) return;
+
+  const date = dateInput.value || getSuggestedMeasureDate();
+  const weight = parseFloat(weightInput.value);
+  const waist = parseFloat(waistInput.value);
+
+  if (!date || Number.isNaN(weight) || weight <= 0) {
+    alert('GeÃ§erli bir kilo gir.');
+    return;
+  }
+
+  if (Number.isNaN(waist) || waist <= 0) {
+    alert('GeÃ§erli bir bel Ã¶lÃ§Ã¼mÃ¼ gir.');
+    return;
+  }
+
+  if (new Date(date).getDay() !== WEEKLY_MEASURE_DAY) {
+    const ok = confirm('Ã–lÃ§Ã¼mler pazar gÃ¼nÃ¼ alÄ±nacak ÅŸekilde planlandÄ±. Yine de bu tarihe kayÄ±t eklemek ister misin?');
+    if (!ok) return;
+  }
+
+  const payload = {
+    user_id: getUserId(),
+    date,
+    weight: parseFloat(weight.toFixed(1)),
+    waist: parseFloat(waist.toFixed(1)),
+  };
+
+  const { error } = await db
+    .from('measurements')
+    .upsert(payload, { onConflict: 'user_id,date' });
+
+  if (error) {
+    console.error('Measurement save error:', error);
+    alert('Ã–lÃ§Ã¼m cloud kayÄ±t hatasÄ±: ' + error.message);
+    setStatus('Cloud kayÄ±t hatasÄ±', 'error');
+    return;
+  }
+
+  await loadMeasurementsFromSupabase();
+
+  weightInput.value = '';
+  waistInput.value = '';
+  dateInput.value = getSuggestedMeasureDate();
+  setStatus('Ã–lÃ§Ã¼m kaydedildi âœ“', 'ok');
+}
+
 async function addMeasurement() {
-  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
+  if (document.getElementById('measureDateInput')) {
+    await saveMeasurementFromForm();
+    return;
+  }
+
+  const dateInput = prompt('Ã–lÃ§Ã¼m tarihi gir (gg/aa/yyyy):', todayDisplay());
   if (!dateInput) return;
 
   const date = parseDisplayDate(dateInput);
   if (!date) {
-    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
+    alert('Tarih formatÄ± hatalÄ±. Ã–rnek: 27/04/2026 veya 27.04.2026');
     return;
   }
 
@@ -1277,21 +1418,21 @@ async function addMeasurement() {
   const alreadyExists = state.measurements.some(item => item.date === date);
 
   if (alreadyExists) {
-    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
+    alert('Bu tarih iÃ§in zaten kayÄ±t var. Ã–nce mevcut kaydÄ± silmelisin.');
     return;
   }
 
   const weightInput = prompt('Kilonu gir (kg):');
   if (!weightInput || isNaN(parseFloat(weightInput))) return;
 
-  const waistInput = prompt('Bel ölçünü gir (cm):');
+  const waistInput = prompt('Bel Ã¶lÃ§Ã¼nÃ¼ gir (cm):');
   if (!waistInput || isNaN(parseFloat(waistInput))) return;
 
   const measurement = {
     date,
     weight: parseFloat(parseFloat(weightInput).toFixed(1)),
     waist: parseFloat(parseFloat(waistInput).toFixed(1)),
-    user_id: 'demo-user',
+    user_id: getUserId(),
   };
 
   const { data, error } = await db
@@ -1300,9 +1441,9 @@ async function addMeasurement() {
     .select();
 
   if (error) {
-    console.error('Supabase insert hatası:', error);
-    alert('Supabase kayıt hatası: ' + error.message);
-    setStatus('Cloud kayıt hatası', 'error');
+    console.error('Supabase insert hatasÄ±:', error);
+    alert('Supabase kayÄ±t hatasÄ±: ' + error.message);
+    setStatus('Cloud kayÄ±t hatasÄ±', 'error');
     return;
   }
 
@@ -1314,13 +1455,13 @@ async function addMeasurement() {
 
   stateSave();
   renderAll();
-  setStatus('Ölçüm eklendi ✓', 'ok');
+  setStatus('Ã–lÃ§Ã¼m eklendi âœ“', 'ok');
 
-  console.log('Supabase kayıt başarılı:', data);
+  console.log('Supabase kayÄ±t baÅŸarÄ±lÄ±:', data);
 }
 
 async function deleteWeight(sortedIdx) {
-  if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
+  if (!confirm('Bu Ã¶lÃ§Ã¼mÃ¼ silmek istediÄŸinden emin misin?')) return;
 
   const sorted = [...state.measurements]
     .map((item, originalIndex) => ({ ...item, originalIndex }))
@@ -1333,14 +1474,14 @@ async function deleteWeight(sortedIdx) {
   const { error } = await db
     .from('measurements')
     .delete()
-    .eq('user_id', 'demo-user')
+    .eq('user_id', getUserId())
     .eq('date', target.date)
     .eq('weight', target.weight)
     .eq('waist', target.waist);
 
   if (error) {
-    console.error('Supabase delete hatası:', error);
-    alert('Cloud silme hatası: ' + error.message);
+    console.error('Supabase delete hatasÄ±:', error);
+    alert('Cloud silme hatasÄ±: ' + error.message);
     return;
   }
 
@@ -1348,11 +1489,11 @@ async function deleteWeight(sortedIdx) {
 
   stateSave();
   renderAll();
-  setStatus('Ölçüm silindi ✓', 'ok');
+  setStatus('Ã–lÃ§Ã¼m silindi âœ“', 'ok');
 }
 
 async function deleteNote(index) {
-  if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
+  if (!confirm('Bu notu silmek istediÄŸinden emin misin?')) return;
 
   const target = state.notes[index];
   if (!target) return;
@@ -1363,17 +1504,17 @@ async function deleteNote(index) {
     .eq('id', target.id);
 
   if (error) {
-    console.error('Note silme hatası:', error);
-    alert('Not cloud silme hatası: ' + error.message);
+    console.error('Note silme hatasÄ±:', error);
+    alert('Not cloud silme hatasÄ±: ' + error.message);
     return;
   }
 
   await loadNotesFromSupabase();
-  setStatus('Not silindi ✓', 'ok');
+  setStatus('Not silindi âœ“', 'ok');
 }
 
 async function deleteSleep(sortedIdx) {
-  if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
+  if (!confirm('Bu uyku kaydÄ±nÄ± silmek istediÄŸinden emin misin?')) return;
 
   const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
   const target = sorted[sortedIdx];
@@ -1385,36 +1526,38 @@ async function deleteSleep(sortedIdx) {
     .eq('id', target.id);
 
   if (error) {
-    console.error('Sleep silme hatası:', error);
-    alert('Uyku cloud silme hatası: ' + error.message);
+    console.error('Sleep silme hatasÄ±:', error);
+    alert('Uyku cloud silme hatasÄ±: ' + error.message);
     return;
   }
 
   await loadSleepFromSupabase();
-  setStatus('Uyku kaydı silindi ✓', 'ok');
+  setStatus('Uyku kaydÄ± silindi âœ“', 'ok');
 }
 
 async function addNote() {
-  const text = prompt('Not gir:');
+  const noteInput = document.getElementById('noteInput');
+  const text = noteInput ? noteInput.value : prompt('Not gir:');
   if (!text || !text.trim()) return;
 
   const { error } = await db
     .from('notes')
     .insert([{
-      user_id: 'demo-user',
+      user_id: getUserId(),
       date: today(),
       text: text.trim(),
     }]);
 
   if (error) {
-    console.error('Note kayıt hatası:', error);
-    alert('Not cloud kayıt hatası: ' + error.message);
+    console.error('Note kayÄ±t hatasÄ±:', error);
+    alert('Not cloud kayÄ±t hatasÄ±: ' + error.message);
     return;
   }
 
   await loadNotesFromSupabase();
 
-  setStatus('Not eklendi ✓', 'ok');
+  setStatus('Not eklendi âœ“', 'ok');
+  if (noteInput) noteInput.value = '';
 }
 
 async function saveSleep() {
@@ -1427,12 +1570,12 @@ async function saveSleep() {
   const hours = parseFloat(hourInput.value);
 
   if (!hours || hours <= 0) {
-    alert('Geçerli bir uyku saati gir');
+    alert('GeÃ§erli bir uyku saati gir');
     return;
   }
 
   const payload = {
-    user_id: 'demo-user',
+    user_id: getUserId(),
     date,
     hours: parseFloat(hours.toFixed(1)),
   };
@@ -1442,40 +1585,47 @@ async function saveSleep() {
     .upsert(payload, { onConflict: 'user_id,date' });
 
   if (error) {
-    console.error('Sleep kayıt hatası:', error);
-    alert('Uyku cloud kayıt hatası: ' + error.message);
+    console.error('Sleep kayÄ±t hatasÄ±:', error);
+    alert('Uyku cloud kayÄ±t hatasÄ±: ' + error.message);
     return;
   }
 
   await loadSleepFromSupabase();
 
-  setStatus('Uyku kaydedildi ✓', 'ok');
+  setStatus('Uyku kaydedildi âœ“', 'ok');
   hourInput.value = '';
   dateInput.value = today();
 }
 
 async function saveWorkout() {
   const dateInput = document.getElementById('workoutDateInput');
+  const categoryInput = document.getElementById('workoutCategoryInput');
   const typeInput = document.getElementById('workoutTypeInput');
   const durationInput = document.getElementById('workoutDurationInput');
+  const intensityInput = document.getElementById('workoutIntensityInput');
   const noteInput = document.getElementById('workoutNoteInput');
 
   if (!dateInput || !typeInput || !durationInput) return;
 
   const date = dateInput.value || today();
   const type = typeInput.value;
+  const category = categoryInput ? categoryInput.value : getWorkoutCategory(type);
+  const intensity = intensityInput ? intensityInput.value : 'Orta';
   const duration = parseInt(durationInput.value, 10);
-  const note = noteInput ? noteInput.value.trim() : '';
+  const freeNote = noteInput ? noteInput.value.trim() : '';
+  const note = [`Kategori: ${category}`, `Zorluk: ${intensity}`, freeNote]
+    .filter(Boolean)
+    .join(' · ');
 
   if (!duration || duration <= 0) {
-    alert('Geçerli bir antreman süresi gir');
+    alert('GeÃ§erli bir antreman sÃ¼resi gir');
     return;
   }
 
   const { error } = await db
     .from('workout_logs')
     .insert([{
-      user_id: 'demo-user',
+      user_id: getUserId(),
       date,
       type,
       duration,
@@ -1483,21 +1633,21 @@ async function saveWorkout() {
     }]);
 
   if (error) {
-    console.error('Workout kayıt hatası:', error);
-    alert('Antreman cloud kayıt hatası: ' + error.message);
+    console.error('Workout kayÄ±t hatasÄ±:', error);
+    alert('Antreman cloud kayÄ±t hatasÄ±: ' + error.message);
     return;
   }
 
   await loadWorkoutsFromSupabase();
 
-  setStatus('Antreman kaydedildi ✓', 'ok');
+  setStatus('Antreman kaydedildi âœ“', 'ok');
   durationInput.value = '';
   if (noteInput) noteInput.value = '';
   dateInput.value = today();
 }
 
 async function deleteWorkout(sortedIdx) {
-  if (!confirm('Bu antreman kaydını silmek istediğinden emin misin?')) return;
+  if (!confirm('Bu antreman kaydÄ±nÄ± silmek istediÄŸinden emin misin?')) return;
 
   const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
   const target = sorted[sortedIdx];
@@ -1509,41 +1659,289 @@ async function deleteWorkout(sortedIdx) {
     .eq('id', target.id);
 
   if (error) {
-    console.error('Workout silme hatası:', error);
-    alert('Antreman cloud silme hatası: ' + error.message);
+    console.error('Workout silme hatasÄ±:', error);
+    alert('Antreman cloud silme hatasÄ±: ' + error.message);
     return;
   }
 
   await loadWorkoutsFromSupabase();
-  setStatus('Antreman kaydı silindi ✓', 'ok');
+  setStatus('Antreman kaydÄ± silindi âœ“', 'ok');
 }
 
 function editName() {
-  const newName = prompt('İsmini gir:', state.name || 'Sporcu');
+  const newName = prompt('Ä°smini gir:', state.name || 'Sporcu');
   if (!newName) return;
 
   state.name = newName.trim();
   stateSave();
   renderAll();
-  setStatus('İsim güncellendi ✓', 'ok');
+  setStatus('Ä°sim gÃ¼ncellendi âœ“', 'ok');
 }
 
-// ── ONLINE STATUS ──
+function showAuth() {
+  if (document.getElementById('authModal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'authModal';
+  modal.className = 'onboarding-modal';
+  modal.innerHTML = `
+    <div class="onboarding-card auth-card">
+      <div class="onboarding-kicker">FitTracker hesabı</div>
+      <h2 id="authTitle">Giriş yap</h2>
+      <p id="authCopy">Web ve iPhone PWA aynı hesapla senkron çalışır.</p>
+
+      <div class="auth-tabs">
+        <button class="active" id="authSignInTab" type="button">Giriş</button>
+        <button id="authSignUpTab" type="button">Kayıt</button>
+      </div>
+
+      <div class="onboarding-grid single">
+        <label>
+          E-posta
+          <input id="authEmail" type="email" autocomplete="email" placeholder="ornek@mail.com" />
+        </label>
+        <label>
+          Şifre
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="En az 6 karakter" />
+        </label>
+      </div>
+
+      <button class="btn onboarding-submit" id="authSubmit">Giriş yap</button>
+      <button class="auth-secondary" id="authResetPassword" type="button">Şifremi unuttum</button>
+      <div class="auth-message" id="authMessage"></div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  document.getElementById('authSignInTab')?.addEventListener('click', () => setAuthMode('signIn'));
+  document.getElementById('authSignUpTab')?.addEventListener('click', () => setAuthMode('signUp'));
+  document.getElementById('authSubmit')?.addEventListener('click', submitAuth);
+  document.getElementById('authResetPassword')?.addEventListener('click', resetPassword);
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const signInTab = document.getElementById('authSignInTab');
+  const signUpTab = document.getElementById('authSignUpTab');
+  const title = document.getElementById('authTitle');
+  const copy = document.getElementById('authCopy');
+  const submit = document.getElementById('authSubmit');
+
+  signInTab?.classList.toggle('active', mode === 'signIn');
+  signUpTab?.classList.toggle('active', mode === 'signUp');
+
+  if (title) title.textContent = mode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur';
+  if (copy) copy.textContent = mode === 'signIn'
+    ? 'Web ve iPhone PWA aynı hesapla senkron çalışır.'
+    : 'Bir hesap oluştur, sonra iPhone’da aynı hesapla giriş yap.';
+  if (submit) submit.textContent = mode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur';
+}
+
+function setAuthMessage(message, isError = false) {
+  const el = document.getElementById('authMessage');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('error', isError);
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail')?.value.trim();
+  const password = document.getElementById('authPassword')?.value || '';
+
+  if (!email || password.length < 6) {
+    setAuthMessage('E-posta ve en az 6 karakterli şifre gir.', true);
+    return;
+  }
+
+  setAuthMessage('İşleniyor...');
+
+  const result = authMode === 'signIn'
+    ? await db.auth.signInWithPassword({ email, password })
+    : await db.auth.signUp({ email, password });
+
+  if (result.error) {
+    setAuthMessage(result.error.message, true);
+    return;
+  }
+
+  if (!result.data.session) {
+    setAuthMessage('Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutunu kontrol et.');
+    return;
+  }
+
+  await continueWithSession(result.data.session);
+}
+
+async function resetPassword() {
+  const email = document.getElementById('authEmail')?.value.trim();
+  if (!email) {
+    setAuthMessage('Şifre sıfırlamak için e-posta gir.', true);
+    return;
+  }
+
+  const { error } = await db.auth.resetPasswordForEmail(email);
+  setAuthMessage(error ? error.message : 'Şifre sıfırlama bağlantısı gönderildi.', Boolean(error));
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  state = {
+    ...state,
+    userId: '',
+    onboarded: false,
+    name: '',
+    measurements: [],
+    workouts: [],
+    notes: [],
+    sleep: [],
+  };
+  document.getElementById('authModal')?.remove();
+  document.getElementById('onboardingModal')?.remove();
+  renderAll();
+  showAuth();
+}
+
+async function continueWithSession(session) {
+  if (!session?.user?.id) {
+    showAuth();
+    return;
+  }
+
+  state.userId = session.user.id;
+  stateLoad();
+  state.userId = session.user.id;
+  stateSave();
+  document.getElementById('authModal')?.remove();
+
+  renderAll();
+  updateOnlineStatus();
+
+  if (!state.onboarded) {
+    setStatus('Başlangıç kurulumu bekleniyor', '');
+    showOnboarding();
+    return;
+  }
+
+  await loadAllCloudData();
+  setStatus('Senkron aktif', 'ok');
+}
+
+function showOnboarding() {
+  if (document.getElementById('onboardingModal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'onboardingModal';
+  modal.className = 'onboarding-modal';
+  modal.innerHTML = `
+    <div class="onboarding-card">
+      <div class="onboarding-kicker">FitTracker kurulumu</div>
+      <h2>Başlangıç bilgilerini ekle</h2>
+      <p>Bu bilgiler hedef kartlarını, haftalık ölçüm akışını ve ilerleme grafiklerini kişiselleştirir.</p>
+
+      <div class="onboarding-grid">
+        <label>
+          İsim
+          <input id="onboardName" type="text" placeholder="Adın" />
+        </label>
+        <label>
+          Başlangıç tarihi
+          <input id="onboardStartDate" type="date" value="${START_DATE}" />
+        </label>
+        <label>
+          Başlangıç kilosu
+          <input id="onboardStartWeight" type="number" step="0.1" placeholder="kg" />
+        </label>
+        <label>
+          Başlangıç bel ölçümü
+          <input id="onboardStartWaist" type="number" step="0.1" placeholder="cm" />
+        </label>
+        <label>
+          İlk hedef kilo
+          <input id="onboardFirstGoal" type="number" step="0.1" placeholder="örn: 95" />
+        </label>
+        <label>
+          Ana hedef kilo
+          <input id="onboardGoalWeight" type="number" step="0.1" placeholder="örn: 85" />
+        </label>
+      </div>
+
+      <button class="btn onboarding-submit" id="onboardSubmit">Başla</button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  document.getElementById('onboardSubmit')?.addEventListener('click', completeOnboarding);
+}
+
+async function completeOnboarding() {
+  const name = document.getElementById('onboardName')?.value.trim();
+  const startDate = document.getElementById('onboardStartDate')?.value || START_DATE;
+  const startWeight = parseFloat(document.getElementById('onboardStartWeight')?.value || '');
+  const startWaist = parseFloat(document.getElementById('onboardStartWaist')?.value || '');
+  const firstGoal = parseFloat(document.getElementById('onboardFirstGoal')?.value || '');
+  const goalWeight = parseFloat(document.getElementById('onboardGoalWeight')?.value || '');
+
+  if (!name || Number.isNaN(startWeight) || Number.isNaN(startWaist) || Number.isNaN(firstGoal) || Number.isNaN(goalWeight)) {
+    alert('Lütfen tüm başlangıç bilgilerini doldur.');
+    return;
+  }
+
+  state.userId = state.userId || `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  state.onboarded = true;
+  state.name = name;
+  state.startDate = startDate;
+  state.startWeight = parseFloat(startWeight.toFixed(1));
+  state.startWaist = parseFloat(startWaist.toFixed(1));
+  state.goalWeight = parseFloat(goalWeight.toFixed(1));
+  state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
+  state.measurements = [{
+    date: startDate,
+    weight: state.startWeight,
+    waist: state.startWaist,
+  }];
+  state.sleep = [];
+  state.workouts = [];
+  state.notes = [];
+  state.weights = [];
+  state.nutrition = [];
+
+  stateSave();
+
+  const { error } = await db
+    .from('measurements')
+    .upsert([{
+      user_id: getUserId(),
+      date: startDate,
+      weight: state.startWeight,
+      waist: state.startWaist,
+    }], { onConflict: 'user_id,date' });
+
+  if (error) {
+    console.warn('İlk ölçüm cloud kaydı yapılamadı:', error);
+  }
+
+  document.getElementById('onboardingModal')?.remove();
+  renderAll();
+  loadAllCloudData();
+  setStatus('Kurulum tamamlandı ✓', 'ok');
+}
+
+// â”€â”€ ONLINE STATUS â”€â”€
 function updateOnlineStatus() {
   const notice = document.getElementById('offlineNotice');
 
   if (navigator.onLine) {
     if (notice) notice.classList.remove('visible');
-    setStatus('Çevrimiçi — cloud senkron aktif', 'ok');
+    setStatus('Ã‡evrimiÃ§i â€” cloud senkron aktif', 'ok');
     setSyncDot('ok');
   } else {
     if (notice) notice.classList.add('visible');
-    setStatus('Çevrimdışı — veriler yerel olarak saklanır', 'error');
+    setStatus('Ã‡evrimdÄ±ÅŸÄ± â€” veriler yerel olarak saklanÄ±r', 'error');
     setSyncDot('err');
   }
 }
 
-// ── PWA INSTALL ──
+// â”€â”€ PWA INSTALL â”€â”€
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', e => {
@@ -1565,22 +1963,32 @@ function installApp() {
     if (banner) banner.classList.remove('visible');
 
     if (outcome === 'accepted') {
-      setStatus('Uygulama yüklendi ✓', 'ok');
+      setStatus('Uygulama yÃ¼klendi âœ“', 'ok');
     }
   });
 }
 
-// ── INIT ──
-function init() {
-  stateLoad();
-  renderAll();
-  updateOnlineStatus();
-  setStatus('Hazır', 'ok');
+// â”€â”€ INIT â”€â”€
+async function init() {
+  const { data } = await db.auth.getSession();
 
-  loadAllCloudData();
+  if (!data.session) {
+    renderAll();
+    updateOnlineStatus();
+    setStatus('Giriş bekleniyor', '');
+    showAuth();
+  } else {
+    await continueWithSession(data.session);
+  }
 
-  document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user?.id && session.user.id !== state.userId) {
+      continueWithSession(session);
+    }
+  });
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && state.onboarded) {
     loadAllCloudData();
   }
 });
@@ -1594,11 +2002,40 @@ if (sleepDateInput) sleepDateInput.value = today();
   const workoutDateInput = document.getElementById('workoutDateInput');
 if (workoutDateInput) workoutDateInput.value = today();
 
+  const measureDateInput = document.getElementById('measureDateInput');
+if (measureDateInput) measureDateInput.value = getSuggestedMeasureDate();
+
 const workoutBtn = document.getElementById('saveWorkoutBtn');
 if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
 
+const measurementBtn = document.getElementById('saveMeasurementBtn');
+if (measurementBtn) measurementBtn.addEventListener('click', saveMeasurementFromForm);
+
+const workoutCategoryInput = document.getElementById('workoutCategoryInput');
+if (workoutCategoryInput) {
+  workoutCategoryInput.addEventListener('change', updateWorkoutTypes);
+  updateWorkoutTypes();
+}
+
+document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById('sleepInput');
+    if (input) input.value = btn.dataset.sleepHours;
+  });
+});
+
+document.querySelectorAll('[data-workout-minutes]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById('workoutDurationInput');
+    if (input) input.value = btn.dataset.workoutMinutes;
+  });
+});
+
+const signOutBtn = document.getElementById('signOutBtn');
+if (signOutBtn) signOutBtn.addEventListener('click', signOut);
+
 window.addEventListener('focus', () => {
-  loadAllCloudData();
+  if (state.onboarded) loadAllCloudData();
 });
 
   function setupRealtime() {
@@ -1621,7 +2058,7 @@ window.addEventListener('focus', () => {
   });
 }
 
-  setupRealtime();
+  if (state.userId) setupRealtime();
 
   const weightBtn = document.getElementById('openAddWeightBtn');
   if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
@@ -1653,8 +2090,8 @@ window.addEventListener('focus', () => {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/service-worker.js', { scope: '/' })
-        .then(reg => console.log('[SW] Kayıtlı:', reg.scope))
-        .catch(err => console.warn('[SW] Kayıt hatası:', err));
+        .then(reg => console.log('[SW] KayÄ±tlÄ±:', reg.scope))
+        .catch(err => console.warn('[SW] KayÄ±t hatasÄ±:', err));
     });
   }
 }
@@ -1667,3 +2104,8 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
+
+
+
+
+
