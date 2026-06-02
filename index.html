@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=52" />
+  <link rel="stylesheet" href="styles/main.css?v=58" />
 </head>
 <body>
 
@@ -101,6 +101,52 @@
   </div>
 </section>
 
+<!-- PANEL: WEIGHT -->
+<section class="panel" id="pWeight" aria-label="Kilo ve ölçüm takibi">
+  <div class="section page-intro">
+    <div>
+      <div class="sec-title">Kilo ve Ölçüm</div>
+      <h2>Haftalık ölçüm kaydı</h2>
+      <p>Başlangıç 31 Mayıs 2026. Her pazar tartım sonrası kilo ve bel ölçümünü ekle.</p>
+    </div>
+    <button class="btn" id="openAddWeightBtn">Ölçüm Ekle</button>
+  </div>
+
+  <div class="section">
+    <div class="card input-card">
+      <div class="form-grid">
+        <label>
+          Tarih
+          <input type="date" id="measureDateInput" />
+        </label>
+        <label>
+          Kilo
+          <input type="number" id="measureWeightInput" placeholder="kg" step="0.1" min="30" />
+        </label>
+        <label>
+          Bel
+          <input type="number" id="measureWaistInput" placeholder="cm" step="0.1" min="40" />
+        </label>
+        <button class="btn form-submit" id="saveMeasurementBtn">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div id="weightSummary"></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-title">Ölçüm Geçmişi</span>
+    </div>
+    <div class="card list-card">
+      <div id="weightEmpty" class="empty-state">Henüz ölçüm yok.</div>
+      <div id="weightList"></div>
+    </div>
+  </div>
+</section>
+
 <!-- PANEL: DAILY -->
  <section class="panel" id="pDaily" aria-label="Günlük takip">
 
@@ -135,6 +181,13 @@
       style="flex:1;min-width:140px;padding:10px;border:1px solid var(--border);border-radius:8px"
     />
 
+    <div class="quick-picks" aria-label="Hızlı uyku seçimi">
+      <button type="button" data-sleep-hours="6">6s</button>
+      <button type="button" data-sleep-hours="7">7s</button>
+      <button type="button" data-sleep-hours="7.5">7.5s</button>
+      <button type="button" data-sleep-hours="8">8s</button>
+    </div>
+
     <button class="btn" id="saveSleepBtn">Kaydet</button>
   </div>
 </div>
@@ -152,6 +205,17 @@
         id="workoutDateInput"
         style="flex:1;min-width:140px;padding:10px;border:1px solid var(--border);border-radius:8px"
       />
+
+      <select
+        id="workoutCategoryInput"
+        style="flex:1;min-width:160px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"
+      >
+        <option value="Kuvvet">Kuvvet</option>
+        <option value="Core">Core / Bölge</option>
+        <option value="Challenge">Challenge</option>
+        <option value="Kardiyo">Kardiyo</option>
+        <option value="Recovery">Recovery</option>
+      </select>
 
       <select
         id="workoutTypeInput"
@@ -174,6 +238,22 @@
         style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px"
       />
 
+      <div class="quick-picks" aria-label="Hızlı süre seçimi">
+        <button type="button" data-workout-minutes="20">20dk</button>
+        <button type="button" data-workout-minutes="30">30dk</button>
+        <button type="button" data-workout-minutes="45">45dk</button>
+        <button type="button" data-workout-minutes="60">60dk</button>
+      </div>
+
+      <select
+        id="workoutIntensityInput"
+        style="flex:1;min-width:130px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"
+      >
+        <option value="Orta">Orta</option>
+        <option value="Kolay">Kolay</option>
+        <option value="Zor">Zor</option>
+      </select>
+
       <input
         type="text"
         id="workoutNoteInput"
@@ -191,12 +271,30 @@
   </div>
 
   <div class="section">
+    <div class="daily-grid">
+      <div class="card list-card">
+        <div class="list-title">Uyku Kayıtları</div>
+        <div id="sleepSummary"></div>
+        <div id="sleepList"></div>
+      </div>
+      <div class="card list-card">
+        <div class="list-title">Antrenman Kayıtları</div>
+        <div id="workoutSummary"></div>
+        <div id="workoutList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="sec-head">
       <span class="sec-title">Notlar</span>
-      <button class="btn" id="addNoteBtn">+ Not</button>
     </div>
 
-    <div class="card">
+    <div class="card input-card">
+      <div class="note-compose">
+        <textarea id="noteInput" rows="3" placeholder="Bugün nasıl geçti? Enerji, iştah, stres veya antrenman hissini yaz."></textarea>
+        <button class="btn" id="addNoteBtn">Notu Kaydet</button>
+      </div>
       <div id="noteList"></div>
     </div>
   </div>
@@ -225,9 +323,18 @@
 
   <div class="section">
     <div class="sec-head">
+      <span class="sec-title">Kilo ve Bel Grafiği</span>
+    </div>
+    <div class="card chart-card">
+      <canvas id="measurementChart"></canvas>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">
       <span class="sec-title">Uyku Grafiği</span>
     </div>
-    <div class="card" style="padding:16px;height:240px;">
+    <div class="card chart-card">
       <div id="sleepBars"></div>
     </div>
   </div>
@@ -236,7 +343,7 @@
     <div class="sec-head">
       <span class="sec-title">Antreman Grafiği</span>
     </div>
-    <div class="card" style="padding:16px;height:240px;">
+    <div class="card chart-card">
       <div id="workoutBars"></div>
     </div>
   </div>
@@ -259,6 +366,7 @@
         </div>
         <div class="card" style="padding:16px">
           <p style="font-size:13px;color:var(--muted);font-family:var(--font-mono)">Profil ve bildirim ayarları yakında.</p>
+          <button class="btn ghost" id="signOutBtn" style="margin-top:12px">Çıkış Yap</button>
         </div>
       </div>
     </section>
@@ -299,6 +407,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=113" defer></script>
+  <script src="scripts/app.js?v=119" defer></script>
 </body>
 </html>
