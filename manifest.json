@@ -1,20 +1,14 @@
 {
   "name": "FitTracker Pro",
   "short_name": "FitTracker",
-  "description": "Kilo, antrenman ve beslenme takibi uygulaması.",
-  "start_url": "/?source=pwa",
+  "description": "Kilo, bel ölçümü, uyku ve antrenman takibi.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#f4f6fb",
-  "theme_color": "#3b82f6",
+  "background_color": "#f4f7fb",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
   "lang": "tr",
-  "dir": "ltr",
-  "categories": [
-    "health",
-    "fitness",
-    "lifestyle"
-  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -27,21 +21,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Kilo Ekle",
-      "short_name": "Kilo",
-      "description": "Hızlıca kilo ölçümü ekle",
-      "url": "/?panel=weight",
-      "icons": [
-        {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
     }
   ]
 }
