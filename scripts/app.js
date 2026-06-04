@@ -71,6 +71,7 @@ const MOTIVATIONS = [
 let state = {
   theme: 'light',
   userId: '',
+  userEmail: '',
   onboarded: false,
   name: '',
   startDate: START_DATE,
@@ -257,6 +258,7 @@ function stateLoad() {
       ...state,
       ...savedState,
       userId: savedState.userId || '',
+      userEmail: savedState.userEmail || '',
       onboarded: Boolean(savedState.onboarded),
       name: savedState.name || '',
       startDate: savedState.startDate || START_DATE,
@@ -1288,16 +1290,37 @@ function renderProgressList() {
 function renderSettings() {
   const nameEl = document.getElementById('settingsName');
   const startEl = document.getElementById('settingsStartDate');
+  const emailEl = document.getElementById('settingsEmail');
+  const startWeightEl = document.getElementById('settingsStartWeight');
+  const currentWeightEl = document.getElementById('settingsCurrentWeight');
   const firstGoalEl = document.getElementById('settingsFirstGoal');
   const finalGoalEl = document.getElementById('settingsFinalGoal');
   const syncEl = document.getElementById('settingsSyncState');
 
-  const firstGoal = (state.milestones || [])[0];
+  const measurements = [...(state.measurements || [])]
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const firstMeasurement = measurements[0];
+  const lastMeasurement = measurements[measurements.length - 1];
+  const goals = (state.milestones || [])
+    .map(Number)
+    .filter(value => Number.isFinite(value));
+  const firstGoal = goals[0];
+  const finalGoal = Number.isFinite(Number(state.goalWeight))
+    ? Number(state.goalWeight)
+    : goals[goals.length - 1];
 
   if (nameEl) nameEl.textContent = state.name || 'Sporcu';
   if (startEl) startEl.textContent = formatDate(state.startDate || START_DATE);
+  if (emailEl) emailEl.textContent = state.userEmail || '—';
+  if (startWeightEl) {
+    const startWeight = state.startWeight ?? firstMeasurement?.weight;
+    startWeightEl.textContent = Number.isFinite(Number(startWeight)) ? `${Number(startWeight).toFixed(1)} kg` : '— kg';
+  }
+  if (currentWeightEl) {
+    currentWeightEl.textContent = lastMeasurement?.weight ? `${Number(lastMeasurement.weight).toFixed(1)} kg` : '— kg';
+  }
   if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
-  if (finalGoalEl) finalGoalEl.textContent = state.goalWeight ? `${state.goalWeight} kg` : 'Belirlenmedi';
+  if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
   if (syncEl) syncEl.textContent = navigator.onLine ? 'Cloud senkron aktif' : 'Çevrimdışı kayıt';
 }
 
@@ -1761,13 +1784,67 @@ async function deleteWorkout(sortedIdx) {
 }
 
 function editName() {
-  const newName = prompt('İsmini gir:', state.name || 'Sporcu');
+  const newName = prompt('İsmini gir:', state.name || '');
   if (!newName) return;
 
   state.name = newName.trim();
   stateSave();
   renderAll();
   setStatus('İsim güncellendi ✓', 'ok');
+}
+
+function editGoals() {
+  const firstGoalCurrent = (state.milestones || [])[0] || '';
+  const finalGoalCurrent = state.goalWeight || '';
+  const startWeightCurrent = state.startWeight || state.measurements?.[0]?.weight || '';
+  const startWaistCurrent = state.startWaist || state.measurements?.[0]?.waist || '';
+
+  const startWeightInput = prompt('Başlangıç kilonu gir (kg):', startWeightCurrent);
+  if (startWeightInput === null) return;
+
+  const startWaistInput = prompt('Başlangıç bel ölçünü gir (cm):', startWaistCurrent);
+  if (startWaistInput === null) return;
+
+  const firstGoalInput = prompt('İlk hedef kilonu gir (kg):', firstGoalCurrent);
+  if (firstGoalInput === null) return;
+
+  const finalGoalInput = prompt('Final hedef kilonu gir (kg):', finalGoalCurrent);
+  if (finalGoalInput === null) return;
+
+  const startWeight = parseFloat(startWeightInput);
+  const startWaist = parseFloat(startWaistInput);
+  const firstGoal = parseFloat(firstGoalInput);
+  const finalGoal = parseFloat(finalGoalInput);
+
+  if ([startWeight, startWaist, firstGoal, finalGoal].some(value => Number.isNaN(value))) {
+    alert('Lütfen tüm hedef alanlarına geçerli sayı gir.');
+    return;
+  }
+
+  state.startWeight = parseFloat(startWeight.toFixed(1));
+  state.startWaist = parseFloat(startWaist.toFixed(1));
+  state.goalWeight = parseFloat(finalGoal.toFixed(1));
+  state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
+
+  if (!state.measurements?.length) {
+    state.measurements = [{
+      date: state.startDate || START_DATE,
+      weight: state.startWeight,
+      waist: state.startWaist,
+    }];
+  } else {
+    const sorted = [...state.measurements].sort((a, b) => a.date.localeCompare(b.date));
+    sorted[0] = {
+      ...sorted[0],
+      weight: state.startWeight,
+      waist: state.startWaist,
+    };
+    state.measurements = sorted;
+  }
+
+  stateSave();
+  renderAll();
+  setStatus('Hedefler güncellendi ✓', 'ok');
 }
 
 function showAuth() {
@@ -1922,8 +1999,10 @@ async function continueWithSession(session) {
   }
 
   state.userId = session.user.id;
+  state.userEmail = session.user.email || state.userEmail || '';
   stateLoad();
   state.userId = session.user.id;
+  state.userEmail = session.user.email || state.userEmail || '';
   stateSave();
   document.getElementById('authModal')?.remove();
 
@@ -2144,6 +2223,9 @@ function bindUiEvents() {
 
   const editNameBtn = document.getElementById('editNameBtn');
   if (editNameBtn) editNameBtn.addEventListener('click', editName);
+
+  const editGoalsBtn = document.getElementById('editGoalsBtn');
+  if (editGoalsBtn) editGoalsBtn.addEventListener('click', editGoals);
 
   const addNoteBtn = document.getElementById('addNoteBtn');
   if (addNoteBtn) addNoteBtn.addEventListener('click', addNote);
