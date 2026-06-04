@@ -55,16 +55,16 @@ const WORKOUT_CATALOG = {
 };
 
 const MOTIVATIONS = [
-  'BugÃ¼n kÃ¼Ã§Ã¼k bir adÄ±m at, yarÄ±n farkÄ± hissedeceksin. ğŸŒ±',
-  'MÃ¼kemmel olmak zorunda deÄŸilsin; devam etmek yeterli. ğŸ’ª',
-  'Her kayÄ±t, hedefe biraz daha yaklaÅŸtÄ±ÄŸÄ±nÄ±n kanÄ±tÄ±. ğŸ¯',
-  'BugÃ¼n kendine yatÄ±rÄ±m yaptÄ±ÄŸÄ±n bir gÃ¼n olsun. âœ¨',
-  'Disiplin, motivasyonun bittiÄŸi yerde seni taÅŸÄ±r. ğŸ”¥',
-  'Uyku, hareket ve istikrar: deÄŸiÅŸimin Ã¼Ã§ anahtarÄ±. ğŸ”‘',
-  'VÃ¼cudun emeÄŸini hatÄ±rlar; bugÃ¼n boÅŸa gitmez. ğŸ†',
-  'KÃ¼Ã§Ã¼k kazanÄ±mlar bÃ¼yÃ¼k dÃ¶nÃ¼ÅŸÃ¼mlerin temelidir. âœ…',
-  'BugÃ¼n bÄ±rakÄ±rsan aynÄ± yerde kalÄ±rsÄ±n; devam edersen deÄŸiÅŸirsin. ğŸš€',
-  'Hedef uzak gÃ¶rÃ¼nse de sÄ±radaki adÄ±m Ã§ok yakÄ±n. ğŸ‘£',
+  'Bugün küçük bir adım at, yarın farkı hissedeceksin.',
+  'Mükemmel olmak zorunda değilsin; devam etmek yeterli.',
+  'Her kayıt, hedefe biraz daha yaklaştığının kanıtı.',
+  'Bugün kendine yatırım yaptığın bir gün olsun.',
+  'Disiplin, motivasyonun azaldığı günlerde seni taşır.',
+  'Uyku, hareket ve istikrar: değişimin üç anahtarı.',
+  'Vücudun emeğini hatırlar; bugün boşa gitmez.',
+  'Küçük kazanımlar büyük dönüşümlerin temelidir.',
+  'Bugün devam edersen, yarın daha güçlü başlarsın.',
+  'Hedef uzak görünse de sıradaki adım çok yakın.',
 ];
 
 // â”€â”€ STATE â”€â”€
@@ -1242,6 +1242,7 @@ function renderAll() {
 
 // â”€â”€ SUPABASE DATA â”€â”€
 async function loadMeasurementsFromSupabase() {
+  const localMeasurements = [...(state.measurements || [])];
   const { data, error } = await db
     .from('measurements')
     .select('*')
@@ -1254,11 +1255,19 @@ async function loadMeasurementsFromSupabase() {
     return;
   }
 
-  state.measurements = (data || []).map(item => ({
+  const cloudMeasurements = (data || []).map(item => ({
     date: item.date,
     weight: parseFloat(item.weight),
     waist: parseFloat(item.waist),
   }));
+
+  if (!cloudMeasurements.length && localMeasurements.length) {
+    console.warn('Cloud ölçüm boş döndü; yerel başlangıç ölçümü korunuyor.');
+    setStatus('Cloud ölçüm bulunamadı, yerel kayıt korunuyor', 'ok');
+    return;
+  }
+
+  state.measurements = cloudMeasurements;
 
   stateSave();
   renderAll();
@@ -1740,8 +1749,30 @@ function setAuthMode(mode) {
 function setAuthMessage(message, isError = false) {
   const el = document.getElementById('authMessage');
   if (!el) return;
-  el.textContent = message;
+  el.textContent = getFriendlyAuthMessage(message);
   el.classList.toggle('error', isError);
+}
+
+function getFriendlyAuthMessage(message = '') {
+  const text = String(message);
+
+  if (/invalid login credentials/i.test(text)) {
+    return 'E-posta veya şifre hatalı. Daha önce kayıt olduysan tekrar kayıt olma; aynı bilgilerle giriş yapmayı dene veya şifre sıfırla.';
+  }
+
+  if (/email not confirmed/i.test(text)) {
+    return 'E-posta henüz onaylanmamış görünüyor. Gelen kutundaki doğrulama linkine tıkla, sonra giriş yap.';
+  }
+
+  if (/user already registered|already registered/i.test(text)) {
+    return 'Bu e-posta ile hesap zaten var. Kayıt yerine Giriş sekmesini kullan.';
+  }
+
+  if (/password/i.test(text) && /6|six|short/i.test(text)) {
+    return 'Şifre en az 6 karakter olmalı.';
+  }
+
+  return text;
 }
 
 async function submitAuth() {
@@ -1886,7 +1917,6 @@ async function completeOnboarding() {
     return;
   }
 
-  state.userId = state.userId || `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   state.onboarded = true;
   state.name = name;
   state.startDate = startDate;
@@ -1918,12 +1948,16 @@ async function completeOnboarding() {
 
   if (error) {
     console.warn('İlk ölçüm cloud kaydı yapılamadı:', error);
+    setStatus('Kurulum kaydedildi, cloud ölçüm daha sonra senkronlanacak', 'ok');
+  } else {
+    setStatus('Kurulum tamamlandı ✓', 'ok');
   }
 
   document.getElementById('onboardingModal')?.remove();
   renderAll();
-  loadAllCloudData();
-  setStatus('Kurulum tamamlandı ✓', 'ok');
+  if (!error) {
+    await loadAllCloudData();
+  }
 }
 
 // â”€â”€ ONLINE STATUS â”€â”€
