@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#3b82f6" id="themeColorMeta" />
-  <meta name="description" content="FitTracker Pro — Kilo, antrenman ve beslenme takibi." />
+  <meta name="description" content="FitTracker Pro - Kilo, antrenman ve beslenme takibi." />
 
   <!-- PWA -->
   <meta name="mobile-web-app-capable" content="yes" />
@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles/main.css?v=60" />
+  <link rel="stylesheet" href="styles/main.css?v=61" />
 </head>
 <body>
 
@@ -46,7 +46,7 @@
   <!-- STATUS BAR -->
   <div class="status-bar" id="statusBar" role="status" aria-live="polite">
     <span>●</span>
-    <span id="statusText">Yükleniyor…</span>
+    <span id="statusText">Yükleniyor...</span>
   </div>
 
   <!-- PWA INSTALL BANNER -->
@@ -57,7 +57,7 @@
       Daha hızlı erişim için yükle.
     </div>
     <button class="btn green" id="installBtn">Yükle</button>
-    <button class="btn ghost" id="dismissInstall" aria-label="Kapat">✕</button>
+    <button class="btn ghost" id="dismissInstall" aria-label="Kapat">×</button>
   </div>
 
   <!-- PANELS -->
@@ -70,7 +70,7 @@
     <div class="hero">
       <div class="hero-date" id="heroDate">—</div>
       <h1 class="hero-title">
-        Merhaba, <span id="heroName">Mustafa Gürtürk Avcı</span>
+        Merhaba, <span id="heroName">Sporcu</span>
       </h1>
     </div>
 
@@ -88,13 +88,13 @@
     <div class="quick-actions-card">
       <div>
         <div class="quick-title">Bugün ne eklemek istersin?</div>
-        <div class="quick-sub">Uyku, antreman veya not ekleyerek bugünü tamamla.</div>
+        <div class="quick-sub">Uyku, antrenman veya not ekleyerek bugünü tamamla.</div>
       </div>
 
       <div class="quick-actions">
-        <button onclick="goPanel(2)" class="quick-btn sleep">😴 Uyku Ekle</button>
-        <button onclick="goPanel(2)" class="quick-btn workout">🏋️ Antreman Ekle</button>
-        <button onclick="goPanel(2)" class="quick-btn note">📝 Not Ekle</button>
+        <button onclick="goPanel(2)" class="quick-btn sleep">Uyku Ekle</button>
+        <button onclick="goPanel(2)" class="quick-btn workout">Antrenman Ekle</button>
+        <button onclick="goPanel(2)" class="quick-btn note">Not Ekle</button>
       </div>
     </div>
 
@@ -155,7 +155,7 @@
       <span class="sec-title">Günlük</span>
     </div>
     <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
-      Uyku, Antreman ve Not takibi.
+      Uyku, Antrenman ve Not takibi.
     </p>
   </div>
 
@@ -195,7 +195,7 @@
 
     <div class="section">
   <div class="sec-head">
-    <span class="sec-title">Antreman</span>
+    <span class="sec-title">Antrenman</span>
   </div>
 
   <div class="card" style="padding:16px">
@@ -308,7 +308,7 @@
       <span class="sec-title">Progress</span>
     </div>
     <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
-      Haftalık uyku, antreman ve gelişim analizi.
+      Haftalık uyku, antrenman ve gelişim analizi.
     </p>
   </div>
 
@@ -341,7 +341,7 @@
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Antreman Grafiği</span>
+      <span class="sec-title">Antrenman Grafiği</span>
     </div>
     <div class="card chart-card">
       <div id="workoutBars"></div>
@@ -374,7 +374,7 @@
   </main>
 
   <!-- OFFLINE NOTICE -->
-  <div id="offlineNotice" role="alert">📵 Çevrimdışı mod</div>
+  <div id="offlineNotice" role="alert">Çevrimdışı mod</div>
 
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav" role="navigation" aria-label="Alt navigasyon">
@@ -407,6 +407,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=121" defer></script>
+  <script src="scripts/app.js?v=122" defer></script>
 </body>
 </html>
