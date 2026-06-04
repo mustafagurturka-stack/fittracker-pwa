@@ -199,7 +199,8 @@ function setStatus(msg, cls = '') {
   const text = document.getElementById('statusText');
   if (!bar || !text) return;
 
-  bar.className = 'status-bar ' + cls;
+  const shouldShow = cls === 'error' || !['Hazır', 'Senkron aktif'].includes(msg);
+  bar.className = `status-bar ${cls}${shouldShow ? ' visible' : ''}`;
   text.textContent = msg;
 }
 
@@ -208,6 +209,23 @@ function clearInitialLoadingStatus() {
   if (text && text.textContent.includes('Yükleniyor')) {
     setStatus('Hazır', 'ok');
   }
+}
+
+function setEmptyState(host, title, copy, actionLabel = '', actionPanel = null) {
+  if (!host) return;
+
+  host.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">+</div>
+      <strong>${title}</strong>
+      <p>${copy}</p>
+      ${actionLabel ? `<button class="btn green" type="button" data-empty-panel="${actionPanel}">${actionLabel}</button>` : ''}
+    </div>
+  `;
+
+  host.querySelectorAll('[data-empty-panel]').forEach(button => {
+    button.addEventListener('click', () => goPanel(Number(button.dataset.emptyPanel)));
+  });
 }
 
 function setSyncDot(cls) {
@@ -394,7 +412,11 @@ function renderDashboardGoalCard() {
   );
 
   if (!data.length) {
-    el.innerHTML = '';
+    setEmptyState(
+      el,
+      'Haftalık rapor henüz oluşmadı',
+      'Uyku, antrenman ve ölçüm kayıtları geldikçe haftalık özetler burada listelenir.'
+    );
     return;
   }
 
@@ -578,7 +600,23 @@ function renderStats() {
     measurementChart.destroy();
   }
 
-  if (!data.length) return;
+  const host = canvas.parentElement;
+  const oldEmpty = host?.querySelector('.empty-state');
+  if (oldEmpty) oldEmpty.remove();
+
+  if (data.length < 2) {
+    canvas.style.display = 'none';
+    setEmptyState(
+      host,
+      'Grafik için iki ölçüm gerekli',
+      'İlk ölçüm kaydedildiğinde başlangıç oluşur. İkinci ölçümden sonra kilo ve bel trendi burada görünür.',
+      'Ölçüm Ekle',
+      1
+    );
+    return;
+  }
+
+  canvas.style.display = 'block';
 
   measurementChart = new Chart(canvas, {
     type: 'line',
@@ -1090,6 +1128,15 @@ function renderProgressCharts() {
       )
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    if (!sleepData.length) {
+      setEmptyState(
+        sleepWrap,
+        'Bu hafta uyku kaydı yok',
+        'Bir uyku kaydı eklediğinde günlük uyku düzenin burada grafik olarak görünecek.',
+        'Uyku Ekle',
+        2
+      );
+    } else {
     sleepWrap.innerHTML = `
       <div style="
         display:flex;
@@ -1138,6 +1185,7 @@ function renderProgressCharts() {
         }).join('')}
       </div>
     `;
+    }
   }
 
   if (workoutWrap) {
@@ -1148,6 +1196,15 @@ function renderProgressCharts() {
       )
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    if (!workoutData.length) {
+      setEmptyState(
+        workoutWrap,
+        'Bu hafta antrenman kaydı yok',
+        'Antrenman eklediğinde süre, kategori ve haftalık dağılım burada görünür.',
+        'Antrenman Ekle',
+        2
+      );
+    } else {
     workoutWrap.innerHTML = `
       <div style="
         display:flex;
@@ -1196,6 +1253,7 @@ function renderProgressCharts() {
         }).join('')}
       </div>
     `;
+    }
   }
 }
 function renderProgressList() {
