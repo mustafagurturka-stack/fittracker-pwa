@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles/main.css?v=65" />
+  <link rel="stylesheet" href="styles/main.css?v=66" />
 </head>
 <body>
 
@@ -361,11 +361,11 @@
   </div>
 </section>
 
-    <!-- PANEL: SETTINGS -->
-    <section class="panel" id="pSettings" aria-label="Ayarlar">
+    <!-- PANEL: PROFILE -->
+    <section class="panel" id="pSettings" aria-label="Profil">
       <div class="section">
         <div class="sec-head">
-          <span class="sec-title">Ayarlar</span>
+          <span class="sec-title">Profil</span>
         </div>
         <div class="settings-grid">
           <div class="settings-card">
@@ -378,11 +378,23 @@
               <span>Başlangıç</span>
               <strong id="settingsStartDate">31 May 2026</strong>
             </div>
-            <button class="btn ghost settings-action" id="editNameBtn" type="button">Adı Düzenle</button>
+            <div class="settings-row">
+              <span>Hesap</span>
+              <strong id="settingsEmail">—</strong>
+            </div>
+            <button class="btn ghost settings-action" id="editNameBtn" type="button">Profili Düzenle</button>
           </div>
 
           <div class="settings-card">
             <div class="settings-card-title">Hedefler</div>
+            <div class="settings-row">
+              <span>Başlangıç kilosu</span>
+              <strong id="settingsStartWeight">— kg</strong>
+            </div>
+            <div class="settings-row">
+              <span>Son ölçüm</span>
+              <strong id="settingsCurrentWeight">— kg</strong>
+            </div>
             <div class="settings-row">
               <span>İlk hedef</span>
               <strong id="settingsFirstGoal">— kg</strong>
@@ -391,6 +403,7 @@
               <span>Final hedef</span>
               <strong id="settingsFinalGoal">— kg</strong>
             </div>
+            <button class="btn ghost settings-action" id="editGoalsBtn" type="button">Hedefleri Düzenle</button>
           </div>
 
           <div class="settings-card">
@@ -429,9 +442,9 @@
   <span>İlerleme</span>
 </button>
 
-<button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Ayarlar">
-  <span class="bn-icon">⚙️</span>
-  <span>Ayarlar</span>
+<button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Profil">
+  <span class="bn-icon">👤</span>
+  <span>Profil</span>
 </button>
   </nav>
 
@@ -441,6 +454,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=126" defer></script>
+  <script src="scripts/app.js?v=127" defer></script>
 </body>
 </html>
