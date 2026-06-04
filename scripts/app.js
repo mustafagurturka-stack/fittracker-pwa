@@ -203,6 +203,13 @@ function setStatus(msg, cls = '') {
   text.textContent = msg;
 }
 
+function clearInitialLoadingStatus() {
+  const text = document.getElementById('statusText');
+  if (text && text.textContent.includes('Yükleniyor')) {
+    setStatus('Hazır', 'ok');
+  }
+}
+
 function setSyncDot(cls) {
   const dot = document.getElementById('syncDot');
   if (!dot) return;
@@ -1238,6 +1245,7 @@ function renderAll() {
   renderProgressCharts();
   renderProgressList();
   applyTheme();
+  clearInitialLoadingStatus();
 }
 
 // â”€â”€ SUPABASE DATA â”€â”€
@@ -2004,15 +2012,23 @@ function installApp() {
 
 // â”€â”€ INIT â”€â”€
 async function init() {
-  const { data } = await db.auth.getSession();
+  setStatus('Oturum kontrol ediliyor...', '');
 
-  if (!data.session) {
+  try {
+    const { data } = await db.auth.getSession();
+
+    if (!data.session) {
+      renderAll();
+      updateOnlineStatus();
+      setStatus('Giriş bekleniyor', '');
+      showAuth();
+    } else {
+      await continueWithSession(data.session);
+    }
+  } catch (error) {
+    console.warn('Oturum kontrolü yapılamadı:', error);
     renderAll();
-    updateOnlineStatus();
-    setStatus('Giriş bekleniyor', '');
-    showAuth();
-  } else {
-    await continueWithSession(data.session);
+    setStatus('Hazır', 'ok');
   }
 
   db.auth.onAuthStateChange((_event, session) => {
@@ -2138,8 +2154,6 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
-
-
 
 
 
