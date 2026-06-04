@@ -2011,104 +2011,55 @@ function installApp() {
 }
 
 // â”€â”€ INIT â”€â”€
-async function init() {
-  setStatus('Oturum kontrol ediliyor...', '');
-
-  try {
-    const { data } = await db.auth.getSession();
-
-    if (!data.session) {
-      renderAll();
-      updateOnlineStatus();
-      setStatus('Giriş bekleniyor', '');
-      showAuth();
-    } else {
-      await continueWithSession(data.session);
-    }
-  } catch (error) {
-    console.warn('Oturum kontrolü yapılamadı:', error);
-    renderAll();
-    setStatus('Hazır', 'ok');
-  }
-
-  db.auth.onAuthStateChange((_event, session) => {
-    if (session?.user?.id && session.user.id !== state.userId) {
-      continueWithSession(session);
-    }
+function bindUiEvents() {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.onboarded) loadAllCloudData();
   });
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && state.onboarded) {
-    loadAllCloudData();
-  }
-});
 
   const sleepBtn = document.getElementById('saveSleepBtn');
-if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
+  if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
 
   const sleepDateInput = document.getElementById('sleepDateInput');
-if (sleepDateInput) sleepDateInput.value = today();
+  if (sleepDateInput) sleepDateInput.value = today();
 
   const workoutDateInput = document.getElementById('workoutDateInput');
-if (workoutDateInput) workoutDateInput.value = today();
+  if (workoutDateInput) workoutDateInput.value = today();
 
   const measureDateInput = document.getElementById('measureDateInput');
-if (measureDateInput) measureDateInput.value = getSuggestedMeasureDate();
+  if (measureDateInput) measureDateInput.value = getSuggestedMeasureDate();
 
-const workoutBtn = document.getElementById('saveWorkoutBtn');
-if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
+  const workoutBtn = document.getElementById('saveWorkoutBtn');
+  if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
 
-const measurementBtn = document.getElementById('saveMeasurementBtn');
-if (measurementBtn) measurementBtn.addEventListener('click', saveMeasurementFromForm);
+  const measurementBtn = document.getElementById('saveMeasurementBtn');
+  if (measurementBtn) measurementBtn.addEventListener('click', saveMeasurementFromForm);
 
-const workoutCategoryInput = document.getElementById('workoutCategoryInput');
-if (workoutCategoryInput) {
-  workoutCategoryInput.addEventListener('change', updateWorkoutTypes);
-  updateWorkoutTypes();
-}
+  const workoutCategoryInput = document.getElementById('workoutCategoryInput');
+  if (workoutCategoryInput) {
+    workoutCategoryInput.addEventListener('change', updateWorkoutTypes);
+    updateWorkoutTypes();
+  }
 
-document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById('sleepInput');
-    if (input) input.value = btn.dataset.sleepHours;
+  document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('sleepInput');
+      if (input) input.value = btn.dataset.sleepHours;
+    });
   });
-});
 
-document.querySelectorAll('[data-workout-minutes]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById('workoutDurationInput');
-    if (input) input.value = btn.dataset.workoutMinutes;
+  document.querySelectorAll('[data-workout-minutes]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('workoutDurationInput');
+      if (input) input.value = btn.dataset.workoutMinutes;
+    });
   });
-});
 
-const signOutBtn = document.getElementById('signOutBtn');
-if (signOutBtn) signOutBtn.addEventListener('click', signOut);
+  const signOutBtn = document.getElementById('signOutBtn');
+  if (signOutBtn) signOutBtn.addEventListener('click', signOut);
 
-window.addEventListener('focus', () => {
-  if (state.onboarded) loadAllCloudData();
-});
-
-  function setupRealtime() {
-  const channel = db
-  .channel('realtime-measurements')
-  .on(
-    'postgres_changes',
-    {
-      event: '*',
-      schema: 'public',
-      table: 'measurements'
-    },
-    (payload) => {
-      console.log('Realtime geldi:', payload);
-      loadMeasurementsFromSupabase();
-    }
-  )
-  .subscribe((status) => {
-    console.log('Realtime status:', status);
+  window.addEventListener('focus', () => {
+    if (state.onboarded) loadAllCloudData();
   });
-}
-
-  if (state.userId) setupRealtime();
 
   const weightBtn = document.getElementById('openAddWeightBtn');
   if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
@@ -2144,6 +2095,48 @@ window.addEventListener('focus', () => {
         .catch(err => console.warn('[SW] Kay?t hatas?:', err));
     });
   }
+}
+
+async function checkAuthSession() {
+  setStatus('Oturum kontrol ediliyor...', '');
+
+  const fallback = window.setTimeout(() => {
+    setStatus('Haz?r - oturum kontrol? arka planda s?r?yor', 'ok');
+  }, 3500);
+
+  try {
+    const { data } = await db.auth.getSession();
+    window.clearTimeout(fallback);
+
+    if (!data.session) {
+      updateOnlineStatus();
+      setStatus('Giri? bekleniyor', '');
+      showAuth();
+      return;
+    }
+
+    await continueWithSession(data.session);
+  } catch (error) {
+    window.clearTimeout(fallback);
+    console.warn('Oturum kontrol? yap?lamad?:', error);
+    setStatus('Haz?r', 'ok');
+  }
+}
+
+function setupAuthListener() {
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user?.id && session.user.id !== state.userId) {
+      continueWithSession(session);
+    }
+  });
+}
+
+function init() {
+  renderAll();
+  bindUiEvents();
+  updateOnlineStatus();
+  setupAuthListener();
+  checkAuthSession();
 }
 
 // Expose for inline HTML handlers
