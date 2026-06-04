@@ -224,7 +224,7 @@ function stateSave() {
   } catch (e) {
     console.error('State kaydedilemedi:', e);
     setSyncDot('err');
-    setStatus('Kay?t hatas?: ' + e.message, 'error');
+    setStatus('Kayıt hatası: ' + e.message, 'error');
   }
 }
 
@@ -659,7 +659,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          SON K?LO
+          SON KİLO
         </div>
 
         <div style="font-size:24px;font-weight:900;margin-top:6px">
@@ -669,7 +669,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          TOPLAM DE????M
+          TOPLAM DEĞİŞİM
         </div>
 
         <div style="
@@ -684,7 +684,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          ?LK ARA HEDEF
+          İLK ARA HEDEF
         </div>
 
         <div style="font-size:24px;font-weight:900;margin-top:6px">
@@ -692,7 +692,7 @@ function renderWeightSummary() {
         </div>
 
         <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          ?lk hedefe kalan: ${kgLeft} kg ? Final hedef: ${state.goalWeight} kg
+          İlk hedefe kalan: ${kgLeft} kg · Final hedef: ${state.goalWeight} kg
         </div>
 
         <div style="
@@ -711,13 +711,13 @@ function renderWeightSummary() {
         </div>
 
         <div style="font-size:12px;color:var(--muted);margin-top:6px">
-          %${progressPct} tamamland?
+          %${progressPct} tamamlandı
         </div>
       </div>
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          BEL DE????M?
+          BEL DEĞİŞİMİ
         </div>
 
         <div style="
@@ -1227,6 +1227,22 @@ function renderProgressList() {
   `).join('');
 }
 
+function renderSettings() {
+  const nameEl = document.getElementById('settingsName');
+  const startEl = document.getElementById('settingsStartDate');
+  const firstGoalEl = document.getElementById('settingsFirstGoal');
+  const finalGoalEl = document.getElementById('settingsFinalGoal');
+  const syncEl = document.getElementById('settingsSyncState');
+
+  const firstGoal = (state.milestones || [])[0];
+
+  if (nameEl) nameEl.textContent = state.name || 'Sporcu';
+  if (startEl) startEl.textContent = formatDate(state.startDate || START_DATE);
+  if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
+  if (finalGoalEl) finalGoalEl.textContent = state.goalWeight ? `${state.goalWeight} kg` : 'Belirlenmedi';
+  if (syncEl) syncEl.textContent = navigator.onLine ? 'Cloud senkron aktif' : 'Çevrimdışı kayıt';
+}
+
 function renderAll() {
   renderHero();
   renderMoti();
@@ -1244,6 +1260,7 @@ function renderAll() {
   renderProgressSummary();
   renderProgressCharts();
   renderProgressList();
+  renderSettings();
   applyTheme();
   clearInitialLoadingStatus();
 }
@@ -1258,8 +1275,8 @@ async function loadMeasurementsFromSupabase() {
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Supabase load hatas?:', error);
-    setStatus('Cloud veri y?klenemedi', 'error');
+    console.error('Supabase load hatası:', error);
+    setStatus('Cloud veri yüklenemedi', 'error');
     return;
   }
 
@@ -1271,7 +1288,7 @@ async function loadMeasurementsFromSupabase() {
 
   if (!cloudMeasurements.length && localMeasurements.length) {
     console.warn('Cloud ölçüm boş döndü; yerel başlangıç ölçümü korunuyor.');
-    setStatus('Cloud ölçüm bulunamadı, yerel kayıt korunuyor', 'ok');
+    setStatus('Hazır', 'ok');
     return;
   }
 
@@ -1290,8 +1307,8 @@ async function loadSleepFromSupabase() {
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Sleep load hatas?:', error);
-    setStatus('Uyku verileri y?klenemedi', 'error');
+    console.error('Sleep load hatası:', error);
+    setStatus('Uyku verileri yüklenemedi', 'error');
     return;
   }
 
@@ -1339,7 +1356,7 @@ async function loadNotesFromSupabase() {
 
   if (error) {
     console.error('Notes load hatas?:', error);
-    setStatus('Notlar y?klenemedi', 'error');
+    setStatus('Notlar yüklenemedi', 'error');
     return;
   }
 
@@ -1403,7 +1420,7 @@ async function saveMeasurementFromForm() {
   if (error) {
     console.error('Measurement save error:', error);
     alert('?l??m cloud kay?t hatas?: ' + error.message);
-    setStatus('Cloud kay?t hatas?', 'error');
+    setStatus('Cloud kayıt hatası', 'error');
     return;
   }
 
@@ -1412,7 +1429,7 @@ async function saveMeasurementFromForm() {
   weightInput.value = '';
   waistInput.value = '';
   dateInput.value = getSuggestedMeasureDate();
-  setStatus('?l??m kaydedildi ?', 'ok');
+  setStatus('Ölçüm kaydedildi ✓', 'ok');
 }
 
 async function addMeasurement() {
@@ -1421,7 +1438,7 @@ async function addMeasurement() {
     return;
   }
 
-  const dateInput = prompt('?l??m tarihi gir (gg/aa/yyyy):', todayDisplay());
+  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
   if (!dateInput) return;
 
   const date = parseDisplayDate(dateInput);
@@ -1442,7 +1459,7 @@ async function addMeasurement() {
   const weightInput = prompt('Kilonu gir (kg):');
   if (!weightInput || isNaN(parseFloat(weightInput))) return;
 
-  const waistInput = prompt('Bel ?l??n? gir (cm):');
+  const waistInput = prompt('Bel ölçünü gir (cm):');
   if (!waistInput || isNaN(parseFloat(waistInput))) return;
 
   const measurement = {
@@ -1460,7 +1477,7 @@ async function addMeasurement() {
   if (error) {
     console.error('Supabase insert hatas?:', error);
     alert('Supabase kay?t hatas?: ' + error.message);
-    setStatus('Cloud kay?t hatas?', 'error');
+    setStatus('Cloud kayıt hatası', 'error');
     return;
   }
 
@@ -1472,7 +1489,7 @@ async function addMeasurement() {
 
   stateSave();
   renderAll();
-  setStatus('?l??m eklendi ?', 'ok');
+  setStatus('Ölçüm eklendi ✓', 'ok');
 
   console.log('Supabase kay?t ba?ar?l?:', data);
 }
@@ -1506,7 +1523,7 @@ async function deleteWeight(sortedIdx) {
 
   stateSave();
   renderAll();
-  setStatus('?l??m silindi ?', 'ok');
+  setStatus('Ölçüm silindi ✓', 'ok');
 }
 
 async function deleteNote(index) {
@@ -1527,7 +1544,7 @@ async function deleteNote(index) {
   }
 
   await loadNotesFromSupabase();
-  setStatus('Not silindi ?', 'ok');
+  setStatus('Not silindi ✓', 'ok');
 }
 
 async function deleteSleep(sortedIdx) {
@@ -1549,7 +1566,7 @@ async function deleteSleep(sortedIdx) {
   }
 
   await loadSleepFromSupabase();
-  setStatus('Uyku kayd? silindi ?', 'ok');
+  setStatus('Uyku kaydı silindi ✓', 'ok');
 }
 
 async function addNote() {
@@ -1573,7 +1590,7 @@ async function addNote() {
 
   await loadNotesFromSupabase();
 
-  setStatus('Not eklendi ?', 'ok');
+  setStatus('Not eklendi ✓', 'ok');
   if (noteInput) noteInput.value = '';
 }
 
@@ -1609,7 +1626,7 @@ async function saveSleep() {
 
   await loadSleepFromSupabase();
 
-  setStatus('Uyku kaydedildi ?', 'ok');
+  setStatus('Uyku kaydedildi ✓', 'ok');
   hourInput.value = '';
   dateInput.value = today();
 }
@@ -1686,13 +1703,13 @@ async function deleteWorkout(sortedIdx) {
 }
 
 function editName() {
-  const newName = prompt('?smini gir:', state.name || 'Sporcu');
+  const newName = prompt('İsmini gir:', state.name || 'Sporcu');
   if (!newName) return;
 
   state.name = newName.trim();
   stateSave();
   renderAll();
-  setStatus('?sim g?ncellendi ?', 'ok');
+  setStatus('İsim güncellendi ✓', 'ok');
 }
 
 function showAuth() {
@@ -1974,11 +1991,11 @@ function updateOnlineStatus() {
 
   if (navigator.onLine) {
     if (notice) notice.classList.remove('visible');
-    setStatus('?evrimi?i - cloud senkron aktif', 'ok');
+    setStatus('Çevrimiçi - cloud senkron aktif', 'ok');
     setSyncDot('ok');
   } else {
     if (notice) notice.classList.add('visible');
-    setStatus('?evrimd??? - veriler yerel olarak saklan?r', 'error');
+    setStatus('Çevrimdışı - veriler yerel olarak saklanır', 'error');
     setSyncDot('err');
   }
 }
@@ -2005,7 +2022,7 @@ function installApp() {
     if (banner) banner.classList.remove('visible');
 
     if (outcome === 'accepted') {
-      setStatus('Uygulama y?klendi ?', 'ok');
+      setStatus('Uygulama yüklendi ✓', 'ok');
     }
   });
 }
@@ -2101,7 +2118,7 @@ async function checkAuthSession() {
   setStatus('Oturum kontrol ediliyor...', '');
 
   const fallback = window.setTimeout(() => {
-    setStatus('Haz?r - oturum kontrol? arka planda s?r?yor', 'ok');
+    setStatus('Hazır', 'ok');
   }, 3500);
 
   try {
@@ -2110,7 +2127,7 @@ async function checkAuthSession() {
 
     if (!data.session) {
       updateOnlineStatus();
-      setStatus('Giri? bekleniyor', '');
+      setStatus('Giriş bekleniyor', '');
       showAuth();
       return;
     }
@@ -2118,8 +2135,8 @@ async function checkAuthSession() {
     await continueWithSession(data.session);
   } catch (error) {
     window.clearTimeout(fallback);
-    console.warn('Oturum kontrol? yap?lamad?:', error);
-    setStatus('Haz?r', 'ok');
+    console.warn('Oturum kontrolü yapılamadı:', error);
+    setStatus('Hazır', 'ok');
   }
 }
 
@@ -2147,6 +2164,3 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
-
-
-
