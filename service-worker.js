@@ -1,9 +1,9 @@
-const CACHE_NAME = 'fittracker-pro-v9';
+const CACHE_NAME = 'fittracker-pro-v10';
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/styles/main.css?v=61',
-  '/scripts/app.js?v=122',
+  '/styles/main.css?v=62',
+  '/scripts/app.js?v=123',
   '/manifest.json',
 ];
 
