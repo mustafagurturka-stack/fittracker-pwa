@@ -4023,6 +4023,19 @@ body {
   transform: translateX(20px);
 }
 
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.field-hint.important {
+  color: var(--green);
+  font-weight: 800;
+}
+
 .chart-card {
   min-height: 260px;
 }
