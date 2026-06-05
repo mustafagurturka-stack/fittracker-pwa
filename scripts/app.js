@@ -241,13 +241,48 @@ function setSyncDot(cls) {
 
 function getSortedMeasurements() {
   return [...(state.measurements || [])]
-    .filter(item => item?.date && Number.isFinite(Number(item.weight)) && Number.isFinite(Number(item.waist)))
+    .filter(item => item?.date && Number.isFinite(Number(item.weight)))
     .map(item => ({
       ...item,
       weight: Number(item.weight),
-      waist: Number(item.waist),
+      waist: Number.isFinite(Number(item.waist)) ? Number(item.waist) : null,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getLatestWaistMeasurement() {
+  return getSortedMeasurements()
+    .filter(item => Number.isFinite(Number(item.waist)))
+    .at(-1);
+}
+
+function getMeasurementSequenceNumber(date) {
+  const targetDate = date || getSuggestedMeasureDate();
+  const dates = new Set(
+    getSortedMeasurements()
+      .filter(item => item.date < targetDate)
+      .map(item => item.date)
+  );
+  return dates.size + 1;
+}
+
+function shouldTrackWaist(date) {
+  return getMeasurementSequenceNumber(date) % 4 === 0;
+}
+
+function updateWaistHint() {
+  const dateInput = document.getElementById('measureDateInput');
+  const hint = document.getElementById('waistMeasureHint');
+  if (!hint) return;
+
+  const date = dateInput?.value || getSuggestedMeasureDate();
+  const sequence = getMeasurementSequenceNumber(date);
+  const required = shouldTrackWaist(date);
+
+  hint.textContent = required
+    ? `${sequence}. tartı: bu hafta bel ölçümü de ekle.`
+    : `${sequence}. tartı: bel opsiyonel. Bel ölçümü her 4. tartıda takip edilir.`;
+  hint.classList.toggle('important', required);
 }
 
 function normalizeProfileState() {
@@ -466,9 +501,7 @@ function renderDashboardGoalCard() {
   const el = document.getElementById('dashboardGoalCard');
   if (!el) return;
 
-  const data = [...(state.measurements || [])].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
+  const data = getSortedMeasurements();
 
   if (!data.length) {
     setEmptyState(
@@ -611,8 +644,10 @@ function renderStats() {
 
   const first = data[0];
   const last = data[data.length - 1];
+  const firstWaist = data.find(item => Number.isFinite(Number(item.waist)));
+  const lastWaist = getLatestWaistMeasurement();
   const weightDiff = Number(last.weight - first.weight);
-  const waistDiff = Number((last.waist || 0) - (first.waist || 0));
+  const waistDiff = firstWaist && lastWaist ? Number(lastWaist.waist - firstWaist.waist) : null;
   const startDateText = formatDate(first.date);
 
   el.innerHTML = `
@@ -633,12 +668,12 @@ function renderStats() {
       <div class="progress-summary-card">
         <div>
           <div class="progress-summary-label">Son Bel Ölçümü</div>
-          <div class="progress-summary-value">${last.waist ?? '—'} <span>cm</span></div>
+          <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
         </div>
         <div class="progress-summary-side">
-          <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
-          <div class="progress-summary-diff ${waistDiff <= 0 ? 'good' : 'bad'}">
-            ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm
+          <div class="progress-summary-small">${lastWaist ? 'Aylık takip' : 'Her 4. tartıda'}</div>
+          <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
+            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
           </div>
         </div>
       </div>
@@ -652,8 +687,7 @@ function renderStats() {
   const canvas = document.getElementById('measurementChart');
   if (!canvas || typeof Chart === 'undefined') return;
 
-  const data = [...(state.measurements || [])]
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const data = getSortedMeasurements();
 
   if (measurementChart) {
     measurementChart.destroy();
@@ -694,7 +728,7 @@ function renderStats() {
         },
         {
           label: 'Bel (cm)',
-          data: data.map(item => item.waist),
+          data: data.map(item => Number.isFinite(Number(item.waist)) ? item.waist : null),
           borderColor: '#0f766e',
           backgroundColor: 'rgba(15,118,110,.10)',
           tension: 0.35,
@@ -738,8 +772,7 @@ function renderWeightSummary() {
   const el = document.getElementById('weightSummary');
   if (!el) return;
 
-  const data = [...(state.measurements || [])]
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const data = getSortedMeasurements();
 
   if (!data.length) {
     el.innerHTML = '';
@@ -748,9 +781,11 @@ function renderWeightSummary() {
 
   const first = data[0];
   const last = data[data.length - 1];
+  const firstWaist = data.find(item => Number.isFinite(Number(item.waist)));
+  const lastWaist = getLatestWaistMeasurement();
 
   const weightDiff = last.weight - first.weight;
-  const waistDiff = last.waist - first.waist;
+  const waistDiff = firstWaist && lastWaist ? lastWaist.waist - firstWaist.waist : null;
 
   const milestones = state.milestones || [95, 90, 85, 80, 75];
 
@@ -840,9 +875,9 @@ function renderWeightSummary() {
           font-size:24px;
           font-weight:900;
           margin-top:6px;
-          color:${waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
+          color:${waistDiff === null || waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
         ">
-          ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm
+          ${waistDiff === null ? 'Aylık takip' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
         </div>
       </div>
 
@@ -855,9 +890,7 @@ function renderWeightList() {
   const empty = document.getElementById('weightEmpty');
   if (!list || !empty) return;
 
-  const data = [...(state.measurements || [])].sort((a, b) =>
-    b.date.localeCompare(a.date)
-  );
+  const data = getSortedMeasurements().sort((a, b) => b.date.localeCompare(a.date));
 
   if (!data.length) {
     empty.style.display = 'block';
@@ -874,7 +907,7 @@ function renderWeightList() {
       ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
       : null;
 
-    const waistDiff = prev && m.waist != null && prev.waist != null
+    const waistDiff = prev && Number.isFinite(Number(m.waist)) && Number.isFinite(Number(prev.waist))
       ? (parseFloat(m.waist) - parseFloat(prev.waist)).toFixed(1)
       : null;
 
@@ -884,15 +917,19 @@ function renderWeightList() {
 
     const waistDiffHtml = waistDiff
       ? `<span style="color:${waistDiff < 0 ? 'var(--green)' : 'var(--red)'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
-      : '<span style="color:var(--muted)">?</span>';
+      : '<span style="color:var(--muted)">aylık</span>';
+
+    const waistText = Number.isFinite(Number(m.waist))
+      ? `${m.waist} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
+      : `<span style="font-size:12px;color:var(--muted)">Bel: aylık takip</span>`;
 
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
         <div style="flex:1">
           <div style="font-weight:700">
             ${m.weight ?? '?'} <span style="font-size:12px;color:var(--muted)">kg</span>
-            ?
-            ${m.waist ?? '?'} <span style="font-size:12px;color:var(--muted)">cm bel</span>
+            ·
+            ${waistText}
           </div>
           <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
             ${formatDate(m.date)}
@@ -906,7 +943,7 @@ function renderWeightList() {
 
         <button onclick="deleteWeight(${index})"
           style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-          aria-label="Sil">?</button>
+          aria-label="Sil">×</button>
       </div>
     `;
   }).join('');
@@ -1139,10 +1176,14 @@ function renderProgressSummary() {
   const weekly = getWeeklyProgressData();
   const current = weekly[weekly.length - 1] || { sleep: 0, workouts: 0 };
   const prev = weekly[weekly.length - 2];
-  const measurements = [...(state.measurements || [])].sort((a, b) => a.date.localeCompare(b.date));
+  const measurements = getSortedMeasurements();
   const first = measurements[0];
   const last = measurements[measurements.length - 1];
   const previousMeasure = measurements[measurements.length - 2];
+  const waistMeasurements = measurements.filter(item => Number.isFinite(Number(item.waist)));
+  const firstWaist = waistMeasurements[0];
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+  const previousWaist = waistMeasurements[waistMeasurements.length - 2];
 
   const sleepPct = Math.min(100, Math.round((current.sleep / SLEEP_TARGET) * 100));
   const workoutPct = Math.min(100, Math.round((current.workouts / WORKOUT_TARGET) * 100));
@@ -1150,8 +1191,8 @@ function renderProgressSummary() {
   const workoutDiff = prev ? current.workouts - prev.workouts : 0;
   const weightDiff = first && last ? last.weight - first.weight : 0;
   const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
-  const waistDiff = first && last ? last.waist - first.waist : 0;
-  const lastWaistDiff = previousMeasure && last ? last.waist - previousMeasure.waist : 0;
+  const waistDiff = firstWaist && lastWaist ? lastWaist.waist - firstWaist.waist : null;
+  const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
   const categories = getCurrentWeekWorkoutCategories();
   const categoryText = categories.length
     ? categories.map(([category, minutes]) => `${category}: ${minutes} dk`).join(' · ')
@@ -1182,8 +1223,8 @@ function renderProgressSummary() {
 
       <div class="progress-metric-card">
         <span>Bel</span>
-        <strong>${last ? `${last.waist} cm` : '—'}</strong>
-        <small>Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm</small>
+        <strong>${lastWaist ? `${lastWaist.waist} cm` : '—'}</strong>
+        <small>${waistDiff === null ? 'Her 4. tartıda takip edilir' : `Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff === null ? '—' : `${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm`}`}</small>
       </div>
     </div>
   `;
@@ -1328,6 +1369,7 @@ function renderSettings() {
   const emailEl = document.getElementById('settingsEmail');
   const startWeightEl = document.getElementById('settingsStartWeight');
   const currentWeightEl = document.getElementById('settingsCurrentWeight');
+  const currentWaistEl = document.getElementById('settingsCurrentWaist');
   const firstGoalEl = document.getElementById('settingsFirstGoal');
   const finalGoalEl = document.getElementById('settingsFinalGoal');
   const syncEl = document.getElementById('settingsSyncState');
@@ -1338,6 +1380,7 @@ function renderSettings() {
   const measurements = getSortedMeasurements();
   const firstMeasurement = measurements[0];
   const lastMeasurement = measurements[measurements.length - 1];
+  const lastWaistMeasurement = getLatestWaistMeasurement();
   const goals = (state.milestones || [])
     .map(Number)
     .filter(value => Number.isFinite(value));
@@ -1355,6 +1398,9 @@ function renderSettings() {
   }
   if (currentWeightEl) {
     currentWeightEl.textContent = lastMeasurement?.weight ? `${Number(lastMeasurement.weight).toFixed(1)} kg` : '— kg';
+  }
+  if (currentWaistEl) {
+    currentWaistEl.textContent = lastWaistMeasurement?.waist ? `${Number(lastWaistMeasurement.waist).toFixed(1)} cm` : 'Aylık takip';
   }
   if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
   if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
@@ -1404,7 +1450,7 @@ async function loadMeasurementsFromSupabase() {
   const cloudMeasurements = (data || []).map(item => ({
     date: item.date,
     weight: parseFloat(item.weight),
-    waist: parseFloat(item.waist),
+    waist: Number.isFinite(Number(item.waist)) ? parseFloat(item.waist) : null,
   }));
 
   if (!cloudMeasurements.length && localMeasurements.length) {
@@ -1510,20 +1556,26 @@ async function saveMeasurementFromForm() {
 
   const date = dateInput.value || getSuggestedMeasureDate();
   const weight = parseFloat(weightInput.value);
-  const waist = parseFloat(waistInput.value);
+  const waistRaw = waistInput.value.trim();
+  const waist = waistRaw ? parseFloat(waistRaw) : null;
 
   if (!date || Number.isNaN(weight) || weight <= 0) {
-    alert('Ge?erli bir kilo gir.');
+    alert('Geçerli bir kilo gir.');
     return;
   }
 
-  if (Number.isNaN(waist) || waist <= 0) {
-    alert('Ge?erli bir bel ?l??m? gir.');
+  if (waist !== null && (Number.isNaN(waist) || waist <= 0)) {
+    alert('Geçerli bir bel ölçümü gir.');
+    return;
+  }
+
+  if (shouldTrackWaist(date) && waist === null) {
+    alert('Bu 4. tartı günü. Lütfen bel ölçümünü de ekle.');
     return;
   }
 
   if (new Date(date).getDay() !== WEEKLY_MEASURE_DAY) {
-    const ok = confirm('?l??mler pazar g?n? al?nacak ?ekilde planland?. Yine de bu tarihe kay?t eklemek ister misin?');
+    const ok = confirm('Ölçümler pazar günü alınacak şekilde planlandı. Yine de bu tarihe kayıt eklemek ister misin?');
     if (!ok) return;
   }
 
@@ -1531,7 +1583,7 @@ async function saveMeasurementFromForm() {
     user_id: getUserId(),
     date,
     weight: parseFloat(weight.toFixed(1)),
-    waist: parseFloat(waist.toFixed(1)),
+    waist: waist === null ? null : parseFloat(waist.toFixed(1)),
   };
 
   const { error } = await db
@@ -1540,7 +1592,7 @@ async function saveMeasurementFromForm() {
 
   if (error) {
     console.error('Measurement save error:', error);
-    alert('?l??m cloud kay?t hatas?: ' + error.message);
+    alert('Ölçüm cloud kayıt hatası: ' + error.message);
     setStatus('Cloud kayıt hatası', 'error');
     return;
   }
@@ -1550,6 +1602,7 @@ async function saveMeasurementFromForm() {
   weightInput.value = '';
   waistInput.value = '';
   dateInput.value = getSuggestedMeasureDate();
+  updateWaistHint();
   setStatus('Ölçüm kaydedildi ✓', 'ok');
 }
 
@@ -1580,13 +1633,18 @@ async function addMeasurement() {
   const weightInput = prompt('Kilonu gir (kg):');
   if (!weightInput || isNaN(parseFloat(weightInput))) return;
 
-  const waistInput = prompt('Bel ölçünü gir (cm):');
-  if (!waistInput || isNaN(parseFloat(waistInput))) return;
+  const waistInput = prompt(
+    shouldTrackWaist(date)
+      ? 'Bu 4. tartı günü. Bel ölçünü gir (cm):'
+      : 'Bel ölçünü gir (cm, opsiyonel):'
+  );
+  if (shouldTrackWaist(date) && (!waistInput || isNaN(parseFloat(waistInput)))) return;
+  if (waistInput && isNaN(parseFloat(waistInput))) return;
 
   const measurement = {
     date,
     weight: parseFloat(parseFloat(weightInput).toFixed(1)),
-    waist: parseFloat(parseFloat(waistInput).toFixed(1)),
+    waist: waistInput ? parseFloat(parseFloat(waistInput).toFixed(1)) : null,
     user_id: getUserId(),
   };
 
@@ -1630,9 +1688,7 @@ async function deleteWeight(sortedIdx) {
     .from('measurements')
     .delete()
     .eq('user_id', getUserId())
-    .eq('date', target.date)
-    .eq('weight', target.weight)
-    .eq('waist', target.waist);
+    .eq('date', target.date);
 
   if (error) {
     console.error('Supabase delete hatas?:', error);
@@ -2232,7 +2288,11 @@ function bindUiEvents() {
   if (workoutDateInput) workoutDateInput.value = today();
 
   const measureDateInput = document.getElementById('measureDateInput');
-  if (measureDateInput) measureDateInput.value = getSuggestedMeasureDate();
+  if (measureDateInput) {
+    measureDateInput.value = getSuggestedMeasureDate();
+    measureDateInput.addEventListener('change', updateWaistHint);
+    updateWaistHint();
+  }
 
   const workoutBtn = document.getElementById('saveWorkoutBtn');
   if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
