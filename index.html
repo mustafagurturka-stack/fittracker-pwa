@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles/main.css?v=68" />
+  <link rel="stylesheet" href="styles/main.css?v=69" />
 </head>
 <body>
 
@@ -128,7 +128,8 @@
         </label>
         <label>
           Bel
-          <input type="number" id="measureWaistInput" placeholder="cm" step="0.1" min="40" />
+          <input type="number" id="measureWaistInput" placeholder="cm (ayda 1)" step="0.1" min="40" />
+          <small id="waistMeasureHint" class="field-hint">Bel ölçümü ayda 1, her 4. tartıda takip edilir.</small>
         </label>
         <button class="btn form-submit" id="saveMeasurementBtn">Kaydet</button>
       </div>
@@ -392,8 +393,12 @@
               <strong id="settingsStartWeight">— kg</strong>
             </div>
             <div class="settings-row">
-              <span>Son ölçüm</span>
+              <span>Son kilo</span>
               <strong id="settingsCurrentWeight">— kg</strong>
+            </div>
+            <div class="settings-row">
+              <span>Son bel</span>
+              <strong id="settingsCurrentWaist">— cm</strong>
             </div>
             <div class="settings-row">
               <span>İlk hedef</span>
@@ -488,6 +493,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=129" defer></script>
+  <script src="scripts/app.js?v=130" defer></script>
 </body>
 </html>
