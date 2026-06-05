@@ -239,6 +239,49 @@ function setSyncDot(cls) {
   dot.className = 'sync-dot ' + cls;
 }
 
+function getSortedMeasurements() {
+  return [...(state.measurements || [])]
+    .filter(item => item?.date && Number.isFinite(Number(item.weight)) && Number.isFinite(Number(item.waist)))
+    .map(item => ({
+      ...item,
+      weight: Number(item.weight),
+      waist: Number(item.waist),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeProfileState() {
+  const measurements = getSortedMeasurements();
+  const first = measurements[0];
+
+  if (!state.name || state.name === 'Sporcu') {
+    const heroName = document.getElementById('heroName')?.textContent?.trim();
+    if (heroName && heroName !== 'Sporcu') {
+      state.name = heroName;
+    }
+  }
+
+  if ((state.startWeight === null || state.startWeight === undefined) && first) {
+    state.startWeight = first.weight;
+  }
+
+  if ((state.startWaist === null || state.startWaist === undefined) && first) {
+    state.startWaist = first.waist;
+  }
+
+  if (!Array.isArray(state.milestones)) {
+    state.milestones = [];
+  }
+
+  state.milestones = state.milestones
+    .map(Number)
+    .filter(value => Number.isFinite(value));
+
+  if (!Number.isFinite(Number(state.goalWeight)) && state.milestones.length) {
+    state.goalWeight = state.milestones[state.milestones.length - 1];
+  }
+}
+
 // â”€â”€ PERSISTENCE â”€â”€
 function stateSave() {
   try {
@@ -281,6 +324,7 @@ function stateLoad() {
       notes: Array.isArray(savedState.notes) ? savedState.notes : [],
       sleep: Array.isArray(savedState.sleep) ? savedState.sleep : [],
     };
+    normalizeProfileState();
   } catch (e) {
     console.warn('State y?klenemedi:', e);
   }
@@ -319,6 +363,11 @@ function goPanel(idx) {
     const btn = document.getElementById(id);
     if (btn) btn.classList.toggle('active', i === idx);
   });
+
+  if (idx === 4) {
+    normalizeProfileState();
+    renderSettings();
+  }
 
   requestAnimationFrame(() => {
     window.scrollTo(0, 0);
@@ -1272,6 +1321,8 @@ function renderProgressList() {
 }
 
 function renderSettings() {
+  normalizeProfileState();
+
   const nameEl = document.getElementById('settingsName');
   const startEl = document.getElementById('settingsStartDate');
   const emailEl = document.getElementById('settingsEmail');
@@ -1284,8 +1335,7 @@ function renderSettings() {
   const measureReminderToggle = document.getElementById('measureReminderToggle');
   const dailyReminderToggle = document.getElementById('dailyReminderToggle');
 
-  const measurements = [...(state.measurements || [])]
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const measurements = getSortedMeasurements();
   const firstMeasurement = measurements[0];
   const lastMeasurement = measurements[measurements.length - 1];
   const goals = (state.milestones || [])
@@ -1786,8 +1836,9 @@ function editName() {
 function editGoals() {
   const firstGoalCurrent = (state.milestones || [])[0] || '';
   const finalGoalCurrent = state.goalWeight || '';
-  const startWeightCurrent = state.startWeight || state.measurements?.[0]?.weight || '';
-  const startWaistCurrent = state.startWaist || state.measurements?.[0]?.waist || '';
+  const firstMeasurement = getSortedMeasurements()[0];
+  const startWeightCurrent = state.startWeight ?? firstMeasurement?.weight ?? '';
+  const startWaistCurrent = state.startWaist ?? firstMeasurement?.waist ?? '';
 
   const startWeightInput = prompt('Başlangıç kilonu gir (kg):', startWeightCurrent);
   if (startWeightInput === null) return;
