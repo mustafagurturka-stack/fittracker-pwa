@@ -84,7 +84,11 @@ let state = {
   notes: [],
   sleep: [],
   goalWeight: 85,
-  milestones: [95, 85]
+  milestones: [95, 85],
+  preferences: {
+    measureReminder: true,
+    dailyReminder: false,
+  }
 };
 
 let measurementChart = null;
@@ -266,6 +270,10 @@ function stateLoad() {
       startWaist: savedState.startWaist ?? null,
       goalWeight: Number(savedState.goalWeight || 85),
       milestones: Array.isArray(savedState.milestones) ? savedState.milestones : [95, 85],
+      preferences: {
+        measureReminder: savedState.preferences?.measureReminder ?? true,
+        dailyReminder: savedState.preferences?.dailyReminder ?? false,
+      },
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
@@ -628,16 +636,22 @@ function renderStats() {
         {
           label: 'Kilo (kg)',
           data: data.map(item => item.weight),
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37,99,235,.10)',
           tension: 0.35,
           borderWidth: 2,
-          pointRadius: 4
+          pointRadius: 4,
+          pointBackgroundColor: '#2563eb'
         },
         {
           label: 'Bel (cm)',
           data: data.map(item => item.waist),
+          borderColor: '#0f766e',
+          backgroundColor: 'rgba(15,118,110,.10)',
           tension: 0.35,
           borderWidth: 2,
-          pointRadius: 4
+          pointRadius: 4,
+          pointBackgroundColor: '#0f766e'
         }
       ]
     },
@@ -646,12 +660,25 @@ function renderStats() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true
+          display: true,
+          labels: {
+            usePointStyle: true,
+            boxWidth: 8,
+            boxHeight: 8
+          }
         }
       },
       scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
         y: {
-          beginAtZero: false
+          beginAtZero: false,
+          grid: {
+            color: 'rgba(113,128,150,.18)'
+          }
         }
       }
     }
@@ -1117,10 +1144,26 @@ function renderProgressCharts() {
 
   const latestWeek = weekly[weekly.length - 1];
 
-  if (!latestWeek) return;
-
   const sleepWrap = document.getElementById('sleepBars');
   const workoutWrap = document.getElementById('workoutBars');
+
+  if (!latestWeek) {
+    setEmptyState(
+      sleepWrap,
+      'Uyku grafiği için kayıt bekleniyor',
+      'İlk uyku kaydını eklediğinde haftalık uyku düzenin burada görünür.',
+      'Uyku Ekle',
+      2
+    );
+    setEmptyState(
+      workoutWrap,
+      'Antrenman grafiği için kayıt bekleniyor',
+      'İlk antrenmanı eklediğinde süre ve yoğunluk dağılımı burada görünür.',
+      'Antrenman Ekle',
+      2
+    );
+    return;
+  }
 
   if (sleepWrap) {
     const sleepData = (state.sleep || [])
@@ -1140,48 +1183,18 @@ function renderProgressCharts() {
       );
     } else {
     sleepWrap.innerHTML = `
-      <div style="
-        display:flex;
-        align-items:flex-end;
-        gap:12px;
-        height:180px;
-        padding:12px;
-      ">
+      <div class="bar-chart sleep-chart">
         ${sleepData.map(item => {
           const h = Math.max(16, item.hours * 14);
 
           return `
-            <div style="
-              flex:1;
-              display:flex;
-              flex-direction:column;
-              align-items:center;
-              gap:8px;
-            ">
-              <div style="
-                width:100%;
-                border-radius:16px;
-                background:linear-gradient(180deg,#06b6d4,#3b82f6);
-                height:${h}px;
-                min-height:16px;
-                transition:.3s;
-              "></div>
-
-              <div style="
-                font-size:11px;
-                color:var(--muted);
-                font-family:var(--font-mono)
-              ">
+            <div class="bar-item">
+              <div class="bar-fill sleep" style="height:${h}px"></div>
+              <div class="bar-label">
                 ${new Date(item.date)
                   .toLocaleDateString('tr-TR', { weekday: 'short' })}
               </div>
-
-              <div style="
-                font-size:11px;
-                font-weight:700;
-              ">
-                ${item.hours}
-              </div>
+              <div class="bar-value">${item.hours}</div>
             </div>
           `;
         }).join('')}
@@ -1208,48 +1221,19 @@ function renderProgressCharts() {
       );
     } else {
     workoutWrap.innerHTML = `
-      <div style="
-        display:flex;
-        align-items:flex-end;
-        gap:12px;
-        height:180px;
-        padding:12px;
-      ">
+      <div class="bar-chart workout-chart">
         ${workoutData.map(item => {
           const h = Math.max(12, item.duration * 1.2);
+          const category = getWorkoutCategoryFromNote(item.note, item.type);
 
           return `
-            <div style="
-              flex:1;
-              display:flex;
-              flex-direction:column;
-              align-items:center;
-              gap:8px;
-            ">
-              <div style="
-                width:100%;
-                border-radius:16px;
-                background:linear-gradient(180deg,#8b5cf6,#ec4899);
-                height:${h}px;
-                min-height:12px;
-                transition:.3s;
-              "></div>
-
-              <div style="
-                font-size:11px;
-                color:var(--muted);
-                font-family:var(--font-mono)
-              ">
+            <div class="bar-item">
+              <div class="bar-fill workout" style="height:${h}px" title="${category}"></div>
+              <div class="bar-label">
                 ${new Date(item.date)
                   .toLocaleDateString('tr-TR', { weekday: 'short' })}
               </div>
-
-              <div style="
-                font-size:11px;
-                font-weight:700;
-              ">
-                ${item.duration} dk
-              </div>
+              <div class="bar-value">${item.duration} dk</div>
             </div>
           `;
         }).join('')}
@@ -1296,6 +1280,9 @@ function renderSettings() {
   const firstGoalEl = document.getElementById('settingsFirstGoal');
   const finalGoalEl = document.getElementById('settingsFinalGoal');
   const syncEl = document.getElementById('settingsSyncState');
+  const profileThemeToggle = document.getElementById('profileThemeToggle');
+  const measureReminderToggle = document.getElementById('measureReminderToggle');
+  const dailyReminderToggle = document.getElementById('dailyReminderToggle');
 
   const measurements = [...(state.measurements || [])]
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -1322,6 +1309,9 @@ function renderSettings() {
   if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
   if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
   if (syncEl) syncEl.textContent = navigator.onLine ? 'Cloud senkron aktif' : 'Çevrimdışı kayıt';
+  if (profileThemeToggle) profileThemeToggle.checked = state.theme === 'dark';
+  if (measureReminderToggle) measureReminderToggle.checked = Boolean(state.preferences?.measureReminder);
+  if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
 }
 
 function renderAll() {
@@ -1847,6 +1837,17 @@ function editGoals() {
   setStatus('Hedefler güncellendi ✓', 'ok');
 }
 
+function updatePreference(key, value) {
+  state.preferences = {
+    measureReminder: true,
+    dailyReminder: false,
+    ...(state.preferences || {}),
+    [key]: Boolean(value),
+  };
+  stateSave();
+  renderSettings();
+}
+
 function showAuth() {
   if (document.getElementById('authModal')) return;
 
@@ -2220,6 +2221,30 @@ function bindUiEvents() {
 
   const themeBtn = document.getElementById('themeBtn');
   if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+  const profileThemeToggle = document.getElementById('profileThemeToggle');
+  if (profileThemeToggle) {
+    profileThemeToggle.addEventListener('change', event => {
+      state.theme = event.target.checked ? 'dark' : 'light';
+      applyTheme();
+      stateSave();
+      renderSettings();
+    });
+  }
+
+  const measureReminderToggle = document.getElementById('measureReminderToggle');
+  if (measureReminderToggle) {
+    measureReminderToggle.addEventListener('change', event => {
+      updatePreference('measureReminder', event.target.checked);
+    });
+  }
+
+  const dailyReminderToggle = document.getElementById('dailyReminderToggle');
+  if (dailyReminderToggle) {
+    dailyReminderToggle.addEventListener('change', event => {
+      updatePreference('dailyReminder', event.target.checked);
+    });
+  }
 
   const editNameBtn = document.getElementById('editNameBtn');
   if (editNameBtn) editNameBtn.addEventListener('click', editName);
