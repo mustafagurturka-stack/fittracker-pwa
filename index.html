@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles/main.css?v=66" />
+  <link rel="stylesheet" href="styles/main.css?v=67" />
 </head>
 <body>
 
@@ -414,6 +414,40 @@
               <strong id="settingsSyncState">Hazır</strong>
             </div>
           </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Uygulama Ayarları</div>
+            <div class="settings-toggle-row">
+              <div>
+                <strong>Koyu tema</strong>
+                <span>Göz yormayan gece görünümü.</span>
+              </div>
+              <label class="switch">
+                <input id="profileThemeToggle" type="checkbox" />
+                <span></span>
+              </label>
+            </div>
+            <div class="settings-toggle-row">
+              <div>
+                <strong>Pazar ölçüm hatırlatması</strong>
+                <span>Haftalık kilo ve bel ölçümü için.</span>
+              </div>
+              <label class="switch">
+                <input id="measureReminderToggle" type="checkbox" />
+                <span></span>
+              </label>
+            </div>
+            <div class="settings-toggle-row">
+              <div>
+                <strong>Günlük kayıt hatırlatması</strong>
+                <span>Uyku, antrenman ve not girişini unutma.</span>
+              </div>
+              <label class="switch">
+                <input id="dailyReminderToggle" type="checkbox" />
+                <span></span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -454,6 +488,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=127" defer></script>
+  <script src="scripts/app.js?v=128" defer></script>
 </body>
 </html>
