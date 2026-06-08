@@ -258,8 +258,13 @@ function getSortedMeasurements() {
 
 function getLatestWaistMeasurement() {
   return getSortedMeasurements()
-    .filter(item => Number.isFinite(Number(item.waist)))
+    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date))
     .at(-1);
+}
+
+function getWaistMeasurements() {
+  return getSortedMeasurements()
+    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date));
 }
 
 function getMeasurementSequenceNumber(date) {
@@ -273,11 +278,13 @@ function getMeasurementSequenceNumber(date) {
 }
 
 function shouldTrackWaist(date) {
-  return getMeasurementSequenceNumber(date) % 4 === 0;
+  const sequence = getMeasurementSequenceNumber(date);
+  return sequence === 1 || sequence % 4 === 0;
 }
 
 function updateWaistHint() {
   const dateInput = document.getElementById('measureDateInput');
+  const waistInput = document.getElementById('measureWaistInput');
   const hint = document.getElementById('waistMeasureHint');
   if (!hint) return;
 
@@ -285,9 +292,17 @@ function updateWaistHint() {
   const sequence = getMeasurementSequenceNumber(date);
   const required = shouldTrackWaist(date);
 
+  if (waistInput) {
+    waistInput.disabled = !required;
+    waistInput.placeholder = required ? 'cm' : '4. tartıda';
+    if (!required) waistInput.value = '';
+  }
+
   hint.textContent = required
-    ? `${sequence}. tartı: bu hafta bel ölçümü de ekle.`
-    : `${sequence}. tartı: bel opsiyonel. Bel ölçümü her 4. tartıda takip edilir.`;
+    ? sequence === 1
+      ? 'Başlangıç tartısı: bel ölçümünü de ekle.'
+      : `${sequence}. tartı: bu hafta bel ölçümünü de ekle.`
+    : `${sequence}. tartı: sadece kilo gir. Bel ölçümü 4. tartıda takip edilir.`;
   hint.classList.toggle('important', required);
 }
 
@@ -609,10 +624,11 @@ function renderStats() {
 
   const first = data[0];
   const last = data[data.length - 1];
-  const firstWaist = data.find(item => Number.isFinite(Number(item.waist)));
-  const lastWaist = getLatestWaistMeasurement();
+  const waistMeasurements = getWaistMeasurements();
+  const firstWaist = waistMeasurements[0];
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
   const weightDiff = Number(last.weight - first.weight);
-  const waistDiff = firstWaist && lastWaist ? Number(lastWaist.waist - firstWaist.waist) : null;
+  const waistDiff = waistMeasurements.length >= 2 ? Number(lastWaist.waist - firstWaist.waist) : null;
   const startDateText = formatDate(first.date);
 
   el.innerHTML = `
@@ -636,7 +652,7 @@ function renderStats() {
           <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
         </div>
         <div class="progress-summary-side">
-          <div class="progress-summary-small">${lastWaist ? 'Aylık takip' : 'Her 4. tartıda'}</div>
+          <div class="progress-summary-small">${waistMeasurements.length ? 'Sonraki bel 4. tartıda' : 'Her 4. tartıda'}</div>
           <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
             ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
           </div>
@@ -691,7 +707,7 @@ function renderStats() {
         },
         {
           label: 'Bel (cm)',
-          data: data.map(item => Number.isFinite(Number(item.waist)) ? item.waist : null),
+          data: data.map(item => shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist)) ? item.waist : null),
           borderColor: '#0f766e',
           backgroundColor: 'rgba(15,118,110,.10)',
           tension: 0.35,
@@ -744,11 +760,12 @@ function renderWeightSummary() {
 
   const first = data[0];
   const last = data[data.length - 1];
-  const firstWaist = data.find(item => Number.isFinite(Number(item.waist)));
-  const lastWaist = getLatestWaistMeasurement();
+  const waistMeasurements = getWaistMeasurements();
+  const firstWaist = waistMeasurements[0];
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
 
   const weightDiff = last.weight - first.weight;
-  const waistDiff = firstWaist && lastWaist ? lastWaist.waist - firstWaist.waist : null;
+  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
 
   const milestones = state.milestones || [95, 90, 85, 80, 75];
 
@@ -840,7 +857,7 @@ function renderWeightSummary() {
           margin-top:6px;
           color:${waistDiff === null || waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
         ">
-          ${waistDiff === null ? 'Aylık takip' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
+          ${waistDiff === null ? 'Sonraki ölçüm 4. tartıda' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
         </div>
       </div>
 
@@ -870,7 +887,11 @@ function renderWeightList() {
       ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
       : null;
 
-    const waistDiff = prev && Number.isFinite(Number(m.waist)) && Number.isFinite(Number(prev.waist))
+    const isWaistWeek = shouldTrackWaist(m.date);
+    const prevWaist = getWaistMeasurements()
+      .filter(item => item.date < m.date)
+      .at(-1);
+    const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist))
       ? (parseFloat(m.waist) - parseFloat(prev.waist)).toFixed(1)
       : null;
 
@@ -882,7 +903,7 @@ function renderWeightList() {
       ? `<span style="color:${waistDiff < 0 ? 'var(--green)' : 'var(--red)'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
       : '<span style="color:var(--muted)">aylık</span>';
 
-    const waistText = Number.isFinite(Number(m.waist))
+    const waistText = isWaistWeek && Number.isFinite(Number(m.waist))
       ? `${m.waist} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
       : `<span style="font-size:12px;color:var(--muted)">Bel: aylık takip</span>`;
 
@@ -1143,7 +1164,7 @@ function renderProgressSummary() {
   const first = measurements[0];
   const last = measurements[measurements.length - 1];
   const previousMeasure = measurements[measurements.length - 2];
-  const waistMeasurements = measurements.filter(item => Number.isFinite(Number(item.waist)));
+  const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
   const lastWaist = waistMeasurements[waistMeasurements.length - 1];
   const previousWaist = waistMeasurements[waistMeasurements.length - 2];
@@ -1601,7 +1622,8 @@ async function saveMeasurementFromForm() {
   const date = dateInput.value || getSuggestedMeasureDate();
   const weight = parseLocaleNumber(weightInput.value);
   const waistRaw = waistInput.value.trim();
-  const waist = waistRaw ? parseLocaleNumber(waistRaw) : null;
+  const isWaistWeek = shouldTrackWaist(date);
+  const waist = isWaistWeek && waistRaw ? parseLocaleNumber(waistRaw) : null;
 
   if (!date || Number.isNaN(weight) || weight <= 0) {
     alert('Geçerli bir kilo gir.');
@@ -1613,8 +1635,10 @@ async function saveMeasurementFromForm() {
     return;
   }
 
-  if (shouldTrackWaist(date) && waist === null) {
-    alert('Bu 4. tartı günü. Lütfen bel ölçümünü de ekle.');
+  if (isWaistWeek && waist === null) {
+    alert(getMeasurementSequenceNumber(date) === 1
+      ? 'Başlangıç tartısında bel ölçümünü de ekle.'
+      : 'Bu 4. tartı günü. Lütfen bel ölçümünü de ekle.');
     return;
   }
 
