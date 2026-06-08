@@ -1459,6 +1459,8 @@ async function loadMeasurementsFromSupabase() {
 }
 
 async function loadSleepFromSupabase() {
+  const localSleep = Array.isArray(state.sleep) ? [...state.sleep] : [];
+
   const { data, error } = await db
     .from('sleep_logs')
     .select('*')
@@ -1468,6 +1470,12 @@ async function loadSleepFromSupabase() {
   if (error) {
     console.error('Sleep load hatası:', error);
     setStatus('Uyku verileri yüklenemedi', 'error');
+    return;
+  }
+
+  if (!(data || []).length && localSleep.length) {
+    console.warn('Cloud uyku boş döndü; yerel uyku kayıtları korunuyor.');
+    setStatus('Hazır', 'ok');
     return;
   }
 
@@ -1609,6 +1617,31 @@ async function saveSleepToSupabase(payload) {
   return db
     .from('sleep_logs')
     .insert([payload]);
+}
+
+function saveSleepLocally(payload) {
+  if (!Array.isArray(state.sleep)) state.sleep = [];
+
+  const nextSleep = {
+    id: payload.id || `local-sleep-${payload.date}`,
+    date: payload.date,
+    hours: payload.hours,
+  };
+
+  const existingIndex = state.sleep.findIndex(item => item.date === payload.date);
+
+  if (existingIndex >= 0) {
+    state.sleep[existingIndex] = {
+      ...state.sleep[existingIndex],
+      ...nextSleep,
+    };
+  } else {
+    state.sleep.push(nextSleep);
+  }
+
+  state.sleep = [...state.sleep].sort((a, b) => b.date.localeCompare(a.date));
+  stateSave();
+  renderAll();
 }
 
 // â”€â”€ ACTIONS â”€â”€
@@ -1847,19 +1880,20 @@ async function saveSleep() {
     hours: parseFloat(hours.toFixed(1)),
   };
 
+  saveSleepLocally(payload);
+  setStatus('Uyku kaydedildi ✓', 'ok');
+  hourInput.value = '';
+  dateInput.value = today();
+
   const { error } = await saveSleepToSupabase(payload);
 
   if (error) {
     console.error('Sleep kayıt hatası:', error);
-    alert('Uyku cloud kayıt hatası: ' + error.message);
+    setStatus('Uyku yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
 
   await loadSleepFromSupabase();
-
-  setStatus('Uyku kaydedildi ✓', 'ok');
-  hourInput.value = '';
-  dateInput.value = today();
 }
 
 async function saveWorkout() {
