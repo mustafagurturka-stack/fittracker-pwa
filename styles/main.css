@@ -3462,18 +3462,28 @@ body {
 
 .list-card {
   overflow: hidden;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
 }
 
 .list-title {
-  padding: 14px 16px 0;
+  padding: 16px 16px 0;
+}
+
+#sleepSummary,
+#workoutSummary {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px 10px;
 }
 
 .daily-stat-line {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px 0;
+  padding: 0;
   color: var(--text);
   font-size: 14px;
 }
@@ -3483,7 +3493,6 @@ body {
 }
 
 .daily-stat-line.muted {
-  padding-top: 6px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -3500,6 +3509,12 @@ body {
   gap: 12px;
   padding: 13px 16px;
   border-top: 1px solid var(--border);
+}
+
+#sleepList,
+#workoutList {
+  display: grid;
+  margin-top: 2px;
 }
 
 .progress-grid {
