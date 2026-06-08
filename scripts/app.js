@@ -203,6 +203,13 @@ function parseLocaleNumber(value) {
   return normalized ? Number(normalized) : NaN;
 }
 
+function toLocalIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function isCloudRecordId(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || ''));
 }
@@ -1019,18 +1026,20 @@ function renderNotes() {
   `).join('');
 }
 function getWeekRange(dateValue) {
-  const date = new Date(dateValue);
-  const day = date.getDay() || 7;
+  const parts = String(dateValue || '').split('-').map(Number);
+  const date = parts.length === 3 && parts.every(Number.isFinite)
+    ? new Date(parts[0], parts[1] - 1, parts[2])
+    : new Date(dateValue);
 
-  const monday = new Date(date);
-  monday.setDate(date.getDate() - day + 1);
+  const sunday = new Date(date);
+  sunday.setDate(date.getDate() - date.getDay());
 
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
 
   return {
-    start: monday.toISOString().slice(0, 10),
-    end: sunday.toISOString().slice(0, 10),
+    start: toLocalIsoDate(sunday),
+    end: toLocalIsoDate(saturday),
   };
 }
 
