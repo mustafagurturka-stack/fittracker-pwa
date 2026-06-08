@@ -896,12 +896,12 @@ function renderWeightList() {
       : null;
 
     const weightDiffHtml = weightDiff
-      ? `<span style="color:${weightDiff < 0 ? 'var(--green)' : 'var(--red)'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
-      : '<span style="color:var(--muted)">?</span>';
+      ? `<span class="delta-pill ${weightDiff < 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
+      : '<span class="delta-pill neutral">Başlangıç</span>';
 
     const waistDiffHtml = waistDiff
-      ? `<span style="color:${waistDiff < 0 ? 'var(--green)' : 'var(--red)'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
-      : '<span style="color:var(--muted)">aylık</span>';
+      ? `<span class="delta-pill ${waistDiff < 0 ? 'good' : 'bad'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
+      : `<span class="delta-pill neutral">${isWaistWeek ? 'İlk bel' : '4. tartıda'}</span>`;
 
     const waistText = isWaistWeek && Number.isFinite(Number(m.waist))
       ? `${m.waist} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
