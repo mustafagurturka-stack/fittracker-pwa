@@ -596,48 +596,7 @@ function renderStats() {
   const el = document.getElementById('dashboardProgressCard');
   if (!el) return;
 
-  const data = [...(state.measurements || [])].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
-
-  if (!data.length) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-
-  const diff = Number(last.weight - first.weight);
-  const startDateText = formatDate(first.date);
-  const diffText = `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`;
-  const isGood = diff <= 0;
-
-  el.innerHTML = `
-    <div class="progress-summary-card">
-      <div>
-        <div class="progress-summary-label">SON ÖLÇÜM</div>
-        <div class="progress-summary-value">
-          ${last.weight} <span>kg</span>
-        </div>
-      </div>
-
-      <div class="progress-summary-side">
-        <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
-        <div class="progress-summary-diff ${isGood ? 'good' : 'bad'}">
-          ${diffText}
-        </div>
-      </div>
-    </div>
-  `;
-}
-function renderStats() {
-  const el = document.getElementById('dashboardProgressCard');
-  if (!el) return;
-
-  const data = [...(state.measurements || [])].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
+  const data = getSortedMeasurements();
 
   if (!data.length) {
     el.innerHTML = `
@@ -684,8 +643,6 @@ function renderStats() {
         </div>
       </div>
     </div>
-
-    <div class="week-insight">${insight}</div>
   `;
 }
 
@@ -1417,25 +1374,33 @@ function renderSettings() {
 }
 
 function renderAll() {
-  renderHero();
-  renderMoti();
-  renderDashboardWeekLabel();
-  renderDashboardGoalCard();
-  renderStats();
-  renderMeasurementChart();
-  renderWeightSummary();
-  renderWeightList();
-  renderNotes();
-  renderSleepSummary();
-  renderSleepList();
-  renderWorkoutSummary();
-  renderWorkoutList();
-  renderProgressSummary();
-  renderProgressCharts();
-  renderProgressList();
-  renderSettings();
-  applyTheme();
-  clearInitialLoadingStatus();
+  [
+    renderHero,
+    renderMoti,
+    renderDashboardWeekLabel,
+    renderDashboardGoalCard,
+    renderStats,
+    renderMeasurementChart,
+    renderWeightSummary,
+    renderWeightList,
+    renderNotes,
+    renderSleepSummary,
+    renderSleepList,
+    renderWorkoutSummary,
+    renderWorkoutList,
+    renderProgressSummary,
+    renderProgressCharts,
+    renderProgressList,
+    renderSettings,
+    applyTheme,
+    clearInitialLoadingStatus,
+  ].forEach(renderFn => {
+    try {
+      renderFn();
+    } catch (error) {
+      console.error('Render hatası:', renderFn.name, error);
+    }
+  });
 }
 
 // â”€â”€ SUPABASE DATA â”€â”€
