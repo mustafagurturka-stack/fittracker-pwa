@@ -191,6 +191,12 @@ function parseDisplayDate(value) {
   return `${year}-${month}-${day}`;
 }
 
+function parseLocaleNumber(value) {
+  if (value === null || value === undefined) return NaN;
+  const normalized = String(value).trim().replace(',', '.');
+  return normalized ? Number(normalized) : NaN;
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('tr-TR', {
     day: '2-digit',
@@ -1546,6 +1552,54 @@ function loadAllCloudData() {
   loadNotesFromSupabase();
 
 }
+
+async function saveMeasurementToSupabase(payload) {
+  const { data: existingRows, error: lookupError } = await db
+    .from('measurements')
+    .select('id')
+    .eq('user_id', payload.user_id)
+    .eq('date', payload.date)
+    .limit(1);
+
+  if (lookupError) return { error: lookupError };
+
+  if (existingRows && existingRows.length) {
+    return db
+      .from('measurements')
+      .update({
+        weight: payload.weight,
+        waist: payload.waist,
+      })
+      .eq('id', existingRows[0].id);
+  }
+
+  return db
+    .from('measurements')
+    .insert([payload]);
+}
+
+async function saveSleepToSupabase(payload) {
+  const { data: existingRows, error: lookupError } = await db
+    .from('sleep_logs')
+    .select('id')
+    .eq('user_id', payload.user_id)
+    .eq('date', payload.date)
+    .limit(1);
+
+  if (lookupError) return { error: lookupError };
+
+  if (existingRows && existingRows.length) {
+    return db
+      .from('sleep_logs')
+      .update({ hours: payload.hours })
+      .eq('id', existingRows[0].id);
+  }
+
+  return db
+    .from('sleep_logs')
+    .insert([payload]);
+}
+
 // â”€â”€ ACTIONS â”€â”€
 async function saveMeasurementFromForm() {
   const dateInput = document.getElementById('measureDateInput');
@@ -1555,9 +1609,9 @@ async function saveMeasurementFromForm() {
   if (!dateInput || !weightInput || !waistInput) return;
 
   const date = dateInput.value || getSuggestedMeasureDate();
-  const weight = parseFloat(weightInput.value);
+  const weight = parseLocaleNumber(weightInput.value);
   const waistRaw = waistInput.value.trim();
-  const waist = waistRaw ? parseFloat(waistRaw) : null;
+  const waist = waistRaw ? parseLocaleNumber(waistRaw) : null;
 
   if (!date || Number.isNaN(weight) || weight <= 0) {
     alert('Geçerli bir kilo gir.');
@@ -1586,9 +1640,7 @@ async function saveMeasurementFromForm() {
     waist: waist === null ? null : parseFloat(waist.toFixed(1)),
   };
 
-  const { error } = await db
-    .from('measurements')
-    .upsert(payload, { onConflict: 'user_id,date' });
+  const { error } = await saveMeasurementToSupabase(payload);
 
   if (error) {
     console.error('Measurement save error:', error);
@@ -1631,20 +1683,22 @@ async function addMeasurement() {
   }
 
   const weightInput = prompt('Kilonu gir (kg):');
-  if (!weightInput || isNaN(parseFloat(weightInput))) return;
+  const weight = parseLocaleNumber(weightInput);
+  if (!weightInput || Number.isNaN(weight)) return;
 
   const waistInput = prompt(
     shouldTrackWaist(date)
       ? 'Bu 4. tartı günü. Bel ölçünü gir (cm):'
       : 'Bel ölçünü gir (cm, opsiyonel):'
   );
-  if (shouldTrackWaist(date) && (!waistInput || isNaN(parseFloat(waistInput)))) return;
-  if (waistInput && isNaN(parseFloat(waistInput))) return;
+  const waist = waistInput ? parseLocaleNumber(waistInput) : null;
+  if (shouldTrackWaist(date) && (!waistInput || Number.isNaN(waist))) return;
+  if (waistInput && Number.isNaN(waist)) return;
 
   const measurement = {
     date,
-    weight: parseFloat(parseFloat(weightInput).toFixed(1)),
-    waist: waistInput ? parseFloat(parseFloat(waistInput).toFixed(1)) : null,
+    weight: parseFloat(weight.toFixed(1)),
+    waist: waistInput ? parseFloat(waist.toFixed(1)) : null,
     user_id: getUserId(),
   };
 
@@ -1778,10 +1832,10 @@ async function saveSleep() {
   if (!dateInput || !hourInput) return;
 
   const date = dateInput.value || today();
-  const hours = parseFloat(hourInput.value);
+  const hours = parseLocaleNumber(hourInput.value);
 
   if (!hours || hours <= 0) {
-    alert('Ge?erli bir uyku saati gir');
+    alert('Geçerli bir uyku saati gir');
     return;
   }
 
@@ -1791,13 +1845,11 @@ async function saveSleep() {
     hours: parseFloat(hours.toFixed(1)),
   };
 
-  const { error } = await db
-    .from('sleep_logs')
-    .upsert(payload, { onConflict: 'user_id,date' });
+  const { error } = await saveSleepToSupabase(payload);
 
   if (error) {
-    console.error('Sleep kay?t hatas?:', error);
-    alert('Uyku cloud kay?t hatas?: ' + error.message);
+    console.error('Sleep kayıt hatası:', error);
+    alert('Uyku cloud kayıt hatası: ' + error.message);
     return;
   }
 
@@ -1908,10 +1960,10 @@ function editGoals() {
   const finalGoalInput = prompt('Final hedef kilonu gir (kg):', finalGoalCurrent);
   if (finalGoalInput === null) return;
 
-  const startWeight = parseFloat(startWeightInput);
-  const startWaist = parseFloat(startWaistInput);
-  const firstGoal = parseFloat(firstGoalInput);
-  const finalGoal = parseFloat(finalGoalInput);
+  const startWeight = parseLocaleNumber(startWeightInput);
+  const startWaist = parseLocaleNumber(startWaistInput);
+  const firstGoal = parseLocaleNumber(firstGoalInput);
+  const finalGoal = parseLocaleNumber(finalGoalInput);
 
   if ([startWeight, startWaist, firstGoal, finalGoal].some(value => Number.isNaN(value))) {
     alert('Lütfen tüm hedef alanlarına geçerli sayı gir.');
@@ -2177,10 +2229,10 @@ function showOnboarding() {
 async function completeOnboarding() {
   const name = document.getElementById('onboardName')?.value.trim();
   const startDate = document.getElementById('onboardStartDate')?.value || START_DATE;
-  const startWeight = parseFloat(document.getElementById('onboardStartWeight')?.value || '');
-  const startWaist = parseFloat(document.getElementById('onboardStartWaist')?.value || '');
-  const firstGoal = parseFloat(document.getElementById('onboardFirstGoal')?.value || '');
-  const goalWeight = parseFloat(document.getElementById('onboardGoalWeight')?.value || '');
+  const startWeight = parseLocaleNumber(document.getElementById('onboardStartWeight')?.value || '');
+  const startWaist = parseLocaleNumber(document.getElementById('onboardStartWaist')?.value || '');
+  const firstGoal = parseLocaleNumber(document.getElementById('onboardFirstGoal')?.value || '');
+  const goalWeight = parseLocaleNumber(document.getElementById('onboardGoalWeight')?.value || '');
 
   if (!name || Number.isNaN(startWeight) || Number.isNaN(startWaist) || Number.isNaN(firstGoal) || Number.isNaN(goalWeight)) {
     alert('Lütfen tüm başlangıç bilgilerini doldur.');
