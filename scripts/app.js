@@ -5,7 +5,7 @@ const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-console.log('Supabase haz?r:', db);
+console.log('Supabase hazır:', db);
 
 // â”€â”€ CONSTANTS â”€â”€
 const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
@@ -83,6 +83,12 @@ let state = {
   workouts: [],
   notes: [],
   sleep: [],
+  deletedRecords: {
+    measurements: [],
+    sleep: [],
+    workouts: [],
+    notes: [],
+  },
   goalWeight: 85,
   milestones: [95, 85],
   preferences: {
@@ -195,6 +201,51 @@ function parseLocaleNumber(value) {
   if (value === null || value === undefined) return NaN;
   const normalized = String(value).trim().replace(',', '.');
   return normalized ? Number(normalized) : NaN;
+}
+
+function isCloudRecordId(id) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || ''));
+}
+
+function ensureDeletedBucket(type) {
+  if (!state.deletedRecords) {
+    state.deletedRecords = { measurements: [], sleep: [], workouts: [], notes: [] };
+  }
+  if (!Array.isArray(state.deletedRecords[type])) {
+    state.deletedRecords[type] = [];
+  }
+  return state.deletedRecords[type];
+}
+
+function getRecordDeleteKeys(type, item = {}) {
+  if (type === 'measurements') return [`date:${item.date}`];
+  if (type === 'sleep') return [item.id, `date:${item.date}`].filter(Boolean);
+  if (type === 'workouts') {
+    return [
+      item.id,
+      `date:${item.date}|type:${item.type}|duration:${item.duration}|note:${item.note || ''}`,
+    ].filter(Boolean);
+  }
+  if (type === 'notes') return [item.id, `date:${item.date}|text:${item.text || ''}`].filter(Boolean);
+  return [];
+}
+
+function markRecordDeleted(type, item) {
+  const bucket = ensureDeletedBucket(type);
+  getRecordDeleteKeys(type, item).forEach(key => {
+    if (!bucket.includes(key)) bucket.push(key);
+  });
+}
+
+function unmarkRecordDeleted(type, item) {
+  const bucket = ensureDeletedBucket(type);
+  const keys = getRecordDeleteKeys(type, item);
+  state.deletedRecords[type] = bucket.filter(key => !keys.includes(key));
+}
+
+function isRecordDeleted(type, item) {
+  const bucket = ensureDeletedBucket(type);
+  return getRecordDeleteKeys(type, item).some(key => bucket.includes(key));
 }
 
 function formatDate(iso) {
@@ -379,10 +430,16 @@ function stateLoad() {
       workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
       notes: Array.isArray(savedState.notes) ? savedState.notes : [],
       sleep: Array.isArray(savedState.sleep) ? savedState.sleep : [],
+      deletedRecords: {
+        measurements: Array.isArray(savedState.deletedRecords?.measurements) ? savedState.deletedRecords.measurements : [],
+        sleep: Array.isArray(savedState.deletedRecords?.sleep) ? savedState.deletedRecords.sleep : [],
+        workouts: Array.isArray(savedState.deletedRecords?.workouts) ? savedState.deletedRecords.workouts : [],
+        notes: Array.isArray(savedState.deletedRecords?.notes) ? savedState.deletedRecords.notes : [],
+      },
     };
     normalizeProfileState();
   } catch (e) {
-    console.warn('State y?klenemedi:', e);
+    console.warn('State yüklenemedi:', e);
   }
 }
 
@@ -1443,7 +1500,7 @@ async function loadMeasurementsFromSupabase() {
     date: item.date,
     weight: parseFloat(item.weight),
     waist: Number.isFinite(Number(item.waist)) ? parseFloat(item.waist) : null,
-  }));
+  })).filter(item => !isRecordDeleted('measurements', item));
 
   if (!cloudMeasurements.length && localMeasurements.length) {
     console.warn('Cloud ölçüm boş döndü; yerel başlangıç ölçümü korunuyor.');
@@ -1451,11 +1508,17 @@ async function loadMeasurementsFromSupabase() {
     return;
   }
 
-  state.measurements = cloudMeasurements;
+  const localOnlyMeasurements = localMeasurements.filter(local =>
+    !isRecordDeleted('measurements', local) &&
+    !cloudMeasurements.some(cloud => cloud.date === local.date)
+  );
+
+  state.measurements = [...cloudMeasurements, ...localOnlyMeasurements]
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   stateSave();
   renderAll();
-  console.log('Supabase veriler y?klendi:', data);
+  console.log('Supabase verileri yüklendi:', data);
 }
 
 async function loadSleepFromSupabase() {
@@ -1479,17 +1542,27 @@ async function loadSleepFromSupabase() {
     return;
   }
 
-  state.sleep = (data || []).map(item => ({
+  const cloudSleep = (data || []).map(item => ({
     id: item.id,
     date: item.date,
     hours: parseFloat(item.hours),
-  }));
+  })).filter(item => !isRecordDeleted('sleep', item));
+
+  const localOnlySleep = localSleep.filter(local =>
+    !isRecordDeleted('sleep', local) &&
+    !cloudSleep.some(cloud => cloud.date === local.date)
+  );
+
+  state.sleep = [...cloudSleep, ...localOnlySleep]
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   stateSave();
   renderAll();
 }
 
 async function loadWorkoutsFromSupabase() {
+  const localWorkouts = Array.isArray(state.workouts) ? [...state.workouts] : [];
+
   const { data, error } = await db
     .from('workout_logs')
     .select('*')
@@ -1497,24 +1570,35 @@ async function loadWorkoutsFromSupabase() {
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Workout load hatas?:', error);
+    console.error('Workout load hatası:', error);
     setStatus('Antrenman verileri yüklenemedi', 'error');
     return;
   }
 
-  state.workouts = (data || []).map(item => ({
+  const cloudWorkouts = (data || []).map(item => ({
     id: item.id,
     date: item.date,
     type: item.type,
     duration: Number(item.duration),
     note: item.note || '',
-  }));
+  })).filter(item => !isRecordDeleted('workouts', item));
+
+  const localOnlyWorkouts = localWorkouts.filter(local =>
+    !isRecordDeleted('workouts', local) &&
+    !isCloudRecordId(local.id) &&
+    !cloudWorkouts.some(cloud => cloud.id === local.id)
+  );
+
+  state.workouts = [...cloudWorkouts, ...localOnlyWorkouts]
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   stateSave();
   renderAll();
 }
 
 async function loadNotesFromSupabase() {
+  const localNotes = Array.isArray(state.notes) ? [...state.notes] : [];
+
   const { data, error } = await db
     .from('notes')
     .select('*')
@@ -1522,16 +1606,25 @@ async function loadNotesFromSupabase() {
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Notes load hatas?:', error);
+    console.error('Notes load hatası:', error);
     setStatus('Notlar yüklenemedi', 'error');
     return;
   }
 
-  state.notes = (data || []).map(item => ({
+  const cloudNotes = (data || []).map(item => ({
     id: item.id,
     date: item.date,
     text: item.text,
-  }));
+  })).filter(item => !isRecordDeleted('notes', item));
+
+  const localOnlyNotes = localNotes.filter(local =>
+    !isRecordDeleted('notes', local) &&
+    !isCloudRecordId(local.id) &&
+    !cloudNotes.some(cloud => cloud.id === local.id)
+  );
+
+  state.notes = [...cloudNotes, ...localOnlyNotes]
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   stateSave();
   renderAll();
@@ -1574,6 +1667,7 @@ async function saveMeasurementToSupabase(payload) {
 
 function saveMeasurementLocally(payload) {
   if (!Array.isArray(state.measurements)) state.measurements = [];
+  unmarkRecordDeleted('measurements', payload);
 
   const nextMeasurement = {
     date: payload.date,
@@ -1621,6 +1715,7 @@ async function saveSleepToSupabase(payload) {
 
 function saveSleepLocally(payload) {
   if (!Array.isArray(state.sleep)) state.sleep = [];
+  unmarkRecordDeleted('sleep', payload);
 
   const nextSleep = {
     id: payload.id || `local-sleep-${payload.date}`,
@@ -1640,6 +1735,38 @@ function saveSleepLocally(payload) {
   }
 
   state.sleep = [...state.sleep].sort((a, b) => b.date.localeCompare(a.date));
+  stateSave();
+  renderAll();
+}
+
+function saveWorkoutLocally(payload) {
+  if (!Array.isArray(state.workouts)) state.workouts = [];
+  unmarkRecordDeleted('workouts', payload);
+
+  state.workouts.push({
+    id: payload.id || `local-workout-${Date.now()}`,
+    date: payload.date,
+    type: payload.type,
+    duration: payload.duration,
+    note: payload.note || '',
+  });
+
+  state.workouts = [...state.workouts].sort((a, b) => b.date.localeCompare(a.date));
+  stateSave();
+  renderAll();
+}
+
+function saveNoteLocally(payload) {
+  if (!Array.isArray(state.notes)) state.notes = [];
+  unmarkRecordDeleted('notes', payload);
+
+  state.notes.push({
+    id: payload.id || `local-note-${Date.now()}`,
+    date: payload.date,
+    text: payload.text,
+  });
+
+  state.notes = [...state.notes].sort((a, b) => b.date.localeCompare(a.date));
   stateSave();
   renderAll();
 }
@@ -1716,7 +1843,7 @@ async function addMeasurement() {
 
   const date = parseDisplayDate(dateInput);
   if (!date) {
-    alert('Tarih format? hatal?. ?rnek: 27/04/2026 veya 27.04.2026');
+    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
     return;
   }
 
@@ -1725,7 +1852,7 @@ async function addMeasurement() {
   const alreadyExists = state.measurements.some(item => item.date === date);
 
   if (alreadyExists) {
-    alert('Bu tarih i?in zaten kay?t var. ?nce mevcut kayd? silmelisin.');
+    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
     return;
   }
 
@@ -1763,15 +1890,21 @@ async function addMeasurement() {
 }
 
 async function deleteWeight(sortedIdx) {
-  if (!confirm('Bu ?l??m? silmek istedi?inden emin misin?')) return;
+  if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
 
-  const sorted = [...state.measurements]
+  const sorted = [...(state.measurements || [])]
     .map((item, originalIndex) => ({ ...item, originalIndex }))
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const target = sorted[sortedIdx];
 
   if (!target) return;
+
+  markRecordDeleted('measurements', target);
+  state.measurements = (state.measurements || []).filter((_, index) => index !== target.originalIndex);
+  stateSave();
+  renderAll();
+  setStatus('Ölçüm silindi ✓', 'ok');
 
   const { error } = await db
     .from('measurements')
@@ -1780,23 +1913,25 @@ async function deleteWeight(sortedIdx) {
     .eq('date', target.date);
 
   if (error) {
-    console.error('Supabase delete hatas?:', error);
-    alert('Cloud silme hatas?: ' + error.message);
+    console.error('Supabase delete hatası:', error);
+    setStatus('Ölçüm cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
-
-  state.measurements.splice(target.originalIndex, 1);
-
-  stateSave();
-  renderAll();
-  setStatus('Ölçüm silindi ✓', 'ok');
 }
 
 async function deleteNote(index) {
-  if (!confirm('Bu notu silmek istedi?inden emin misin?')) return;
+  if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
 
   const target = state.notes[index];
   if (!target) return;
+
+  markRecordDeleted('notes', target);
+  state.notes = (state.notes || []).filter((_, itemIndex) => itemIndex !== index);
+  stateSave();
+  renderAll();
+  setStatus('Not silindi ✓', 'ok');
+
+  if (!isCloudRecordId(target.id)) return;
 
   const { error } = await db
     .from('notes')
@@ -1804,21 +1939,28 @@ async function deleteNote(index) {
     .eq('id', target.id);
 
   if (error) {
-    console.error('Note silme hatas?:', error);
-    alert('Not cloud silme hatas?: ' + error.message);
+    console.error('Note silme hatası:', error);
+    setStatus('Not cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
-
-  await loadNotesFromSupabase();
-  setStatus('Not silindi ✓', 'ok');
 }
 
 async function deleteSleep(sortedIdx) {
-  if (!confirm('Bu uyku kayd?n? silmek istedi?inden emin misin?')) return;
+  if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
 
-  const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...(state.sleep || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
   const target = sorted[sortedIdx];
   if (!target) return;
+
+  markRecordDeleted('sleep', target);
+  state.sleep = (state.sleep || []).filter((_, index) => index !== target.originalIndex);
+  stateSave();
+  renderAll();
+  setStatus('Uyku kaydı silindi ✓', 'ok');
+
+  if (!isCloudRecordId(target.id)) return;
 
   const { error } = await db
     .from('sleep_logs')
@@ -1826,13 +1968,10 @@ async function deleteSleep(sortedIdx) {
     .eq('id', target.id);
 
   if (error) {
-    console.error('Sleep silme hatas?:', error);
-    alert('Uyku cloud silme hatas?: ' + error.message);
+    console.error('Sleep silme hatası:', error);
+    setStatus('Uyku cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
-
-  await loadSleepFromSupabase();
-  setStatus('Uyku kaydı silindi ✓', 'ok');
 }
 
 async function addNote() {
@@ -1840,24 +1979,27 @@ async function addNote() {
   const text = noteInput ? noteInput.value : prompt('Not gir:');
   if (!text || !text.trim()) return;
 
+  const payload = {
+    user_id: getUserId(),
+    date: today(),
+    text: text.trim(),
+  };
+
+  saveNoteLocally(payload);
+  setStatus('Not eklendi ✓', 'ok');
+  if (noteInput) noteInput.value = '';
+
   const { error } = await db
     .from('notes')
-    .insert([{
-      user_id: getUserId(),
-      date: today(),
-      text: text.trim(),
-    }]);
+    .insert([payload]);
 
   if (error) {
-    console.error('Note kay?t hatas?:', error);
-    alert('Not cloud kay?t hatas?: ' + error.message);
+    console.error('Note kayıt hatası:', error);
+    setStatus('Not yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
 
   await loadNotesFromSupabase();
-
-  setStatus('Not eklendi ✓', 'ok');
-  if (noteInput) noteInput.value = '';
 }
 
 async function saveSleep() {
@@ -1921,36 +2063,49 @@ async function saveWorkout() {
     return;
   }
 
-  const { error } = await db
-    .from('workout_logs')
-    .insert([{
-      user_id: getUserId(),
-      date,
-      type,
-      duration,
-      note,
-    }]);
+  const payload = {
+    user_id: getUserId(),
+    date,
+    type,
+    duration,
+    note,
+  };
 
-  if (error) {
-    console.error('Workout kay?t hatas?:', error);
-    alert('Antrenman cloud kayıt hatası: ' + error.message);
-    return;
-  }
-
-  await loadWorkoutsFromSupabase();
-
+  saveWorkoutLocally(payload);
   setStatus('Antrenman kaydedildi ✓', 'ok');
   durationInput.value = '';
   if (noteInput) noteInput.value = '';
   dateInput.value = today();
+
+  const { error } = await db
+    .from('workout_logs')
+    .insert([payload]);
+
+  if (error) {
+    console.error('Workout kayıt hatası:', error);
+    setStatus('Antrenman yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+
+  await loadWorkoutsFromSupabase();
 }
 
 async function deleteWorkout(sortedIdx) {
   if (!confirm('Bu antrenman kaydını silmek istediğinden emin misin?')) return;
 
-  const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...(state.workouts || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
   const target = sorted[sortedIdx];
   if (!target) return;
+
+  markRecordDeleted('workouts', target);
+  state.workouts = (state.workouts || []).filter((_, index) => index !== target.originalIndex);
+  stateSave();
+  renderAll();
+  setStatus('Antrenman kaydı silindi ✓', 'ok');
+
+  if (!isCloudRecordId(target.id)) return;
 
   const { error } = await db
     .from('workout_logs')
@@ -1958,13 +2113,10 @@ async function deleteWorkout(sortedIdx) {
     .eq('id', target.id);
 
   if (error) {
-    console.error('Workout silme hatas?:', error);
-    alert('Antrenman cloud silme hatası: ' + error.message);
+    console.error('Workout silme hatası:', error);
+    setStatus('Antrenman cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
-
-  await loadWorkoutsFromSupabase();
-  setStatus('Antrenman kaydı silindi ✓', 'ok');
 }
 
 function editName() {
@@ -2181,6 +2333,12 @@ async function signOut() {
     workouts: [],
     notes: [],
     sleep: [],
+    deletedRecords: {
+      measurements: [],
+      sleep: [],
+      workouts: [],
+      notes: [],
+    },
   };
   document.getElementById('authModal')?.remove();
   document.getElementById('onboardingModal')?.remove();
@@ -2292,6 +2450,12 @@ async function completeOnboarding() {
   state.notes = [];
   state.weights = [];
   state.nutrition = [];
+  state.deletedRecords = {
+    measurements: [],
+    sleep: [],
+    workouts: [],
+    notes: [],
+  };
 
   stateSave();
 
@@ -2472,8 +2636,8 @@ function bindUiEvents() {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/service-worker.js', { scope: '/' })
-        .then(reg => console.log('[SW] Kay?tl?:', reg.scope))
-        .catch(err => console.warn('[SW] Kay?t hatas?:', err));
+        .then(reg => console.log('[SW] Kayıtlı:', reg.scope))
+        .catch(err => console.warn('[SW] Kayıt hatası:', err));
     });
   }
 }
