@@ -1028,10 +1028,10 @@ function renderSleepList() {
   const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
   const sleep = sorted
     .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(item => item.date === today());
+    .slice(0, 10);
 
   if (!sleep.length) {
-    list.innerHTML = '<div class="empty-state compact">Bugün uyku kaydı yok.</div>';
+    list.innerHTML = '<div class="empty-state compact">Henüz uyku kaydı yok.</div>';
     return;
   }
 
@@ -1039,7 +1039,7 @@ function renderSleepList() {
     <div class="daily-row">
       <div>
         <div class="daily-row-title">${Number(item.hours).toFixed(1)} saat</div>
-        <div class="daily-row-meta">Bugün</div>
+        <div class="daily-row-meta">${item.date === today() ? 'Bugün' : formatDate(item.date)}</div>
       </div>
       <button onclick="deleteSleep(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
     </div>
