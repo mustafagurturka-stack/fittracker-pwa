@@ -1665,21 +1665,22 @@ async function saveMeasurementFromForm() {
     waist: waist === null ? null : parseFloat(waist.toFixed(1)),
   };
 
-  const { error } = await saveMeasurementToSupabase(payload);
-
-  if (error) {
-    console.error('Measurement save error:', error);
-    saveMeasurementLocally(payload);
-    setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
-  } else {
-    await loadMeasurementsFromSupabase();
-    setStatus('Ölçüm kaydedildi ✓', 'ok');
-  }
+  saveMeasurementLocally(payload);
+  setStatus('Ölçüm kaydedildi ✓', 'ok');
 
   weightInput.value = '';
   waistInput.value = '';
   dateInput.value = getSuggestedMeasureDate();
   updateWaistHint();
+
+  const { error } = await saveMeasurementToSupabase(payload);
+
+  if (error) {
+    console.error('Measurement save error:', error);
+    setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+  } else {
+    await loadMeasurementsFromSupabase();
+  }
 }
 
 async function addMeasurement() {
@@ -1726,15 +1727,16 @@ async function addMeasurement() {
     user_id: getUserId(),
   };
 
+  saveMeasurementLocally(measurement);
+  setStatus('Ölçüm eklendi ✓', 'ok');
+
   const { error } = await saveMeasurementToSupabase(measurement);
 
   if (error) {
     console.error('Supabase insert hatası:', error);
-    saveMeasurementLocally(measurement);
     setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
   } else {
     await loadMeasurementsFromSupabase();
-    setStatus('Ölçüm eklendi ✓', 'ok');
   }
 }
 
