@@ -356,6 +356,26 @@ function getSortedMeasurements() {
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function getMeasurementTrendData() {
+  const byDate = new Map(
+    getSortedMeasurements().map(item => [item.date, item])
+  );
+
+  if (Number.isFinite(Number(state.startWeight))) {
+    const existing = byDate.get(START_DATE);
+    byDate.set(START_DATE, {
+      ...existing,
+      date: START_DATE,
+      weight: Number(existing?.weight ?? state.startWeight),
+      waist: parseOptionalNumber(existing?.waist ?? state.startWaist),
+    });
+  }
+
+  return [...byDate.values()]
+    .filter(item => item.date >= START_DATE && Number.isFinite(Number(item.weight)))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function getLatestWaistMeasurement() {
   return getSortedMeasurements()
     .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date))
@@ -631,7 +651,7 @@ function renderDashboardGoalCard() {
   const el = document.getElementById('dashboardGoalCard');
   if (!el) return;
 
-  const data = getSortedMeasurements();
+  const data = getMeasurementTrendData();
 
   if (!data.length) {
     setEmptyState(
@@ -720,7 +740,7 @@ function renderStats() {
   const el = document.getElementById('dashboardProgressCard');
   if (!el) return;
 
-  const data = getSortedMeasurements();
+  const data = getMeasurementTrendData();
 
   if (!data.length) {
     el.innerHTML = `
@@ -771,17 +791,30 @@ function renderStats() {
   `;
 }
 
-  function renderMeasurementChart() {
+function renderMeasurementChart() {
   const canvas = document.getElementById('measurementChart');
-  if (!canvas || typeof Chart === 'undefined') return;
+  if (!canvas) return;
 
-  const data = getSortedMeasurements();
+  const host = canvas.parentElement;
+
+  if (typeof Chart === 'undefined') {
+    canvas.style.display = 'none';
+    setEmptyState(
+      host,
+      'Grafik kütüphanesi yüklenemedi',
+      'Bağlantı yenilendiğinde kilo ve bel grafiği otomatik görünecek.',
+      'Ölçüm Ekle',
+      1
+    );
+    return;
+  }
+
+  const data = getMeasurementTrendData();
 
   if (measurementChart) {
     measurementChart.destroy();
   }
 
-  const host = canvas.parentElement;
   const oldEmpty = host?.querySelector('.empty-state');
   if (oldEmpty) oldEmpty.remove();
 
@@ -1136,13 +1169,14 @@ function renderSleepList() {
   const list = document.getElementById('sleepList');
   if (!list) return;
 
+  const range = getDashboardWeekRange();
   const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
   const sleep = sorted
     .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .slice(0, 10);
+    .filter(item => item.date >= range.start && item.date <= range.end);
 
   if (!sleep.length) {
-    list.innerHTML = '<div class="empty-state compact">Henüz uyku kaydı yok.</div>';
+    list.innerHTML = '<div class="empty-state compact">Bu hafta uyku kaydı yok.</div>';
     return;
   }
 
@@ -1190,13 +1224,14 @@ function renderWorkoutList() {
   const list = document.getElementById('workoutList');
   if (!list) return;
 
+  const range = getDashboardWeekRange();
   const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
   const workouts = sorted
     .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(item => item.date === today());
+    .filter(item => item.date >= range.start && item.date <= range.end);
 
   if (!workouts.length) {
-    list.innerHTML = '<div class="empty-state compact">Bugün antrenman kaydı yok.</div>';
+    list.innerHTML = '<div class="empty-state compact">Bu hafta antrenman kaydı yok.</div>';
     return;
   }
 
@@ -1204,7 +1239,7 @@ function renderWorkoutList() {
     <div class="daily-row">
       <div>
         <div class="daily-row-title">${item.type} · ${Number(item.duration)} dk</div>
-        <div class="daily-row-meta">${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
+        <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
       <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
     </div>
@@ -2705,7 +2740,25 @@ function bindUiEvents() {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/service-worker.js', { scope: '/' })
-        .then(reg => console.log('[SW] Kayıtlı:', reg.scope))
+        .then(reg => {
+          console.log('[SW] Kayıtlı:', reg.scope);
+          reg.update();
+
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const worker = reg.installing;
+            if (!worker) return;
+
+            worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+        })
         .catch(err => console.warn('[SW] Kayıt hatası:', err));
     });
   }
