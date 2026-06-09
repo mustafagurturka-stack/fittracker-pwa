@@ -203,11 +203,34 @@ function parseLocaleNumber(value) {
   return normalized ? Number(normalized) : NaN;
 }
 
+function parseOptionalNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseIsoDateParts(value) {
+  const parts = String(value || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
+  return { year: parts[0], month: parts[1], day: parts[2] };
+}
+
 function toLocalIsoDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function normalizeMeasurementDate(date) {
+  const parts = parseIsoDateParts(date);
+  const startParts = parseIsoDateParts(START_DATE);
+  if (!parts || !startParts) return null;
+
+  if (date >= START_DATE) return date;
+
+  const isStartDayWrongYear = parts.month === startParts.month && parts.day === startParts.day;
+  return isStartDayWrongYear ? START_DATE : null;
 }
 
 function isCloudRecordId(id) {
@@ -256,7 +279,10 @@ function isRecordDeleted(type, item) {
 }
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('tr-TR', {
+  const parts = parseIsoDateParts(iso);
+  const date = parts ? new Date(parts.year, parts.month - 1, parts.day) : new Date(iso);
+
+  return date.toLocaleDateString('tr-TR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -304,14 +330,30 @@ function setSyncDot(cls) {
 }
 
 function getSortedMeasurements() {
-  return [...(state.measurements || [])]
+  const byDate = new Map();
+
+  [...(state.measurements || [])]
     .filter(item => item?.date && Number.isFinite(Number(item.weight)))
-    .map(item => ({
-      ...item,
-      weight: Number(item.weight),
-      waist: Number.isFinite(Number(item.waist)) ? Number(item.waist) : null,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .forEach(item => {
+      const normalizedDate = normalizeMeasurementDate(item.date);
+      if (!normalizedDate) return;
+
+      const normalized = {
+        ...item,
+        date: normalizedDate,
+        weight: Number(item.weight),
+        waist: parseOptionalNumber(item.waist),
+      };
+
+      const existing = byDate.get(normalizedDate);
+      byDate.set(normalizedDate, {
+        ...existing,
+        ...normalized,
+        waist: normalized.waist ?? existing?.waist ?? null,
+      });
+    });
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function getLatestWaistMeasurement() {
@@ -365,6 +407,9 @@ function updateWaistHint() {
 }
 
 function normalizeProfileState() {
+  state.startDate = START_DATE;
+  state.measurements = getSortedMeasurements();
+
   const measurements = getSortedMeasurements();
   const first = measurements[0];
 
@@ -1508,7 +1553,7 @@ async function loadMeasurementsFromSupabase() {
   const cloudMeasurements = (data || []).map(item => ({
     date: item.date,
     weight: parseFloat(item.weight),
-    waist: Number.isFinite(Number(item.waist)) ? parseFloat(item.waist) : null,
+    waist: parseOptionalNumber(item.waist),
   })).filter(item => !isRecordDeleted('measurements', item));
 
   if (!cloudMeasurements.length && localMeasurements.length) {
@@ -1799,6 +1844,11 @@ async function saveMeasurementFromForm() {
     return;
   }
 
+  if (date < START_DATE) {
+    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
+    return;
+  }
+
   if (waist !== null && (Number.isNaN(waist) || waist <= 0)) {
     alert('Geçerli bir bel ölçümü gir.');
     return;
@@ -1853,6 +1903,11 @@ async function addMeasurement() {
   const date = parseDisplayDate(dateInput);
   if (!date) {
     alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
+    return;
+  }
+
+  if (date < START_DATE) {
+    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
     return;
   }
 
@@ -2401,7 +2456,7 @@ function showOnboarding() {
         </label>
         <label>
           Başlangıç tarihi
-          <input id="onboardStartDate" type="date" value="${START_DATE}" />
+          <input id="onboardStartDate" type="date" min="${START_DATE}" value="${START_DATE}" />
         </label>
         <label>
           Başlangıç kilosu
@@ -2439,6 +2494,11 @@ async function completeOnboarding() {
 
   if (!name || Number.isNaN(startWeight) || Number.isNaN(startWaist) || Number.isNaN(firstGoal) || Number.isNaN(goalWeight)) {
     alert('Lütfen tüm başlangıç bilgilerini doldur.');
+    return;
+  }
+
+  if (startDate < START_DATE) {
+    alert('Başlangıç tarihi 31 Mayıs 2026’dan önce olamaz.');
     return;
   }
 
