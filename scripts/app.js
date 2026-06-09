@@ -634,6 +634,14 @@ function goPanel(idx) {
   }
 
   requestAnimationFrame(() => {
+    if (idx === 3) {
+      normalizeProfileState();
+      renderProgressSummary();
+      renderMeasurementChart();
+      renderProgressCharts();
+      renderProgressList();
+    }
+
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -871,23 +879,19 @@ function renderStats() {
 }
 
 function renderMeasurementChart() {
-  const canvas = document.getElementById('measurementChart');
-  if (!canvas) return;
-
-  const host = canvas.parentElement;
+  const host = document.getElementById('measurementChartHost');
+  if (!host) return;
 
   normalizeProfileState();
   const data = getChartMeasurementData();
 
   if (measurementChart) {
     measurementChart.destroy();
+    measurementChart = null;
   }
 
-  const oldEmpty = host?.querySelector('.empty-state');
-  if (oldEmpty) oldEmpty.remove();
-
   if (data.length < 2) {
-    canvas.style.display = 'none';
+    host.innerHTML = '';
     setEmptyState(
       host,
       'Grafik için iki ölçüm gerekli',
@@ -899,10 +903,13 @@ function renderMeasurementChart() {
   }
 
   if (typeof Chart === 'undefined') {
-    canvas.style.display = 'none';
     renderFallbackMeasurementChart(host, data);
     return;
   }
+
+  host.innerHTML = '<canvas id="measurementChart"></canvas>';
+  const canvas = document.getElementById('measurementChart');
+  if (!canvas) return;
 
   canvas.style.display = 'block';
 
