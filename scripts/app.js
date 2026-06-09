@@ -326,6 +326,10 @@ function setEmptyState(host, title, copy, actionLabel = '', actionPanel = null) 
 function renderFallbackMeasurementChart(host, data) {
   if (!host) return;
 
+  const first = data[0];
+  const last = data[data.length - 1];
+  const diff = last && first ? Number(last.weight - first.weight) : 0;
+
   const weights = data.map(item => Number(item.weight));
   const min = Math.min(...weights);
   const max = Math.max(...weights);
@@ -337,6 +341,13 @@ function renderFallbackMeasurementChart(host, data) {
   });
 
   host.innerHTML = `
+    <div class="measurement-chart-top">
+      <div>
+        <span>Kilo Trendi</span>
+        <strong>${first ? Number(first.weight).toFixed(1) : '—'} → ${last ? Number(last.weight).toFixed(1) : '—'} kg</strong>
+      </div>
+      <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg</div>
+    </div>
     <div class="fallback-line-chart">
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
         <polyline
@@ -884,6 +895,15 @@ function renderMeasurementChart() {
 
   normalizeProfileState();
   const data = getChartMeasurementData();
+  const waistData = data.filter(item =>
+    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
+  );
+  const first = data[0];
+  const last = data[data.length - 1];
+  const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
+  const waistDiff = waistData.length >= 2
+    ? Number(waistData[waistData.length - 1].waist - waistData[0].waist)
+    : null;
 
   if (measurementChart) {
     measurementChart.destroy();
@@ -907,7 +927,23 @@ function renderMeasurementChart() {
     return;
   }
 
-  host.innerHTML = '<canvas id="measurementChart"></canvas>';
+  host.innerHTML = `
+    <div class="measurement-chart-top">
+      <div>
+        <span>Kilo Trendi</span>
+        <strong>${Number(first.weight).toFixed(1)} → ${Number(last.weight).toFixed(1)} kg</strong>
+      </div>
+      <div class="${weightDiff <= 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg</div>
+      <div>
+        <span>Bel Takibi</span>
+        <strong>${waistData.length ? `${Number(waistData[waistData.length - 1].waist).toFixed(1)} cm` : '4. tartıda'}</strong>
+      </div>
+      <div class="${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</div>
+    </div>
+    <div class="measurement-chart-canvas">
+      <canvas id="measurementChart"></canvas>
+    </div>
+  `;
   const canvas = document.getElementById('measurementChart');
   if (!canvas) return;
 
@@ -921,6 +957,7 @@ function renderMeasurementChart() {
         {
           label: 'Kilo (kg)',
           data: data.map(item => item.weight),
+          yAxisID: 'yWeight',
           borderColor: '#2563eb',
           backgroundColor: 'rgba(37,99,235,.10)',
           tension: 0.35,
@@ -931,6 +968,7 @@ function renderMeasurementChart() {
         {
           label: 'Bel (cm)',
           data: data.map(item => shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist)) ? item.waist : null),
+          yAxisID: 'yWaist',
           borderColor: '#0f766e',
           backgroundColor: 'rgba(15,118,110,.10)',
           tension: 0.35,
@@ -959,10 +997,25 @@ function renderMeasurementChart() {
             display: false
           }
         },
-        y: {
+        yWeight: {
+          position: 'left',
           beginAtZero: false,
           grid: {
             color: 'rgba(113,128,150,.18)'
+          },
+          ticks: {
+            callback: value => `${value} kg`
+          }
+        },
+        yWaist: {
+          position: 'right',
+          beginAtZero: false,
+          display: waistData.length > 0,
+          grid: {
+            drawOnChartArea: false
+          },
+          ticks: {
+            callback: value => `${value} cm`
           }
         }
       }
