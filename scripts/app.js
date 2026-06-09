@@ -417,27 +417,40 @@ function getMeasurementTrendData() {
 }
 
 function getChartMeasurementData() {
+  normalizeProfileState();
+
   const data = getMeasurementTrendData();
 
   if (data.length >= 2) return data;
 
   const sorted = getSortedMeasurements();
-  const last = sorted[sorted.length - 1];
-  const startWeight = Number(state.startWeight);
-  const startWaist = parseOptionalNumber(state.startWaist);
+  if (sorted.length >= 2) return sorted;
 
-  if (Number.isFinite(startWeight) && last && last.date !== START_DATE) {
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const startWeight = Number(state.startWeight ?? first?.weight);
+  const startWaist = parseOptionalNumber(state.startWaist ?? first?.waist);
+  const lastWeight = Number(last?.weight);
+
+  if (
+    Number.isFinite(startWeight) &&
+    last &&
+    Number.isFinite(lastWeight) &&
+    (last.date !== START_DATE || lastWeight !== startWeight)
+  ) {
     return [
       {
         date: START_DATE,
         weight: startWeight,
         waist: startWaist,
       },
-      last,
+      {
+        ...last,
+        weight: lastWeight,
+        waist: parseOptionalNumber(last.waist),
+      },
     ].sort((a, b) => a.date.localeCompare(b.date));
   }
-
-  if (sorted.length >= 2) return sorted;
 
   return data;
 }
@@ -863,6 +876,7 @@ function renderMeasurementChart() {
 
   const host = canvas.parentElement;
 
+  normalizeProfileState();
   const data = getChartMeasurementData();
 
   if (measurementChart) {
@@ -1601,6 +1615,8 @@ function renderSettings() {
 }
 
 function renderAll() {
+  normalizeProfileState();
+
   [
     renderHero,
     renderMoti,
