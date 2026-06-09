@@ -323,6 +323,46 @@ function setEmptyState(host, title, copy, actionLabel = '', actionPanel = null) 
   });
 }
 
+function renderFallbackMeasurementChart(host, data) {
+  if (!host) return;
+
+  const weights = data.map(item => Number(item.weight));
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const range = Math.max(1, max - min);
+  const points = data.map((item, index) => {
+    const x = data.length === 1 ? 50 : 8 + (index / (data.length - 1)) * 84;
+    const y = 88 - ((Number(item.weight) - min) / range) * 68;
+    return { ...item, x, y };
+  });
+
+  host.innerHTML = `
+    <div class="fallback-line-chart">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
+        <polyline
+          points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
+          fill="none"
+          stroke="#2563eb"
+          stroke-width="2.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        ${points.map(point => `
+          <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#2563eb"></circle>
+        `).join('')}
+      </svg>
+      <div class="fallback-chart-labels">
+        ${points.map(point => `
+          <div>
+            <strong>${Number(point.weight).toFixed(1)} kg</strong>
+            <span>${formatDate(point.date)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function setSyncDot(cls) {
   const dot = document.getElementById('syncDot');
   if (!dot) return;
@@ -374,6 +414,32 @@ function getMeasurementTrendData() {
   return [...byDate.values()]
     .filter(item => item.date >= START_DATE && Number.isFinite(Number(item.weight)))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getChartMeasurementData() {
+  const data = getMeasurementTrendData();
+
+  if (data.length >= 2) return data;
+
+  const sorted = getSortedMeasurements();
+  const last = sorted[sorted.length - 1];
+  const startWeight = Number(state.startWeight);
+  const startWaist = parseOptionalNumber(state.startWaist);
+
+  if (Number.isFinite(startWeight) && last && last.date !== START_DATE) {
+    return [
+      {
+        date: START_DATE,
+        weight: startWeight,
+        waist: startWaist,
+      },
+      last,
+    ].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  if (sorted.length >= 2) return sorted;
+
+  return data;
 }
 
 function getLatestWaistMeasurement() {
@@ -797,19 +863,7 @@ function renderMeasurementChart() {
 
   const host = canvas.parentElement;
 
-  if (typeof Chart === 'undefined') {
-    canvas.style.display = 'none';
-    setEmptyState(
-      host,
-      'Grafik kütüphanesi yüklenemedi',
-      'Bağlantı yenilendiğinde kilo ve bel grafiği otomatik görünecek.',
-      'Ölçüm Ekle',
-      1
-    );
-    return;
-  }
-
-  const data = getMeasurementTrendData();
+  const data = getChartMeasurementData();
 
   if (measurementChart) {
     measurementChart.destroy();
@@ -823,10 +877,16 @@ function renderMeasurementChart() {
     setEmptyState(
       host,
       'Grafik için iki ölçüm gerekli',
-      'İlk ölçüm kaydedildiğinde başlangıç oluşur. İkinci ölçümden sonra kilo ve bel trendi burada görünür.',
+      'Başlangıç kilosu ve en az bir sonraki kilo ölçümü olduğunda trend burada görünür.',
       'Ölçüm Ekle',
       1
     );
+    return;
+  }
+
+  if (typeof Chart === 'undefined') {
+    canvas.style.display = 'none';
+    renderFallbackMeasurementChart(host, data);
     return;
   }
 
