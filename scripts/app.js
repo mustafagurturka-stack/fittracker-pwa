@@ -152,6 +152,54 @@ function updateWorkoutTypes() {
   if (items.includes(current)) {
     typeInput.value = current;
   }
+
+  updateWorkoutGuidance();
+}
+
+function getWorkoutGuidance(category = 'Kuvvet', type = '') {
+  const guide = {
+    Kuvvet: {
+      title: 'Kuvvet planı',
+      text: 'Full Body A/B/C dönüşümlü ilerle. Squat ve deadlift odaklı günleri ağır gün olarak işaretle.',
+    },
+    Core: {
+      title: 'Core / bölge',
+      text: 'Karın, bel ve stabilizasyon için kısa ama kontrollü seanslar. Kuvvet günlerinden bağımsız takip edilebilir.',
+    },
+    Challenge: {
+      title: 'Sabah challenge',
+      text: 'Yağ yakım rutinleri ve kısa seriler burada. 10-25 dk düzenli tekrar mantığıyla takip et.',
+    },
+    Kardiyo: {
+      title: 'Kardiyo',
+      text: 'Yürüyüş, GrowWithJo, zone 2 veya HIIT seanslarını burada tut. Tempo farkını zorluk alanıyla ayır.',
+    },
+    Recovery: {
+      title: 'Recovery',
+      text: 'Esneme, mobilite ve aktif dinlenme günleri. Toparlanmayı görünür kılar, toplam yükü daha doğru okutur.',
+    },
+  };
+
+  const selected = guide[category] || guide.Kuvvet;
+  const suffix = type ? ` Seçili program: ${type}.` : '';
+  return {
+    title: selected.title,
+    text: `${selected.text}${suffix}`,
+  };
+}
+
+function updateWorkoutGuidance() {
+  const el = document.getElementById('workoutGuidance');
+  if (!el) return;
+
+  const category = document.getElementById('workoutCategoryInput')?.value || 'Kuvvet';
+  const type = document.getElementById('workoutTypeInput')?.value || '';
+  const guidance = getWorkoutGuidance(category, type);
+
+  el.innerHTML = `
+    <strong>${guidance.title}</strong>
+    <span>${guidance.text}</span>
+  `;
 }
 
 function getWorkoutIntensityFromNote(note = '') {
@@ -895,11 +943,30 @@ function renderDashboardWeekLabel() {
 
   const workoutTotal = getCurrentWeekWorkoutTotal();
   const workoutPct = Math.min(100, Math.round((workoutTotal / WORKOUT_TARGET) * 100));
-  const insight = sleepPct < 70
-    ? 'Uyku toparlanmaya ihtiyaç duyuyor'
-    : workoutPct < 70
-      ? 'Hareket hedefini tamamla'
-      : 'Hafta dengeli ilerliyor';
+  const dailyTotals = getWeekDailyTotals(range);
+  const sleepDays = dailyTotals.sleep.length;
+  const workoutDays = dailyTotals.workouts.length;
+  const sleepAverage = sleepDays ? sleepTotal / sleepDays : 0;
+  const weekStatus = sleepPct >= 100 && workoutPct >= 100
+    ? 'Hedef üstü'
+    : sleepAverage >= 7 && workoutPct >= 70
+      ? 'İyi gidiyorsun'
+      : sleepDays || workoutDays
+        ? 'Takipte'
+        : 'Başla';
+  const sleepInsight = sleepDays
+    ? `Kayıtlı gün ort. ${sleepAverage.toFixed(1)} saat`
+    : 'Uyku kaydı bekleniyor';
+  const workoutInsight = workoutDays
+    ? `${workoutDays} aktif gün`
+    : 'Antrenman kaydı bekleniyor';
+  const balanceInsight = sleepAverage >= 7 && workoutPct >= 100
+    ? 'Uyku ve hareket güçlü'
+    : sleepAverage >= 7
+      ? 'Uyku hedefte'
+      : workoutPct >= 100
+        ? 'Hareket güçlü'
+        : 'Ritim kuruluyor';
 
   el.innerHTML = `
     <div class="week-card-head">
@@ -909,7 +976,7 @@ function renderDashboardWeekLabel() {
       </div>
 
       <div class="week-card-pill">
-        ${sleepPct >= 100 || workoutPct >= 100 ? 'İyi gidiyorsun' : 'Devam et'}
+        ${weekStatus}
       </div>
     </div>
 
@@ -933,6 +1000,12 @@ function renderDashboardWeekLabel() {
           <div class="week-fill workout" style="width:${workoutPct}%"></div>
         </div>
       </div>
+    </div>
+
+    <div class="week-mini-insights">
+      <span>Uyku <strong>${sleepInsight}</strong></span>
+      <span>Antreman <strong>${workoutInsight}</strong></span>
+      <span>Durum <strong>${balanceInsight}</strong></span>
     </div>
   `;
 }
@@ -2043,6 +2116,7 @@ function renderAll() {
     renderSleepList,
     renderWorkoutSummary,
     renderWorkoutList,
+    updateWorkoutGuidance,
     renderProgressSummary,
     renderProgressCharts,
     renderProgressList,
@@ -3159,6 +3233,11 @@ function bindUiEvents() {
   if (workoutCategoryInput) {
     workoutCategoryInput.addEventListener('change', updateWorkoutTypes);
     updateWorkoutTypes();
+  }
+
+  const workoutTypeInput = document.getElementById('workoutTypeInput');
+  if (workoutTypeInput) {
+    workoutTypeInput.addEventListener('change', updateWorkoutGuidance);
   }
 
   document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
