@@ -1658,11 +1658,18 @@ function renderProgressCharts() {
   }
 
   if (sleepWrap) {
-    const sleepData = (state.sleep || [])
+    const sleepByDay = {};
+    (state.sleep || [])
       .filter(item =>
         item.date >= latestWeek.start &&
         item.date <= latestWeek.end
       )
+      .forEach(item => {
+        sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
+      });
+
+    const sleepData = Object.entries(sleepByDay)
+      .map(([date, hours]) => ({ date, hours: Number(hours.toFixed(1)) }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (!sleepData.length) {
@@ -1696,11 +1703,27 @@ function renderProgressCharts() {
   }
 
   if (workoutWrap) {
-    const workoutData = (state.workouts || [])
+    const workoutByDay = {};
+    (state.workouts || [])
       .filter(item =>
         item.date >= latestWeek.start &&
         item.date <= latestWeek.end
       )
+      .forEach(item => {
+        if (!workoutByDay[item.date]) {
+          workoutByDay[item.date] = {
+            date: item.date,
+            duration: 0,
+            categories: {},
+          };
+        }
+
+        const category = getWorkoutCategoryFromNote(item.note, item.type);
+        workoutByDay[item.date].duration += Number(item.duration || 0);
+        workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
+      });
+
+    const workoutData = Object.values(workoutByDay)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (!workoutData.length) {
@@ -1716,7 +1739,10 @@ function renderProgressCharts() {
       <div class="bar-chart workout-chart">
         ${workoutData.map(item => {
           const h = Math.max(12, item.duration * 1.2);
-          const category = getWorkoutCategoryFromNote(item.note, item.type);
+          const category = Object.entries(item.categories)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, duration]) => `${name}: ${duration} dk`)
+            .join(' · ');
 
           return `
             <div class="bar-item">
