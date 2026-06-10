@@ -4869,3 +4869,121 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* v112: single-package polish */
+.workout-guidance {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.09), rgba(37, 99, 235, 0.06));
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workout-guidance:empty {
+  display: none;
+}
+
+.workout-guidance strong {
+  flex: 0 0 140px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.workout-guidance span {
+  flex: 1;
+}
+
+.week-mini-insights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.week-mini-insights span {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.week-mini-insights strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#pProgress .chart-card {
+  min-height: auto;
+}
+
+.bar-chart.enhanced {
+  min-height: 238px;
+  padding-bottom: 12px;
+}
+
+.progress-chart-card,
+.measurement-chart-shell {
+  border-radius: 16px;
+}
+
+.progress-insight-card {
+  min-height: 74px;
+}
+
+.daily-grid[data-view="week"] .list-card {
+  max-height: 450px;
+  overflow: hidden;
+}
+
+.daily-grid[data-view="week"] #sleepList,
+.daily-grid[data-view="week"] #workoutList,
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.daily-grid[data-view="today"] #sleepList,
+.daily-grid[data-view="today"] #workoutList {
+  max-height: none;
+}
+
+@media (max-width: 760px) {
+  .workout-guidance,
+  .week-mini-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .workout-guidance {
+    display: block;
+  }
+
+  .workout-guidance strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .bar-chart.enhanced {
+    min-height: 210px;
+  }
+
+  .daily-grid[data-view="week"] .list-card {
+    max-height: none;
+  }
+}
