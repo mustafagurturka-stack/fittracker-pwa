@@ -1693,7 +1693,7 @@ function renderProgressCharts() {
                 ${new Date(item.date)
                   .toLocaleDateString('tr-TR', { weekday: 'short' })}
               </div>
-              <div class="bar-value">${item.hours}</div>
+              <div class="bar-value">${item.hours} saat</div>
             </div>
           `;
         }).join('')}
