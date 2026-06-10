@@ -1556,8 +1556,7 @@ function getWeeklyProgressData() {
     .sort((a, b) => a.start.localeCompare(b.start));
 }
 
-function getCurrentWeekWorkoutCategories() {
-  const range = getDashboardWeekRange();
+function getWorkoutCategoriesForRange(range) {
   const categories = {};
 
   (state.workouts || [])
@@ -1571,12 +1570,69 @@ function getCurrentWeekWorkoutCategories() {
     .sort((a, b) => b[1] - a[1]);
 }
 
+function getCurrentWeekWorkoutCategories() {
+  return getWorkoutCategoriesForRange(getDashboardWeekRange());
+}
+
+function getWeekDailyTotals(range) {
+  const sleepByDay = {};
+  const workoutByDay = {};
+
+  (state.sleep || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
+    });
+
+  (state.workouts || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      if (!workoutByDay[item.date]) {
+        workoutByDay[item.date] = {
+          date: item.date,
+          duration: 0,
+          categories: {},
+        };
+      }
+
+      const category = getWorkoutCategoryFromNote(item.note, item.type);
+      workoutByDay[item.date].duration += Number(item.duration || 0);
+      workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
+    });
+
+  return {
+    sleep: Object.entries(sleepByDay)
+      .map(([date, hours]) => ({ date, hours: Number(hours.toFixed(1)) }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    workouts: Object.values(workoutByDay)
+      .sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+function getWeekInsights(current, range) {
+  const totals = getWeekDailyTotals(range);
+  const sleepAvg = current.sleep ? current.sleep / 7 : 0;
+  const bestSleep = totals.sleep.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
+  const bestWorkout = totals.workouts.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
+  const categories = getWorkoutCategoriesForRange(range);
+  const topCategory = categories[0];
+
+  return {
+    sleepAvg,
+    bestSleep,
+    workoutDays: totals.workouts.length,
+    bestWorkout,
+    topCategory,
+  };
+}
+
 function renderProgressSummary() {
   const el = document.getElementById('progressSummary');
   if (!el) return;
 
   const weekly = getWeeklyProgressData();
   const current = weekly[weekly.length - 1] || { sleep: 0, workouts: 0 };
+  const range = current.start ? current : getDashboardWeekRange();
   const prev = weekly[weekly.length - 2];
   const measurements = getSortedMeasurements();
   const first = measurements[0];
@@ -1595,10 +1651,20 @@ function renderProgressSummary() {
   const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
   const waistDiff = firstWaist && lastWaist ? lastWaist.waist - firstWaist.waist : null;
   const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
-  const categories = getCurrentWeekWorkoutCategories();
+  const categories = getWorkoutCategoriesForRange(range);
   const categoryText = categories.length
     ? categories.map(([category, minutes]) => `${category}: ${minutes} dk`).join(' · ')
     : 'Bu hafta kategori verisi yok';
+  const insights = getWeekInsights(current, range);
+  const topCategoryLabel = insights.topCategory
+    ? `${insights.topCategory[0]} · ${insights.topCategory[1]} dk`
+    : 'Veri bekleniyor';
+  const bestSleepLabel = insights.bestSleep
+    ? `${formatDate(insights.bestSleep.date)} · ${insights.bestSleep.hours} saat`
+    : 'Veri bekleniyor';
+  const bestWorkoutLabel = insights.bestWorkout
+    ? `${formatDate(insights.bestWorkout.date)} · ${insights.bestWorkout.duration} dk`
+    : 'Veri bekleniyor';
 
   el.innerHTML = `
     <div class="progress-grid">
@@ -1627,6 +1693,29 @@ function renderProgressSummary() {
         <span>Bel</span>
         <strong>${lastWaist ? `${lastWaist.waist} cm` : '—'}</strong>
         <small>${waistDiff === null ? 'Her 4. tartıda takip edilir' : `Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff === null ? '—' : `${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm`}`}</small>
+      </div>
+    </div>
+
+    <div class="progress-insight-grid">
+      <div class="progress-insight-card">
+        <span>Uyku ortalaması</span>
+        <strong>${insights.sleepAvg.toFixed(1)} saat/gün</strong>
+        <small>Haftalık hedef: 7 saat/gün</small>
+      </div>
+      <div class="progress-insight-card">
+        <span>En iyi uyku</span>
+        <strong>${bestSleepLabel}</strong>
+        <small>Haftanın en yüksek uyku kaydı</small>
+      </div>
+      <div class="progress-insight-card">
+        <span>Aktif gün</span>
+        <strong>${insights.workoutDays} gün</strong>
+        <small>Bu hafta antrenman yapılan gün</small>
+      </div>
+      <div class="progress-insight-card">
+        <span>Öne çıkan kategori</span>
+        <strong>${topCategoryLabel}</strong>
+        <small>${bestWorkoutLabel}</small>
       </div>
     </div>
   `;
@@ -1658,19 +1747,8 @@ function renderProgressCharts() {
   }
 
   if (sleepWrap) {
-    const sleepByDay = {};
-    (state.sleep || [])
-      .filter(item =>
-        item.date >= latestWeek.start &&
-        item.date <= latestWeek.end
-      )
-      .forEach(item => {
-        sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
-      });
-
-    const sleepData = Object.entries(sleepByDay)
-      .map(([date, hours]) => ({ date, hours: Number(hours.toFixed(1)) }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const sleepData = getWeekDailyTotals(latestWeek).sleep;
+    const sleepAvg = latestWeek.sleep ? latestWeek.sleep / 7 : 0;
 
     if (!sleepData.length) {
       setEmptyState(
@@ -1682,9 +1760,16 @@ function renderProgressCharts() {
       );
     } else {
     sleepWrap.innerHTML = `
+      <div class="chart-mini-head">
+        <div>
+          <strong>Günlük uyku dağılımı</strong>
+          <span>Haftalık ortalama ${sleepAvg.toFixed(1)} saat/gün</span>
+        </div>
+        <em>${latestWeek.sleep.toFixed(1)} / ${SLEEP_TARGET} saat</em>
+      </div>
       <div class="bar-chart sleep-chart">
         ${sleepData.map(item => {
-          const h = Math.max(16, item.hours * 14);
+          const h = Math.min(140, Math.max(18, item.hours * 14));
 
           return `
             <div class="bar-item">
@@ -1703,28 +1788,11 @@ function renderProgressCharts() {
   }
 
   if (workoutWrap) {
-    const workoutByDay = {};
-    (state.workouts || [])
-      .filter(item =>
-        item.date >= latestWeek.start &&
-        item.date <= latestWeek.end
-      )
-      .forEach(item => {
-        if (!workoutByDay[item.date]) {
-          workoutByDay[item.date] = {
-            date: item.date,
-            duration: 0,
-            categories: {},
-          };
-        }
-
-        const category = getWorkoutCategoryFromNote(item.note, item.type);
-        workoutByDay[item.date].duration += Number(item.duration || 0);
-        workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
-      });
-
-    const workoutData = Object.values(workoutByDay)
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const workoutData = getWeekDailyTotals(latestWeek).workouts;
+    const categories = getWorkoutCategoriesForRange(latestWeek);
+    const categoryText = categories.length
+      ? categories.map(([category, duration]) => `${category}: ${duration} dk`).join(' · ')
+      : 'Kategori verisi bekleniyor';
 
     if (!workoutData.length) {
       setEmptyState(
@@ -1736,9 +1804,16 @@ function renderProgressCharts() {
       );
     } else {
     workoutWrap.innerHTML = `
+      <div class="chart-mini-head">
+        <div>
+          <strong>Günlük antrenman dağılımı</strong>
+          <span>${categoryText}</span>
+        </div>
+        <em>${latestWeek.workouts} / ${WORKOUT_TARGET} dk</em>
+      </div>
       <div class="bar-chart workout-chart">
         ${workoutData.map(item => {
-          const h = Math.max(12, item.duration * 1.2);
+          const h = Math.min(140, Math.max(18, item.duration * 1.35));
           const category = Object.entries(item.categories)
             .sort((a, b) => b[1] - a[1])
             .map(([name, duration]) => `${name}: ${duration} dk`)
