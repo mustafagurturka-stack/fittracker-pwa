@@ -329,6 +329,10 @@ function renderFallbackMeasurementChart(host, data) {
   const first = data[0];
   const last = data[data.length - 1];
   const diff = last && first ? Number(last.weight - first.weight) : 0;
+  const waistData = data.filter(item =>
+    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
+  );
+  const lastWaist = waistData[waistData.length - 1];
 
   const weights = data.map(item => Number(item.weight));
   const min = Math.min(...weights);
@@ -341,34 +345,122 @@ function renderFallbackMeasurementChart(host, data) {
   });
 
   host.innerHTML = `
-    <div class="measurement-chart-top">
-      <div>
-        <span>Kilo Trendi</span>
-        <strong>${first ? Number(first.weight).toFixed(1) : '—'} → ${last ? Number(last.weight).toFixed(1) : '—'} kg</strong>
-      </div>
-      <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg</div>
-    </div>
-    <div class="fallback-line-chart">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
-        <polyline
-          points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
-          fill="none"
-          stroke="#2563eb"
-          stroke-width="2.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        ${points.map(point => `
-          <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#2563eb"></circle>
-        `).join('')}
-      </svg>
-      <div class="fallback-chart-labels">
-        ${points.map(point => `
+    <div class="measurement-insight-grid">
+      <div class="weight-trend-panel">
+        <div class="measurement-chart-top compact">
           <div>
-            <strong>${Number(point.weight).toFixed(1)} kg</strong>
-            <span>${formatDate(point.date)}</span>
+            <span>Kilo Trendi</span>
+            <strong>${first ? Number(first.weight).toFixed(1) : '—'} → ${last ? Number(last.weight).toFixed(1) : '—'} kg</strong>
           </div>
-        `).join('')}
+          <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg</div>
+        </div>
+        <div class="fallback-line-chart">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
+            <polyline
+              points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
+              fill="none"
+              stroke="#2563eb"
+              stroke-width="2.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            ${points.map(point => `
+              <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#2563eb"></circle>
+            `).join('')}
+          </svg>
+          <div class="fallback-chart-labels">
+            ${points.map(point => `
+              <div>
+                <strong>${Number(point.weight).toFixed(1)} kg</strong>
+                <span>${formatDate(point.date)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="waist-tracking-panel">
+        <span>Bel Takibi</span>
+        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
+        <p>Bel ölçümü başlangıçta ve her 4. tartıda takip edilir.</p>
+        <div class="waist-rhythm">
+          <i class="active"></i><i></i><i></i><i></i>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getWeightChartSuggestion(first, last, diff) {
+  if (!first || !last) return 'İlk iki ölçümden sonra trend netleşir.';
+  if (diff < 0) return `${formatDate(first.date)} başlangıcından beri düşüş var.`;
+  if (diff > 0) return 'Bu hafta artış var; uyku, su ve antrenman ritmini kontrol et.';
+  return 'Kilo aynı seviyede; trend için sonraki pazar ölçümünü bekle.';
+}
+
+function getWaistRhythmStep() {
+  const nextSequence = getMeasurementSequenceNumber(getSuggestedMeasureDate());
+  const remainder = ((nextSequence - 1) % 4) + 1;
+  return Math.max(1, Math.min(4, remainder));
+}
+
+function renderWaistRhythm(step) {
+  return Array.from({ length: 4 }, (_, index) =>
+    `<i class="${index < step ? 'active' : ''}"></i>`
+  ).join('');
+}
+
+function renderMeasurementInsight(host, data, canvasHtml = '') {
+  const waistData = data.filter(item =>
+    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
+  );
+  const first = data[0];
+  const last = data[data.length - 1];
+  const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
+  const waistDiff = waistData.length >= 2
+    ? Number(waistData[waistData.length - 1].waist - waistData[0].waist)
+    : null;
+  const lastWaist = waistData[waistData.length - 1];
+  const rhythmStep = getWaistRhythmStep();
+
+  host.innerHTML = `
+    <div class="measurement-insight-grid">
+      <div class="weight-trend-panel">
+        <div class="measurement-chart-top">
+          <div>
+            <span>Kilo Trendi</span>
+            <strong>${Number(first.weight).toFixed(1)} → ${Number(last.weight).toFixed(1)} kg</strong>
+          </div>
+          <div class="${weightDiff <= 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg</div>
+        </div>
+
+        <div class="measurement-detail-row">
+          <div>
+            <span>Başlangıç</span>
+            <strong>${formatDate(first.date)}</strong>
+          </div>
+          <div>
+            <span>Son ölçüm</span>
+            <strong>${formatDate(last.date)}</strong>
+          </div>
+          <div>
+            <span>Yorum</span>
+            <strong>${getWeightChartSuggestion(first, last, weightDiff)}</strong>
+          </div>
+        </div>
+
+        <div class="measurement-chart-canvas">
+          ${canvasHtml}
+        </div>
+      </div>
+
+      <div class="waist-tracking-panel">
+        <span>Bel Takibi</span>
+        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
+        <p>${waistDiff === null ? 'Yeni bel ölçümü 4. tartıda alınacak. Şimdilik başlangıç değeri referans olarak tutuluyor.' : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
+        <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
+          ${renderWaistRhythm(rhythmStep)}
+        </div>
+        <small>4 tartıda 1 bel ölçümü</small>
       </div>
     </div>
   `;
@@ -895,15 +987,6 @@ function renderMeasurementChart() {
 
   normalizeProfileState();
   const data = getChartMeasurementData();
-  const waistData = data.filter(item =>
-    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
-  );
-  const first = data[0];
-  const last = data[data.length - 1];
-  const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
-  const waistDiff = waistData.length >= 2
-    ? Number(waistData[waistData.length - 1].waist - waistData[0].waist)
-    : null;
 
   if (measurementChart) {
     measurementChart.destroy();
@@ -927,23 +1010,7 @@ function renderMeasurementChart() {
     return;
   }
 
-  host.innerHTML = `
-    <div class="measurement-chart-top">
-      <div>
-        <span>Kilo Trendi</span>
-        <strong>${Number(first.weight).toFixed(1)} → ${Number(last.weight).toFixed(1)} kg</strong>
-      </div>
-      <div class="${weightDiff <= 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg</div>
-      <div>
-        <span>Bel Takibi</span>
-        <strong>${waistData.length ? `${Number(waistData[waistData.length - 1].waist).toFixed(1)} cm` : '4. tartıda'}</strong>
-      </div>
-      <div class="${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</div>
-    </div>
-    <div class="measurement-chart-canvas">
-      <canvas id="measurementChart"></canvas>
-    </div>
-  `;
+  renderMeasurementInsight(host, data, '<canvas id="measurementChart"></canvas>');
   const canvas = document.getElementById('measurementChart');
   if (!canvas) return;
 
@@ -957,24 +1024,16 @@ function renderMeasurementChart() {
         {
           label: 'Kilo (kg)',
           data: data.map(item => item.weight),
-          yAxisID: 'yWeight',
           borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,.10)',
-          tension: 0.35,
-          borderWidth: 2,
-          pointRadius: 4,
+          backgroundColor: 'rgba(37,99,235,.08)',
+          fill: true,
+          tension: 0.42,
+          borderWidth: 3,
+          pointRadius: 5,
+          pointHoverRadius: 6,
+          pointBorderWidth: 3,
+          pointBorderColor: '#ffffff',
           pointBackgroundColor: '#2563eb'
-        },
-        {
-          label: 'Bel (cm)',
-          data: data.map(item => shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist)) ? item.waist : null),
-          yAxisID: 'yWaist',
-          borderColor: '#0f766e',
-          backgroundColor: 'rgba(15,118,110,.10)',
-          tension: 0.35,
-          borderWidth: 2,
-          pointRadius: 4,
-          pointBackgroundColor: '#0f766e'
         }
       ]
     },
@@ -983,11 +1042,11 @@ function renderMeasurementChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
-          labels: {
-            usePointStyle: true,
-            boxWidth: 8,
-            boxHeight: 8
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: context => `${context.parsed.y} kg`
           }
         }
       },
@@ -997,25 +1056,16 @@ function renderMeasurementChart() {
             display: false
           }
         },
-        yWeight: {
+        y: {
           position: 'left',
           beginAtZero: false,
+          suggestedMin: Math.min(...data.map(item => Number(item.weight))) - 1,
+          suggestedMax: Math.max(...data.map(item => Number(item.weight))) + 1,
           grid: {
             color: 'rgba(113,128,150,.18)'
           },
           ticks: {
             callback: value => `${value} kg`
-          }
-        },
-        yWaist: {
-          position: 'right',
-          beginAtZero: false,
-          display: waistData.length > 0,
-          grid: {
-            drawOnChartArea: false
-          },
-          ticks: {
-            callback: value => `${value} cm`
           }
         }
       }
