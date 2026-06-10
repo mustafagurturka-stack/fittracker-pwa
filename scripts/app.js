@@ -1679,7 +1679,8 @@ function getWeekDailyTotals(range) {
 
 function getWeekInsights(current, range) {
   const totals = getWeekDailyTotals(range);
-  const sleepAvg = current.sleep ? current.sleep / 7 : 0;
+  const sleepDays = totals.sleep.length;
+  const sleepAvg = sleepDays ? current.sleep / sleepDays : 0;
   const bestSleep = totals.sleep.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
   const bestWorkout = totals.workouts.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
   const categories = getWorkoutCategoriesForRange(range);
@@ -1687,6 +1688,7 @@ function getWeekInsights(current, range) {
 
   return {
     sleepAvg,
+    sleepDays,
     bestSleep,
     workoutDays: totals.workouts.length,
     bestWorkout,
@@ -1766,9 +1768,9 @@ function renderProgressSummary() {
 
     <div class="progress-insight-grid">
       <div class="progress-insight-card">
-        <span>Uyku ortalaması</span>
+        <span>Kayıtlı gün ortalaması</span>
         <strong>${insights.sleepAvg.toFixed(1)} saat/gün</strong>
-        <small>Haftalık hedef: 7 saat/gün</small>
+        <small>${insights.sleepDays || 0} kayıtlı gün üzerinden</small>
       </div>
       <div class="progress-insight-card">
         <span>En iyi uyku</span>
@@ -1816,7 +1818,7 @@ function renderProgressCharts() {
 
   if (sleepWrap) {
     const sleepData = getWeekDailyTotals(latestWeek).sleep;
-    const sleepAvg = latestWeek.sleep ? latestWeek.sleep / 7 : 0;
+    const sleepAvg = sleepData.length ? latestWeek.sleep / sleepData.length : 0;
     const bestSleep = sleepData.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
 
     if (!sleepData.length) {
@@ -1832,12 +1834,12 @@ function renderProgressCharts() {
       <div class="chart-mini-head enhanced">
         <div>
           <strong>Günlük uyku dağılımı</strong>
-          <span>Hedef aralık: 7-9 saat. Haftalık ortalama ${sleepAvg.toFixed(1)} saat/gün</span>
+          <span>Hedef aralık: 7-9 saat. Kayıtlı gün ortalaması ${sleepAvg.toFixed(1)} saat/gün</span>
         </div>
         <em>${latestWeek.sleep.toFixed(1)} / ${SLEEP_TARGET} saat</em>
       </div>
       <div class="chart-stat-row">
-        <div><span>Ortalama</span><strong>${sleepAvg.toFixed(1)} saat</strong></div>
+        <div><span>Kayıtlı gün ort.</span><strong>${sleepAvg.toFixed(1)} saat</strong></div>
         <div><span>En iyi gün</span><strong>${bestSleep ? `${getShortWeekday(bestSleep.date)} · ${formatDecimal(bestSleep.hours)} saat` : '—'}</strong></div>
         <div><span>Durum</span><strong>${sleepAvg >= 7 ? 'Hedefte' : 'Eksik'}</strong></div>
       </div>
