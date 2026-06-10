@@ -173,6 +173,30 @@ function getCleanWorkoutNote(note = '') {
     .trim();
 }
 
+function formatDecimal(value, digits = 1) {
+  const number = Number(value || 0);
+  return Number.isInteger(number) ? String(number) : number.toFixed(digits);
+}
+
+function getShortWeekday(date) {
+  return new Date(`${date}T12:00:00`)
+    .toLocaleDateString('tr-TR', { weekday: 'short' });
+}
+
+function getSleepQuality(hours) {
+  const value = Number(hours || 0);
+  if (value >= 7 && value <= 9) return 'Hedefte';
+  if (value > 9) return 'Yüksek';
+  if (value >= 6) return 'Sınırda';
+  return 'Düşük';
+}
+
+function getWorkoutDayLabel(item) {
+  const category = Object.entries(item.categories || {})
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman';
+  return `${category} · ${Number(item.duration || 0)} dk`;
+}
+
 function todayDisplay() {
   const d = new Date();
   const day = String(d.getDate()).padStart(2, '0');
@@ -1493,8 +1517,8 @@ function renderSleepList() {
   list.innerHTML = sleep.map(item => `
     <div class="daily-row">
       <div>
-        <div class="daily-row-title">${Number(item.hours).toFixed(1)} saat</div>
-        <div class="daily-row-meta">${item.date === today() ? 'Bugün' : formatDate(item.date)}</div>
+        <div class="daily-row-title">${formatDecimal(item.hours)} saat</div>
+        <div class="daily-row-meta">${item.date === today() ? 'Bugün' : formatDate(item.date)} · ${getSleepQuality(item.hours)}</div>
       </div>
       <button onclick="deleteSleep(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
     </div>
@@ -1793,6 +1817,7 @@ function renderProgressCharts() {
   if (sleepWrap) {
     const sleepData = getWeekDailyTotals(latestWeek).sleep;
     const sleepAvg = latestWeek.sleep ? latestWeek.sleep / 7 : 0;
+    const bestSleep = sleepData.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
 
     if (!sleepData.length) {
       setEmptyState(
@@ -1804,25 +1829,32 @@ function renderProgressCharts() {
       );
     } else {
     sleepWrap.innerHTML = `
-      <div class="chart-mini-head">
+      <div class="chart-mini-head enhanced">
         <div>
           <strong>Günlük uyku dağılımı</strong>
-          <span>Haftalık ortalama ${sleepAvg.toFixed(1)} saat/gün</span>
+          <span>Hedef aralık: 7-9 saat. Haftalık ortalama ${sleepAvg.toFixed(1)} saat/gün</span>
         </div>
         <em>${latestWeek.sleep.toFixed(1)} / ${SLEEP_TARGET} saat</em>
       </div>
-      <div class="bar-chart sleep-chart">
+      <div class="chart-stat-row">
+        <div><span>Ortalama</span><strong>${sleepAvg.toFixed(1)} saat</strong></div>
+        <div><span>En iyi gün</span><strong>${bestSleep ? `${getShortWeekday(bestSleep.date)} · ${formatDecimal(bestSleep.hours)} saat` : '—'}</strong></div>
+        <div><span>Durum</span><strong>${sleepAvg >= 7 ? 'Hedefte' : 'Eksik'}</strong></div>
+      </div>
+      <div class="bar-chart sleep-chart enhanced" style="--target-line: ${Math.min(100, (7 / 10) * 100)}%">
         ${sleepData.map(item => {
           const h = Math.min(140, Math.max(18, item.hours * 14));
+          const quality = getSleepQuality(item.hours);
 
           return `
             <div class="bar-item">
-              <div class="bar-fill sleep" style="height:${h}px"></div>
-              <div class="bar-label">
-                ${new Date(item.date)
-                  .toLocaleDateString('tr-TR', { weekday: 'short' })}
+              <div class="bar-fill sleep" style="height:${h}px" title="${formatDecimal(item.hours)} saat · ${quality}">
+                <span>${formatDecimal(item.hours)} saat</span>
               </div>
-              <div class="bar-value">${item.hours} saat</div>
+              <div class="bar-label">
+                ${getShortWeekday(item.date)}
+              </div>
+              <div class="bar-value">${quality}</div>
             </div>
           `;
         }).join('')}
@@ -1837,6 +1869,8 @@ function renderProgressCharts() {
     const categoryText = categories.length
       ? categories.map(([category, duration]) => `${category}: ${duration} dk`).join(' · ')
       : 'Kategori verisi bekleniyor';
+    const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
+    const workoutDays = workoutData.length;
 
     if (!workoutData.length) {
       setEmptyState(
@@ -1848,14 +1882,19 @@ function renderProgressCharts() {
       );
     } else {
     workoutWrap.innerHTML = `
-      <div class="chart-mini-head">
+      <div class="chart-mini-head enhanced">
         <div>
           <strong>Günlük antrenman dağılımı</strong>
           <span>${categoryText}</span>
         </div>
         <em>${latestWeek.workouts} / ${WORKOUT_TARGET} dk</em>
       </div>
-      <div class="bar-chart workout-chart">
+      <div class="chart-stat-row">
+        <div><span>Aktif gün</span><strong>${workoutDays} gün</strong></div>
+        <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${bestWorkout.duration} dk` : '—'}</strong></div>
+        <div><span>Odak</span><strong>${categories[0] ? categories[0][0] : '—'}</strong></div>
+      </div>
+      <div class="bar-chart workout-chart enhanced">
         ${workoutData.map(item => {
           const h = Math.min(140, Math.max(18, item.duration * 1.35));
           const category = Object.entries(item.categories)
@@ -1865,12 +1904,13 @@ function renderProgressCharts() {
 
           return `
             <div class="bar-item">
-              <div class="bar-fill workout" style="height:${h}px" title="${category}"></div>
-              <div class="bar-label">
-                ${new Date(item.date)
-                  .toLocaleDateString('tr-TR', { weekday: 'short' })}
+              <div class="bar-fill workout" style="height:${h}px" title="${category}">
+                <span>${item.duration} dk</span>
               </div>
-              <div class="bar-value">${item.duration} dk</div>
+              <div class="bar-label">
+                ${getShortWeekday(item.date)}
+              </div>
+              <div class="bar-value">${getWorkoutDayLabel(item)}</div>
             </div>
           `;
         }).join('')}
@@ -1903,12 +1943,17 @@ function renderProgressList() {
         const isStrong = sleepPct >= 90 && workoutPct >= 90;
         const isLight = sleepPct < 65 || workoutPct < 65;
         const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
+        const categories = getWorkoutCategoriesForRange(item);
+        const categorySummary = categories.length
+          ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${minutes} dk`).join(' · ')
+          : 'Kategori bekleniyor';
 
         return `
           <div class="weekly-report-row">
             <div>
               <strong>${formatDate(item.start)} - ${formatDate(item.end)}</strong>
               <span>${status}</span>
+              <small>${categorySummary}</small>
             </div>
             <div class="weekly-report-metrics">
               <div>
