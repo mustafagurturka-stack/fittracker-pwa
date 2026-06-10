@@ -3887,11 +3887,39 @@ body {
 }
 
 .settings-copy {
-  min-height: 48px;
   margin: 0 0 12px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.sync-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+
+.sync-status-grid div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+}
+
+.sync-status-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sync-status-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 13px;
 }
 
 .settings-action {
@@ -4239,7 +4267,7 @@ body {
 #pSettings .settings-card {
   display: flex;
   flex-direction: column;
-  min-height: 232px;
+  min-height: 214px;
   padding: 20px !important;
   border: 1px solid var(--border) !important;
   border-radius: 18px !important;
