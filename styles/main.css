@@ -3460,12 +3460,47 @@ body {
   gap: 14px;
 }
 
+.daily-filter-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface2));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+}
+
+.daily-filter-bar button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.daily-filter-bar button.active {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .22);
+}
+
 .list-card {
   overflow: hidden;
   min-height: 250px;
-  max-height: 560px;
+  max-height: none;
   display: flex;
   flex-direction: column;
+}
+
+.daily-grid[data-view="all"] .list-card {
+  max-height: 560px;
 }
 
 .list-title {
@@ -3516,6 +3551,11 @@ body {
 #workoutList {
   display: grid;
   margin-top: 2px;
+  overflow: visible;
+}
+
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
   overflow: auto;
 }
 
@@ -4112,6 +4152,16 @@ body {
   .weekly-report-row,
   .weekly-report-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .daily-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .daily-filter-bar button {
+    padding: 0 8px;
   }
 
   .list-card {
