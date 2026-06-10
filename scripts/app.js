@@ -3,7 +3,14 @@
 // â”€â”€ SUPABASE â”€â”€
 const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'fittracker-pro-auth',
+  },
+});
 
 console.log('Supabase hazır:', db);
 
@@ -853,7 +860,7 @@ function applyTheme() {
   const themeMeta = document.getElementById('themeColorMeta');
 
   if (themeBtn) {
-    themeBtn.textContent = state.theme === 'dark' ? '☀️' : '🌙';
+    themeBtn.innerHTML = state.theme === 'dark' ? '&#9728;' : '&#9790;';
   }
 
   if (themeMeta) {
@@ -1004,7 +1011,7 @@ function renderDashboardWeekLabel() {
 
     <div class="week-mini-insights">
       <span>Uyku <strong>${sleepInsight}</strong></span>
-      <span>Antreman <strong>${workoutInsight}</strong></span>
+      <span>Antrenman <strong>${workoutInsight}</strong></span>
       <span>Durum <strong>${balanceInsight}</strong></span>
     </div>
   `;
@@ -1443,7 +1450,7 @@ function renderNotes() {
   if (!notes.length) {
     list.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📝</div>
+        <div class="empty-icon">+</div>
         Bugün için not yok.
       </div>
     `;
@@ -1819,7 +1826,7 @@ function renderProgressSummary() {
       </div>
 
       <div class="progress-metric-card">
-        <span>Antrenman</span>
+          <span>Antrenman</span>
         <strong>${current.workouts} dk</strong>
         <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
         <small>${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk / geçen hafta</small>
@@ -1962,7 +1969,7 @@ function renderProgressCharts() {
           <strong>Günlük antrenman dağılımı</strong>
           <span>${categoryText}</span>
         </div>
-        <em>${latestWeek.workouts} / ${WORKOUT_TARGET} dk</em>
+        <em>${workoutDays} aktif gün</em>
       </div>
       <div class="chart-stat-row">
         <div><span>Aktif gün</span><strong>${workoutDays} gün</strong></div>
@@ -2022,6 +2029,12 @@ function renderProgressList() {
         const categorySummary = categories.length
           ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${minutes} dk`).join(' · ')
           : 'Kategori bekleniyor';
+        const workoutDays = new Set(
+          state.workouts
+            .filter(workout => workout.date >= item.start && workout.date <= item.end)
+            .map(workout => workout.date)
+        ).size;
+        const workoutMetric = workoutDays ? `${workoutDays} aktif gün` : 'Kayıt yok';
 
         return `
           <div class="weekly-report-row">
@@ -2038,7 +2051,7 @@ function renderProgressList() {
               </div>
               <div>
                 <span>Antrenman</span>
-                <strong>${item.workouts} dk</strong>
+                <strong>${workoutMetric}</strong>
                 <i><b style="width:${workoutPct}%"></b></i>
               </div>
             </div>
@@ -3027,7 +3040,7 @@ async function continueWithSession(session) {
   stateLoad();
   state.userId = session.user.id;
   state.userEmail = session.user.email || state.userEmail || '';
-  state.name = getSessionDisplayName(session);
+  state.name = state.name || getSessionDisplayName(session);
   stateSave();
   document.getElementById('authModal')?.remove();
 
@@ -3132,8 +3145,10 @@ async function completeOnboarding() {
     measurements: [],
     sleep: [],
     workouts: [],
-    notes: [],
-  };
+  notes: [],
+};
+
+let activeSessionLoad = null;
 
   stateSave();
 
@@ -3380,10 +3395,22 @@ async function checkAuthSession() {
 }
 
 function setupAuthListener() {
-  db.auth.onAuthStateChange((_event, session) => {
-    if (session?.user?.id && session.user.id !== state.userId) {
-      continueWithSession(session);
-    }
+  db.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') return;
+    if (!session?.user?.id) return;
+
+    const shouldLoad =
+      session.user.id !== state.userId ||
+      event === 'SIGNED_IN' ||
+      event === 'INITIAL_SESSION' ||
+      !state.measurements.length && !state.sleep.length && !state.workouts.length;
+
+    if (!shouldLoad || activeSessionLoad) return;
+
+    activeSessionLoad = continueWithSession(session)
+      .finally(() => {
+        activeSessionLoad = null;
+      });
   });
 }
 
