@@ -101,6 +101,7 @@ let measurementChart = null;
 let sleepChart = null;
 let workoutChart = null;
 let authMode = 'signIn';
+let dailyView = 'week';
 // â”€â”€ HELPERS â”€â”€
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -1356,6 +1357,44 @@ function getDashboardWeekTitle() {
   return range.start === current.start ? 'Bu Hafta' : 'Son Aktif Hafta';
 }
 
+function getDailyViewRange() {
+  if (dailyView === 'today') {
+    const date = today();
+    return { start: date, end: date, title: 'Bugün', targetMode: 'today' };
+  }
+
+  if (dailyView === 'all') {
+    return { start: null, end: null, title: 'Tüm Geçmiş', targetMode: 'all' };
+  }
+
+  return { ...getDashboardWeekRange(), title: getDashboardWeekTitle(), targetMode: 'week' };
+}
+
+function itemMatchesDailyView(item) {
+  const range = getDailyViewRange();
+  if (!item?.date) return false;
+  if (!range.start || !range.end) return true;
+  return item.date >= range.start && item.date <= range.end;
+}
+
+function renderDailyViewControls() {
+  const range = getDailyViewRange();
+  const grid = document.getElementById('dailyGrid');
+  if (grid) grid.dataset.view = dailyView;
+
+  document.querySelectorAll('[data-daily-view]').forEach(btn => {
+    const isActive = btn.dataset.dailyView === dailyView;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+
+    if (btn.dataset.dailyView === 'week') {
+      btn.textContent = getDashboardWeekTitle();
+    }
+  });
+
+  return range;
+}
+
 function getCurrentWeekSleepTotal() {
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
   const range = getDashboardWeekRange();
@@ -1370,10 +1409,16 @@ function renderSleepSummary() {
   if (!el) return;
 
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
+  const range = getDailyViewRange();
   const todayTotal = sleep
     .filter(item => item.date === today())
     .reduce((total, item) => total + Number(item.hours || 0), 0);
-  const weekTotal = getCurrentWeekSleepTotal();
+  const viewTotal = sleep
+    .filter(itemMatchesDailyView)
+    .reduce((total, item) => total + Number(item.hours || 0), 0);
+  const viewValue = range.targetMode === 'week'
+    ? `${viewTotal.toFixed(1)} / ${SLEEP_TARGET} saat`
+    : `${viewTotal.toFixed(1)} saat`;
 
   el.innerHTML = `
     <div class="daily-stat-line">
@@ -1381,8 +1426,8 @@ function renderSleepSummary() {
       <strong>${todayTotal.toFixed(1)} saat</strong>
     </div>
     <div class="daily-stat-line muted">
-      <span>${getDashboardWeekTitle()}</span>
-      <strong>${weekTotal.toFixed(1)} / 49 saat</strong>
+      <span>${range.title}</span>
+      <strong>${viewValue}</strong>
     </div>
   `;
 }
@@ -1390,14 +1435,14 @@ function renderSleepList() {
   const list = document.getElementById('sleepList');
   if (!list) return;
 
-  const range = getDashboardWeekRange();
+  const range = getDailyViewRange();
   const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
   const sleep = sorted
     .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(item => item.date >= range.start && item.date <= range.end);
+    .filter(itemMatchesDailyView);
 
   if (!sleep.length) {
-    list.innerHTML = `<div class="empty-state compact">${getDashboardWeekTitle()} için uyku kaydı yok.</div>`;
+    list.innerHTML = `<div class="empty-state compact">${range.title} için uyku kaydı yok.</div>`;
     return;
   }
 
@@ -1425,10 +1470,16 @@ function renderWorkoutSummary() {
   if (!el) return;
 
   const workouts = Array.isArray(state.workouts) ? state.workouts : [];
+  const range = getDailyViewRange();
   const todayTotal = workouts
     .filter(item => item.date === today())
     .reduce((total, item) => total + Number(item.duration || 0), 0);
-  const weekTotal = getCurrentWeekWorkoutTotal();
+  const viewTotal = workouts
+    .filter(itemMatchesDailyView)
+    .reduce((total, item) => total + Number(item.duration || 0), 0);
+  const viewValue = range.targetMode === 'week'
+    ? `${viewTotal} / ${WORKOUT_TARGET} dk`
+    : `${viewTotal} dk`;
 
   el.innerHTML = `
     <div class="daily-stat-line">
@@ -1436,8 +1487,8 @@ function renderWorkoutSummary() {
       <strong>${todayTotal} dk</strong>
     </div>
     <div class="daily-stat-line muted">
-      <span>${getDashboardWeekTitle()}</span>
-      <strong>${weekTotal} / 180 dk</strong>
+      <span>${range.title}</span>
+      <strong>${viewValue}</strong>
     </div>
   `;
 }
@@ -1445,14 +1496,14 @@ function renderWorkoutList() {
   const list = document.getElementById('workoutList');
   if (!list) return;
 
-  const range = getDashboardWeekRange();
+  const range = getDailyViewRange();
   const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
   const workouts = sorted
     .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(item => item.date >= range.start && item.date <= range.end);
+    .filter(itemMatchesDailyView);
 
   if (!workouts.length) {
-    list.innerHTML = `<div class="empty-state compact">${getDashboardWeekTitle()} için antrenman kaydı yok.</div>`;
+    list.innerHTML = `<div class="empty-state compact">${range.title} için antrenman kaydı yok.</div>`;
     return;
   }
 
@@ -1795,6 +1846,7 @@ function renderAll() {
     renderWeightSummary,
     renderWeightList,
     renderNotes,
+    renderDailyViewControls,
     renderSleepSummary,
     renderSleepList,
     renderWorkoutSummary,
@@ -2917,6 +2969,17 @@ function bindUiEvents() {
     btn.addEventListener('click', () => {
       const input = document.getElementById('workoutDurationInput');
       if (input) input.value = btn.dataset.workoutMinutes;
+    });
+  });
+
+  document.querySelectorAll('[data-daily-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dailyView = btn.dataset.dailyView || 'week';
+      renderDailyViewControls();
+      renderSleepSummary();
+      renderSleepList();
+      renderWorkoutSummary();
+      renderWorkoutList();
     });
   });
 
