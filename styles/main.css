@@ -3598,6 +3598,44 @@ body {
   line-height: 1.35;
 }
 
+.progress-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.progress-insight-card {
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.9));
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.progress-insight-card span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.progress-insight-card strong {
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.progress-insight-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .metric-track {
   height: 7px;
   margin: 12px 0 8px;
@@ -4484,13 +4522,48 @@ body {
   min-height: 260px;
 }
 
+.chart-mini-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px 0;
+}
+
+.chart-mini-head strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.chart-mini-head span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.chart-mini-head em {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(37,99,235,.1);
+  color: var(--blue);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .bar-chart {
-  height: 100%;
-  min-height: 220px;
+  height: auto;
+  min-height: 196px;
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  padding: 14px 12px 8px;
+  padding: 22px 12px 8px;
 }
 
 .bar-item {
@@ -4533,6 +4606,14 @@ body {
 
 [data-theme="dark"] .bar-fill {
   box-shadow: inset 0 -10px 18px rgba(255,255,255,.08), 0 10px 18px rgba(0,0,0,.18);
+}
+
+[data-theme="dark"] .progress-insight-card {
+  background: rgba(23,29,39,.94);
+}
+
+[data-theme="dark"] .chart-mini-head em {
+  background: rgba(96,165,250,.14);
 }
 
 .empty-state {
@@ -4585,6 +4666,10 @@ body {
   #pSettings .settings-grid {
     grid-template-columns: 1fr !important;
   }
+
+  .progress-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
@@ -4596,5 +4681,19 @@ body {
   .empty-state {
     min-height: 190px;
     padding: 22px 16px;
+  }
+
+  .progress-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-mini-head {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bar-chart {
+    gap: 8px;
+    padding-inline: 4px;
   }
 }
