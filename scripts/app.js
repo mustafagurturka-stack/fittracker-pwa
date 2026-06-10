@@ -1,4699 +1,3279 @@
-/* ── TOKENS ── */
-:root {
-  --bg:        #e8f0ff;
-  --surface:   #ffffff;
-  --surface2:  #f0f3fa;
-  --border:    #e2e8f4;
-  --text:      #0f1724;
-  --text2:     #4a5568;
-  --muted:     #8896b0;
-  --dim:       #c5cfe0;
+'use strict';
 
-  --blue:      #3b82f6;
-  --green:     #10b981;
-  --orange:    #f97316;
-  --red:       #ef4444;
-  --purple:    #8b5cf6;
-  --yellow:    #f59e0b;
-  --cyan:      #06b6d4;
+// â”€â”€ SUPABASE â”€â”€
+const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  --brand-green: #22c55e;
-  --brand-green-dark: #16a34a;
-  --brand-green-soft: rgba(34,197,94,.12);
-  --brand-green-border: rgba(34,197,94,.22);
+console.log('Supabase hazır:', db);
 
-  --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.04);
-  --radius:    14px;
-  --radius-sm: 9px;
+// â”€â”€ CONSTANTS â”€â”€
+const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
+const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
+const STORAGE_KEY = 'ft_state_v2';
+const START_DATE = '2026-05-31';
+const WEEKLY_MEASURE_DAY = 0;
+const SLEEP_TARGET = 49;
+const WORKOUT_TARGET = 180;
 
-  --font-body: 'DM Sans', sans-serif;
-  --font-mono: 'DM Mono', monospace;
+const WORKOUT_CATALOG = {
+  Kuvvet: [
+    'Full Body A',
+    'Full Body B',
+    'Full Body C',
+    'Squat Odaklı',
+    'Deadlift Odaklı',
+    'Üst Vücut',
+    'Alt Vücut',
+  ],
+  Core: [
+    'Core Temel',
+    'Core / Tabata',
+    'Karın Bölgesi',
+    'Bel ve Stabilizasyon',
+    'Plank Serisi',
+  ],
+  Challenge: [
+    'Sabah Yağ Yakım',
+    'GrowWithJo Challenge',
+    'Squat Challenge',
+    'Deadlift Challenge',
+    'Core Challenge',
+    'HIIT Challenge',
+    '30 Gün Challenge',
+  ],
+  Kardiyo: [
+    'GrowWithJo',
+    'Yürüyüş',
+    'Koşu',
+    'Bisiklet',
+    'Eliptik',
+    'HIIT',
+    'Zone 2 Kardiyo',
+  ],
+  Recovery: ['Esneme', 'Mobility', 'Yoga', 'Foam Rolling', 'Aktif Dinlenme'],
+};
+
+const MOTIVATIONS = [
+  'Bugün küçük bir adım at, yarın farkı hissedeceksin.',
+  'Mükemmel olmak zorunda değilsin; devam etmek yeterli.',
+  'Her kayıt, hedefe biraz daha yaklaştığının kanıtı.',
+  'Bugün kendine yatırım yaptığın bir gün olsun.',
+  'Disiplin, motivasyonun azaldığı günlerde seni taşır.',
+  'Uyku, hareket ve istikrar: değişimin üç anahtarı.',
+  'Vücudun emeğini hatırlar; bugün boşa gitmez.',
+  'Küçük kazanımlar büyük dönüşümlerin temelidir.',
+  'Bugün devam edersen, yarın daha güçlü başlarsın.',
+  'Hedef uzak görünse de sıradaki adım çok yakın.',
+];
+
+// â”€â”€ STATE â”€â”€
+let state = {
+  theme: 'light',
+  userId: '',
+  userEmail: '',
+  onboarded: false,
+  name: '',
+  startDate: START_DATE,
+  startWeight: null,
+  startWaist: null,
+  measurements: [],
+  weights: [],
+  nutrition: [],
+  workouts: [],
+  notes: [],
+  sleep: [],
+  deletedRecords: {
+    measurements: [],
+    sleep: [],
+    workouts: [],
+    notes: [],
+  },
+  goalWeight: 85,
+  milestones: [95, 85],
+  preferences: {
+    measureReminder: true,
+    dailyReminder: false,
+  }
+};
+
+let measurementChart = null;
+let sleepChart = null;
+let workoutChart = null;
+let authMode = 'signIn';
+let dailyView = 'week';
+// â”€â”€ HELPERS â”€â”€
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-[data-theme="dark"] {
-  --bg:       #0f1117;
-  --surface:  #181c27;
-  --surface2: #1e2235;
-  --border:   #262d42;
-  --text:     #f0f4ff;
-  --text2:    #c8cfe0;
-  --muted:    #6b7694;
-  --dim:      #3a4260;
-  --shadow:   0 1px 4px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
-}
+function getSuggestedMeasureDate() {
+  const latest = getSortedMeasurements().at(-1);
 
-/* ── RESET ── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* ── BASE ── */
-html {
-  min-height: 100%;
-  background: var(--bg);
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.55;
-  min-height: 100dvh;
-  padding-bottom: 88px;
-  transition: background .25s, color .25s;
-  overflow-x: hidden;
-  scroll-behavior: auto;
-}
-
-.week-chip {
-  margin: 16px 0 0;
-  width: 100%;
-  padding: 18px;
-  border-radius: 28px;
-  background: rgba(255,255,255,.88);
-  border: 1px solid rgba(15,23,42,.06);
-  box-shadow: 0 14px 34px rgba(15,23,42,.06);
-  display: block;
-}
-
-.week-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.week-card-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.week-card-date {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 2px;
-  font-family: var(--font-mono);
-}
-
-.week-card-pill {
-  font-size: 12px;
-  font-weight: 800;
-  color: #16a34a;
-  background: rgba(34,197,94,.12);
-  padding: 7px 11px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.week-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.week-metric {
-  padding: 14px;
-  border-radius: 20px;
-  background: rgba(248,250,252,.9);
-  border: 1px solid rgba(15,23,42,.05);
-}
-
-.week-metric-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--text2);
-  margin-bottom: 10px;
-}
-
-.week-metric-top strong {
-  color: var(--text);
-  font-weight: 800;
-}
-
-.week-track {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(15,23,42,.07);
-  overflow: hidden;
-}
-
-.week-fill {
-  height: 100%;
-  border-radius: 999px;
-}
-
-.week-fill.sleep {
-  background: linear-gradient(90deg,#06b6d4,#3b82f6);
-}
-
-.week-fill.workout {
-  background: linear-gradient(90deg,#22c55e,#16a34a);
-}
-
-[data-theme="dark"] .week-chip {
-  background: rgba(24,28,39,.92);
-  border-color: rgba(255,255,255,.08);
-}
-
-[data-theme="dark"] .week-metric {
-  background: rgba(255,255,255,.04);
-  border-color: rgba(255,255,255,.06);
-}
-
-@media (max-width: 700px) {
-  .week-chip {
-    padding: 16px;
-    border-radius: 24px;
+  if (latest?.date) {
+    const parts = parseIsoDateParts(latest.date);
+    if (parts) {
+      const next = new Date(parts.year, parts.month - 1, parts.day);
+      next.setDate(next.getDate() + 7);
+      return toLocalIsoDate(next);
+    }
   }
 
-  .week-card-head {
-    align-items: flex-start;
-  }
+  const date = new Date();
+  const diff = (date.getDay() - WEEKLY_MEASURE_DAY + 7) % 7;
+  date.setDate(date.getDate() - diff);
+  return date.toISOString().slice(0, 10);
+}
 
-  .week-metrics {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
+function getUserId() {
+  return state.userId;
+}
 
-  .week-metric {
-    padding: 13px;
+function getStateStorageKey() {
+  return state.userId ? `${STORAGE_KEY}_${state.userId}` : `${STORAGE_KEY}_anonymous`;
+}
+
+function getWorkoutCategory(type) {
+  return Object.entries(WORKOUT_CATALOG)
+    .find(([, items]) => items.includes(type))?.[0] || 'Kuvvet';
+}
+
+function updateWorkoutTypes() {
+  const categoryInput = document.getElementById('workoutCategoryInput');
+  const typeInput = document.getElementById('workoutTypeInput');
+  if (!categoryInput || !typeInput) return;
+
+  const items = WORKOUT_CATALOG[categoryInput.value] || WORKOUT_CATALOG.Kuvvet;
+  const current = typeInput.value;
+  typeInput.innerHTML = items
+    .map(item => `<option value="${item}">${item}</option>`)
+    .join('');
+
+  if (items.includes(current)) {
+    typeInput.value = current;
   }
 }
 
-/* ── LAYOUT ── */
-.app-shell {
-  width: 100%;
-  min-height: 100dvh;
-  margin: 0 auto;
-  position: relative;
-  background: var(--bg);
+function getWorkoutIntensityFromNote(note = '') {
+  const match = String(note).match(/Zorluk:\s*(Kolay|Orta|Zor)/i);
+  return match ? match[1] : 'Orta';
 }
 
-/* ── TOPNAV ── */
-.topnav {
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  padding-top: env(safe-area-inset-top);
-  height: calc(56px + env(safe-area-inset-top));
-  background: rgba(255,255,255,.9);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  transition: background .25s;
+function getWorkoutCategoryFromNote(note = '', type = '') {
+  const match = String(note).match(/Kategori:\s*([^·]+)/i);
+  return match ? match[1].trim() : getWorkoutCategory(type);
 }
 
-[data-theme="dark"] .topnav {
-  background: rgba(15,17,23,.9);
+function getCleanWorkoutNote(note = '') {
+  return String(note)
+    .replace(/^Kategori:\s*[^·]+·\s*/i, '')
+    .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*·\s*/i, '')
+    .replace(/^Kategori:\s*[^·]+\s*/i, '')
+    .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*/i, '')
+    .trim();
 }
 
-.nav-logo {
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -.4px;
+function todayDisplay() {
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
-.nav-logo span { color: var(--blue); }
+function parseDisplayDate(value) {
+  if (!value) return null;
 
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+  const normalized = value.trim().replaceAll('.', '/').replaceAll('-', '/');
+  const parts = normalized.split('/');
 
-.nav-logout-btn {
-  min-height: 34px;
-  padding: 0 13px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
-  color: var(--text);
-  font: 700 12px var(--font-main);
-  cursor: pointer;
-  transition: border-color .2s, background .2s, color .2s;
-}
+  if (parts.length !== 3) return null;
 
-.nav-logout-btn:hover {
-  border-color: var(--red);
-  background: rgba(239,68,68,.08);
-  color: var(--red);
-}
+  const day = parts[0].padStart(2, '0');
+  const month = parts[1].padStart(2, '0');
+  const year = parts[2];
 
-/* ── SYNC DOT ── */
-.sync-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dim);
-  transition: background .3s, box-shadow .3s;
-  flex-shrink: 0;
-}
+  if (year.length !== 4) return null;
 
-.sync-dot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.sync-dot.busy { background: var(--yellow); animation: blink 1s infinite; }
-.sync-dot.err  { background: var(--red); }
+  const date = new Date(`${year}-${month}-${day}`);
 
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-/* ── ICON BTN ── */
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: none;
-  cursor: pointer;
-  font-size: 17px;
-  color: var(--text2);
-  transition: border-color .2s, background .2s;
-}
-
-.icon-btn:hover {
-  border-color: var(--blue);
-  background: rgba(59,130,246,.06);
-}
-
-/* ── STATUS BAR ── */
-.status-bar {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-  padding: 5px 18px;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  letter-spacing: .2px;
-}
-
-.status-bar.ok    { background: rgba(16,185,129,.06); color: var(--green); border-bottom-color: rgba(16,185,129,.15); }
-.status-bar.error { background: rgba(239,68,68,.06);  color: var(--red);   border-bottom-color: rgba(239,68,68,.2); }
-
-/* ── PANELS ── */
-.panel { display: none; animation: fadeUp .3s ease; }
-.panel.active { display: block; }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── BOTTOM NAV ── */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  transform: none;
-  width: 100%;
-  z-index: 200;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: stretch;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.bn-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 10px 0;
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color .2s;
-  letter-spacing: .3px;
-}
-
-.bn-item .bn-icon { font-size: 20px; transition: transform .2s; }
-.bn-item.active { color: var(--blue); }
-.bn-item.active .bn-icon { transform: scale(1.15); }
-
-/* ── HERO ── */
-.hero {
-  padding: 20px 16px 4px;
-}
-
-.hero-date {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 5px;
-}
-
-.hero-title {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -.5px;
-  line-height: 1.1;
-  margin-bottom: 2px;
-}
-
-.hero-title span { color: var(--blue); }
-.hero-sub { font-size: 13px; color: var(--muted); }
-
-/* ── MOTI CARD ── */
-.moti-card {
-  margin: 18px 0 0;
-  position: relative;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 90% 20%, rgba(255,255,255,.22), transparent 28%),
-    linear-gradient(135deg,#16a34a,#22c55e);
-  border-radius: 28px;
-  padding: 20px 22px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: white;
-  box-shadow: 0 18px 42px rgba(34,197,94,.22);
-}
-
-.moti-emoji {
-  width: 48px;
-  height: 48px;
-  border-radius: 18px;
-  background: rgba(255,255,255,.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-}
-
-.moti-text {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-.moti-emoji { font-size: 26px; animation: bounce 2.5s ease infinite; }
-
-@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-
-.moti-text { flex: 1; font-size: 13px; line-height: 1.4; opacity: .95; }
-
-/* ── STATS GRID ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin: 14px 16px 0;
-}
-
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  box-shadow: var(--shadow);
-  transition: transform .2s;
-}
-
-.stat-card:hover { transform: translateY(-2px); }
-
-.stat-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.stat-icon { font-size: 20px; }
-
-.stat-badge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
-.sb-g { background: rgba(16,185,129,.12); color: var(--green); }
-.sb-b { background: rgba(59,130,246,.12);  color: var(--blue); }
-.sb-o { background: rgba(249,115,22,.12);  color: var(--orange); }
-.sb-p { background: rgba(139,92,246,.12);  color: var(--purple); }
-.sb-c { background: rgba(6,182,212,.12);   color: var(--cyan); }
-
-.stat-val {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -1px;
-}
-
-.stat-unit { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
-
-.stat-lbl {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-
-/* ── PROGRESS BAR ── */
-.prog-wrap { margin-top: 8px; }
-
-.prog-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.prog-track {
-  height: 6px;
-  background: var(--surface2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.prog-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 1s cubic-bezier(.34,1.2,.64,1);
-}
-
-/* ── SECTION ── */
-.section { margin: 16px 16px 0; }
-
-.sec-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.sec-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text2);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: var(--font-mono);
-}
-
-/* ── CARD ── */
-.card {
-  border-radius:24px;
-  box-shadow:0 8px 30px rgba(15,23,42,.06);
-  transition:.25s ease;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-/* ── BUTTONS ── */
-.btn {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: none;
-  background: var(--blue);
-  color: #fff;
-  cursor: pointer;
-  transition: opacity .2s, transform .2s;
-}
-
-.btn:hover { opacity: .85; transform: translateY(-1px); }
-
-.btn.ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text2);
-}
-
-.btn.ghost:hover { border-color: var(--blue); color: var(--blue); }
-
-.btn.green  { background: var(--green); }
-.btn.orange { background: var(--orange); }
-
-/* ── INSTALL BANNER ── */
-#installBanner {
-  display: none;
-  margin: 14px 16px 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  box-shadow: var(--shadow);
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-}
-
-#installBanner.visible { display: flex; }
-
-.install-text { flex: 1; font-size: 13px; color: var(--text2); }
-.install-text strong { color: var(--text); font-weight: 700; }
-
-/* ── OFFLINE NOTICE ── */
-#offlineNotice {
-  display: none;
-  position: fixed;
-  bottom: 96px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--red);
-  color: #fff;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  padding: 8px 16px;
-  border-radius: 20px;
-  z-index: 300;
-  box-shadow: 0 4px 16px rgba(239,68,68,.35);
-  animation: fadeUp .3s ease;
-}
-
-#offlineNotice.visible { display: block; }
-
-/* ── PLACEHOLDER ROWS ── */
-.empty-state {
-  padding: 32px 16px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-  font-family: var(--font-mono);
-}
-
-.empty-state .empty-icon { font-size: 36px; margin-bottom: 8px; }
-
-/* ── RESPONSIVE ── */
-@media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() + 1 !== Number(month) ||
+    date.getDate() !== Number(day)
+  ) {
+    return null;
   }
 
-  .stat-card {
-    min-height:140px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    padding: 12px;
-  }
+  return `${year}-${month}-${day}`;
+}
 
-  .stat-val {
-    font-size: 24px;
-  }
+function parseLocaleNumber(value) {
+  if (value === null || value === undefined) return NaN;
+  const normalized = String(value).trim().replace(',', '.');
+  return normalized ? Number(normalized) : NaN;
+}
 
-  .bottom-nav {
-    border-radius: 0;
+function parseOptionalNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseIsoDateParts(value) {
+  const parts = String(value || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
+  return { year: parts[0], month: parts[1], day: parts[2] };
+}
+
+function toLocalIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeMeasurementDate(date) {
+  const parts = parseIsoDateParts(date);
+  const startParts = parseIsoDateParts(START_DATE);
+  if (!parts || !startParts) return null;
+
+  if (date >= START_DATE) return date;
+
+  const isStartDayWrongYear = parts.month === startParts.month && parts.day === startParts.day;
+  return isStartDayWrongYear ? START_DATE : null;
+}
+
+function isCloudRecordId(id) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || ''));
+}
+
+function ensureDeletedBucket(type) {
+  if (!state.deletedRecords) {
+    state.deletedRecords = { measurements: [], sleep: [], workouts: [], notes: [] };
+  }
+  if (!Array.isArray(state.deletedRecords[type])) {
+    state.deletedRecords[type] = [];
+  }
+  return state.deletedRecords[type];
+}
+
+function getRecordDeleteKeys(type, item = {}) {
+  if (type === 'measurements') return [`date:${item.date}`];
+  if (type === 'sleep') return [item.id, `date:${item.date}`].filter(Boolean);
+  if (type === 'workouts') {
+    return [
+      item.id,
+      `date:${item.date}|type:${item.type}|duration:${item.duration}|note:${item.note || ''}`,
+    ].filter(Boolean);
+  }
+  if (type === 'notes') return [item.id, `date:${item.date}|text:${item.text || ''}`].filter(Boolean);
+  return [];
+}
+
+function markRecordDeleted(type, item) {
+  const bucket = ensureDeletedBucket(type);
+  getRecordDeleteKeys(type, item).forEach(key => {
+    if (!bucket.includes(key)) bucket.push(key);
+  });
+}
+
+function unmarkRecordDeleted(type, item) {
+  const bucket = ensureDeletedBucket(type);
+  const keys = getRecordDeleteKeys(type, item);
+  state.deletedRecords[type] = bucket.filter(key => !keys.includes(key));
+}
+
+function isRecordDeleted(type, item) {
+  const bucket = ensureDeletedBucket(type);
+  return getRecordDeleteKeys(type, item).some(key => bucket.includes(key));
+}
+
+function formatDate(iso) {
+  const parts = parseIsoDateParts(iso);
+  const date = parts ? new Date(parts.year, parts.month - 1, parts.day) : new Date(iso);
+
+  return date.toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function setStatus(msg, cls = '') {
+  const bar = document.getElementById('statusBar');
+  const text = document.getElementById('statusText');
+  if (!bar || !text) return;
+
+  const shouldShow = cls === 'error' || !['Hazır', 'Senkron aktif'].includes(msg);
+  bar.className = `status-bar ${cls}${shouldShow ? ' visible' : ''}`;
+  text.textContent = msg;
+}
+
+function clearInitialLoadingStatus() {
+  const text = document.getElementById('statusText');
+  if (text && text.textContent.includes('Yükleniyor')) {
+    setStatus('Hazır', 'ok');
   }
 }
 
-@media (max-width: 700px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin: 12px 12px 0;
+function setEmptyState(host, title, copy, actionLabel = '', actionPanel = null) {
+  if (!host) return;
+
+  host.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">+</div>
+      <strong>${title}</strong>
+      <p>${copy}</p>
+      ${actionLabel ? `<button class="btn green" type="button" data-empty-panel="${actionPanel}">${actionLabel}</button>` : ''}
+    </div>
+  `;
+
+  host.querySelectorAll('[data-empty-panel]').forEach(button => {
+    button.addEventListener('click', () => goPanel(Number(button.dataset.emptyPanel)));
+  });
+}
+
+function renderFallbackMeasurementChart(host, data) {
+  if (!host) return;
+
+  const first = data[0];
+  const last = data[data.length - 1];
+  const diff = last && first ? Number(last.weight - first.weight) : 0;
+  const waistData = data.filter(item =>
+    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
+  );
+  const lastWaist = waistData[waistData.length - 1];
+
+  const weights = data.map(item => Number(item.weight));
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const range = Math.max(1, max - min);
+  const points = data.map((item, index) => {
+    const x = data.length === 1 ? 50 : 8 + (index / (data.length - 1)) * 84;
+    const y = 88 - ((Number(item.weight) - min) / range) * 68;
+    return { ...item, x, y };
+  });
+
+  host.innerHTML = `
+    <div class="measurement-insight-grid">
+      <div class="weight-trend-panel">
+        <div class="measurement-chart-top compact">
+          <div>
+            <span>Kilo Trendi</span>
+            <strong>${first ? Number(first.weight).toFixed(1) : '—'} → ${last ? Number(last.weight).toFixed(1) : '—'} kg</strong>
+          </div>
+          <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg</div>
+        </div>
+        <div class="fallback-line-chart">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
+            <polyline
+              points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
+              fill="none"
+              stroke="#2563eb"
+              stroke-width="2.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            ${points.map(point => `
+              <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#2563eb"></circle>
+            `).join('')}
+          </svg>
+          <div class="fallback-chart-labels">
+            ${points.map(point => `
+              <div>
+                <strong>${Number(point.weight).toFixed(1)} kg</strong>
+                <span>${formatDate(point.date)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="waist-tracking-panel">
+        <span>Bel Takibi</span>
+        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
+        <p>Bel ölçümü başlangıçta ve her 4. tartıda takip edilir.</p>
+        <div class="waist-rhythm">
+          <i class="active"></i><i></i><i></i><i></i>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getWeightChartSuggestion(first, last, diff) {
+  if (!first || !last) return 'İlk iki ölçümden sonra trend netleşir.';
+  if (diff < 0) return `${formatDate(first.date)} başlangıcından beri düşüş var.`;
+  if (diff > 0) return 'Bu hafta artış var; uyku, su ve antrenman ritmini kontrol et.';
+  return 'Kilo aynı seviyede; trend için sonraki pazar ölçümünü bekle.';
+}
+
+function getWaistRhythmStep() {
+  const nextSequence = getMeasurementSequenceNumber(getSuggestedMeasureDate());
+  const remainder = ((nextSequence - 1) % 4) + 1;
+  return Math.max(1, Math.min(4, remainder));
+}
+
+function renderWaistRhythm(step) {
+  return Array.from({ length: 4 }, (_, index) =>
+    `<i class="${index < step ? 'active' : ''}"></i>`
+  ).join('');
+}
+
+function renderMeasurementInsight(host, data, canvasHtml = '') {
+  const waistData = data.filter(item =>
+    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
+  );
+  const first = data[0];
+  const last = data[data.length - 1];
+  const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
+  const waistDiff = waistData.length >= 2
+    ? Number(waistData[waistData.length - 1].waist - waistData[0].waist)
+    : null;
+  const lastWaist = waistData[waistData.length - 1];
+  const rhythmStep = getWaistRhythmStep();
+
+  host.innerHTML = `
+    <div class="measurement-insight-grid">
+      <div class="weight-trend-panel">
+        <div class="measurement-chart-top">
+          <div>
+            <span>Kilo Trendi</span>
+            <strong>${Number(first.weight).toFixed(1)} → ${Number(last.weight).toFixed(1)} kg</strong>
+          </div>
+          <div class="${weightDiff <= 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg</div>
+        </div>
+
+        <div class="measurement-detail-row">
+          <div>
+            <span>Başlangıç</span>
+            <strong>${formatDate(first.date)}</strong>
+          </div>
+          <div>
+            <span>Son ölçüm</span>
+            <strong>${formatDate(last.date)}</strong>
+          </div>
+          <div>
+            <span>Yorum</span>
+            <strong>${getWeightChartSuggestion(first, last, weightDiff)}</strong>
+          </div>
+        </div>
+
+        <div class="measurement-chart-canvas">
+          ${canvasHtml}
+        </div>
+      </div>
+
+      <div class="waist-tracking-panel">
+        <span>Bel Takibi</span>
+        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
+        <p>${waistDiff === null ? 'Yeni bel ölçümü 4. tartıda alınacak. Şimdilik başlangıç değeri referans olarak tutuluyor.' : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
+        <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
+          ${renderWaistRhythm(rhythmStep)}
+        </div>
+        <small>4 tartıda 1 bel ölçümü</small>
+      </div>
+    </div>
+  `;
+}
+
+function setSyncDot(cls) {
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + cls;
+}
+
+function getSortedMeasurements() {
+  const byDate = new Map();
+
+  [...(state.measurements || [])]
+    .filter(item => item?.date && Number.isFinite(Number(item.weight)))
+    .forEach(item => {
+      const normalizedDate = normalizeMeasurementDate(item.date);
+      if (!normalizedDate) return;
+
+      const normalized = {
+        ...item,
+        date: normalizedDate,
+        weight: Number(item.weight),
+        waist: parseOptionalNumber(item.waist),
+      };
+
+      const existing = byDate.get(normalizedDate);
+      byDate.set(normalizedDate, {
+        ...existing,
+        ...normalized,
+        waist: normalized.waist ?? existing?.waist ?? null,
+      });
+    });
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getMeasurementTrendData() {
+  const byDate = new Map(
+    getSortedMeasurements().map(item => [item.date, item])
+  );
+
+  if (Number.isFinite(Number(state.startWeight))) {
+    const existing = byDate.get(START_DATE);
+    byDate.set(START_DATE, {
+      ...existing,
+      date: START_DATE,
+      weight: Number(existing?.weight ?? state.startWeight),
+      waist: parseOptionalNumber(existing?.waist ?? state.startWaist),
+    });
   }
 
-  .stat-card {
-    padding: 12px 14px;
-    min-height: auto;
+  return [...byDate.values()]
+    .filter(item => item.date >= START_DATE && Number.isFinite(Number(item.weight)))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getChartMeasurementData() {
+  normalizeProfileState();
+
+  const data = getMeasurementTrendData();
+
+  if (data.length >= 2) return data;
+
+  const sorted = getSortedMeasurements();
+  if (sorted.length >= 2) return sorted;
+
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const startWeight = Number(state.startWeight ?? first?.weight);
+  const startWaist = parseOptionalNumber(state.startWaist ?? first?.waist);
+  const lastWeight = Number(last?.weight);
+
+  if (
+    Number.isFinite(startWeight) &&
+    last &&
+    Number.isFinite(lastWeight) &&
+    (last.date !== START_DATE || lastWeight !== startWeight)
+  ) {
+    return [
+      {
+        date: START_DATE,
+        weight: startWeight,
+        waist: startWaist,
+      },
+      {
+        ...last,
+        weight: lastWeight,
+        waist: parseOptionalNumber(last.waist),
+      },
+    ].sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  .stat-val {
-    font-size: 26px;
+  return data;
+}
+
+function getLatestWaistMeasurement() {
+  return getSortedMeasurements()
+    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date))
+    .at(-1);
+}
+
+function getWaistMeasurements() {
+  return getSortedMeasurements()
+    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date));
+}
+
+function getMeasurementSequenceNumber(date) {
+  const targetDate = date || getSuggestedMeasureDate();
+  const dates = new Set(
+    getSortedMeasurements()
+      .filter(item => item.date < targetDate)
+      .map(item => item.date)
+  );
+  return dates.size + 1;
+}
+
+function shouldTrackWaist(date) {
+  const sequence = getMeasurementSequenceNumber(date);
+  return sequence === 1 || sequence % 4 === 0;
+}
+
+function updateWaistHint() {
+  const dateInput = document.getElementById('measureDateInput');
+  const waistInput = document.getElementById('measureWaistInput');
+  const hint = document.getElementById('waistMeasureHint');
+  if (!hint) return;
+
+  const date = dateInput?.value || getSuggestedMeasureDate();
+  const existing = getSortedMeasurements().find(item => item.date === date);
+  const sequence = getMeasurementSequenceNumber(date);
+  const required = shouldTrackWaist(date);
+
+  if (waistInput) {
+    waistInput.disabled = !required;
+    waistInput.placeholder = required ? 'cm' : '4. tartıda';
+    if (!required) waistInput.value = '';
   }
 
-  .moti-card,
-  .week-chip {
-    position:relative;
-    overflow:hidden;
-    background:
-    radial-gradient(circle at top right, rgba(255,255,255,.18), transparent 30%),
-    linear-gradient(135deg,#16a34a,#22c55e);
-    color:white;
-    border:none;
-    border-radius:28px;
-    box-shadow:0 18px 40px rgba(34,197,94,.18);
-  }
-}
+  hint.textContent = required
+    ? sequence === 1
+      ? 'Başlangıç tartısı: bel ölçümünü de ekle.'
+      : `${sequence}. tartı: bu hafta bel ölçümünü de ekle.`
+    : `${sequence}. tartı: sadece kilo gir. Bel ölçümü 4. tartıda takip edilir.`;
 
-@media (max-width: 700px) {
-  #dashboardGoalCard > div {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-    margin: 12px !important;
+  if (existing) {
+    hint.textContent = `${formatDate(date)} tarihinde kayıt var. Kaydedersen bu ölçüm güncellenir.`;
   }
 
-  #dashboardGoalCard .card {
-    padding: 14px !important;
-    min-height: 150px !important;
-  }
+  hint.classList.toggle('important', required);
 }
 
-.dashboard-wrap{
-  width:100%;
-  max-width:1180px;
-  margin:0 auto;
-  padding-bottom:120px;
-}
+function syncMeasureFormDate(force = false) {
+  const dateInput = document.getElementById('measureDateInput');
+  if (!dateInput) return;
 
-@media (max-width:700px){
-  .dashboard-wrap{
-    padding-bottom:140px;
-  }
-}
+  const suggested = getSuggestedMeasureDate();
+  const currentExists = getSortedMeasurements().some(item => item.date === dateInput.value);
 
-.moti-card::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    linear-gradient(120deg,
-      transparent 0%,
-      rgba(255,255,255,.06) 40%,
-      transparent 80%);
-  pointer-events:none;
-}
-
-/* v65 — Dashboard premium grid */
-.dashboard-wrap {
-  max-width: 1120px;
-  padding: 0 18px 140px;
-}
-
-#dashboardGoalCard > div {
-  display: grid !important;
-  grid-template-columns: 1.6fr 1fr !important;
-  gap: 16px !important;
-  margin: 18px 0 !important;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin: 16px 0 0;
-}
-
-.stat-card {
-  min-height: 150px;
-  border-radius: 24px;
-  padding: 18px;
-}
-
-.moti-card,
-.week-chip {
-  margin-left: 0;
-  margin-right: 0;
-}
-
-@media (max-width: 700px) {
-  .dashboard-wrap {
-    padding: 0 14px 170px;
+  if (force || !dateInput.value || currentExists) {
+    dateInput.value = suggested;
   }
 
-  #dashboardGoalCard > div {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-    margin: 14px 0 !important;
+  updateWaistHint();
+}
+
+function normalizeProfileState() {
+  state.startDate = START_DATE;
+  state.measurements = getSortedMeasurements();
+
+  const measurements = getSortedMeasurements();
+  const first = measurements[0];
+
+  if (!state.name || state.name === 'Sporcu') {
+    const heroName = document.getElementById('heroName')?.textContent?.trim();
+    if (heroName && heroName !== 'Sporcu') {
+      state.name = heroName;
+    }
   }
 
-  #dashboardGoalCard .card {
-    min-height: 170px !important;
-    padding: 14px !important;
+  if ((state.startWeight === null || state.startWeight === undefined) && first) {
+    state.startWeight = first.weight;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin: 12px 0 0;
+  if ((state.startWaist === null || state.startWaist === undefined) && first) {
+    state.startWaist = first.waist;
   }
 
-  .stat-card {
-    min-height: 132px;
-    padding: 14px;
-  }
-}
-
-/* v66 — Dashboard responsive polish */
-.dashboard-wrap {
-  max-width: 1280px;
-}
-
-@media (max-width: 700px) {
-  #dashboardGoalCard > div {
-    grid-template-columns: 1fr !important;
+  if (!Array.isArray(state.milestones)) {
+    state.milestones = [];
   }
 
-  #dashboardGoalCard .card {
-    min-height: auto !important;
-  }
+  state.milestones = state.milestones
+    .map(Number)
+    .filter(value => Number.isFinite(value));
 
-  body {
-    padding-bottom: calc(130px + env(safe-area-inset-bottom));
-  }
-}
-
-/* v66 — Dark mode dashboard cards */
-[data-theme="dark"] #dashboardGoalCard .card:first-child {
-  background: linear-gradient(135deg, rgba(34,197,94,.12), rgba(16,185,129,.08)) !important;
-  border-color: rgba(34,197,94,.22) !important;
-  color: var(--text) !important;
-}
-
-[data-theme="dark"] .week-chip {
-  background: rgba(24,28,39,.92) !important;
-  border-color: rgba(255,255,255,.08) !important;
-}
-
-[data-theme="dark"] .week-chip-top {
-  color: var(--text) !important;
-}
-
-[data-theme="dark"] .moti-card {
-  box-shadow: 0 18px 42px rgba(34,197,94,.12);
-}
-
-/* v67 — Quick actions */
-.quick-actions-card {
-  margin: 18px 0 0;
-  padding: 18px;
-  border-radius: 28px;
-  background: rgba(255,255,255,.86);
-  border: 1px solid rgba(15,23,42,.06);
-  box-shadow: 0 12px 34px rgba(15,23,42,.06);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.quick-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.quick-sub {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 3px;
-}
-
-.quick-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.quick-btn {
-  border: none;
-  border-radius: 16px;
-  padding: 12px 16px;
-  font-weight: 800;
-  font-family: var(--font-body);
-  cursor: pointer;
-}
-
-.quick-btn.sleep {
-  background: rgba(6,182,212,.12);
-  color: var(--cyan);
-}
-
-.quick-btn.workout {
-  background: rgba(139,92,246,.12);
-  color: var(--purple);
-}
-
-.quick-btn.note {
-  background: rgba(34,197,94,.12);
-  color: var(--green);
-}
-
-[data-theme="dark"] .quick-actions-card {
-  background: rgba(24,28,39,.92);
-  border-color: rgba(255,255,255,.08);
-}
-
-@media (max-width: 700px) {
-  .quick-actions-card {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 16px;
-    margin-top: 14px;
-  }
-
-  .quick-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .quick-btn {
-    width: 100%;
-    padding: 13px 14px;
-  }
-}
-
-/* v70 — App/Web theme consistency */
-html,
-body,
-.app-shell {
-  background: var(--bg) !important;
-}
-
-#panels {
-  background: var(--bg);
-  min-height: calc(100dvh - 56px);
-}
-
-[data-theme="light"] {
-  --bg: #eef4ff;
-  --surface: #ffffff;
-  --surface2: #f5f8ff;
-  --border: #dfe8f5;
-  --text: #0f1724;
-  --text2: #43516a;
-  --muted: #7f8da8;
-}
-
-[data-theme="dark"] {
-  --bg: #0f1117;
-  --surface: #181c27;
-  --surface2: #121826;
-  --border: #283044;
-  --text: #f2f6ff;
-  --text2: #c7d0e6;
-  --muted: #8490aa;
-}
-
-.hero {
-  padding-top: 18px;
-  padding-bottom: 0;
-}
-
-.hero-title {
-  margin-bottom: 0;
-}
-
-.dashboard-wrap {
-  padding-bottom: 96px !important;
-}
-
-@media (max-width: 700px) {
-  .dashboard-wrap {
-    padding-bottom: 112px !important;
-  }
-
-  body {
-    padding-bottom: calc(86px + env(safe-area-inset-bottom)) !important;
-  }
-
-  #panels {
-    min-height: calc(100dvh - 96px);
-  }
-}
-
-[data-theme="dark"] .bottom-nav {
-  background: #151a26;
-  border-top-color: #283044;
-}
-
-[data-theme="dark"] .quick-actions-card,
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .card {
-  background: #181c27;
-  border-color: #283044;
-}
-
-/* v71 — Unified green system */
-.moti-card {
-  background:
-    radial-gradient(circle at 90% 20%, rgba(255,255,255,.22), transparent 28%),
-    linear-gradient(135deg,var(--brand-green-dark),var(--brand-green)) !important;
-}
-
-.week-card-pill,
-.stat-badge.sb-g {
-  color: var(--brand-green-dark) !important;
-  background: var(--brand-green-soft) !important;
-}
-
-.week-fill.workout,
-#dashboardGoalCard .card:first-child .prog-fill,
-#dashboardGoalCard .card:first-child div[style*="background:linear-gradient"],
-#dashboardGoalCard .card:nth-child(2) div[style*="background:linear-gradient"] {
-  background: linear-gradient(90deg,var(--brand-green),var(--brand-green-dark)) !important;
-}
-
-/* v71 — Scroll / safe area fix */
-html,
-body {
-  min-height: 100%;
-  overflow-x: hidden;
-}
-
-body {
-  padding-bottom: 0 !important;
-}
-
-#panels {
-  min-height: auto !important;
-  padding-bottom: calc(92px + env(safe-area-inset-bottom));
-}
-
-.dashboard-wrap {
-  padding-bottom: 24px !important;
-}
-
-@media (max-width: 700px) {
-  #panels {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  }
-
-  .dashboard-wrap {
-    padding-bottom: 16px !important;
-  }
-
-  .quick-actions-card {
-    margin-bottom: 0 !important;
+  if (!Number.isFinite(Number(state.goalWeight)) && state.milestones.length) {
+    state.goalWeight = state.milestones[state.milestones.length - 1];
   }
 }
 
-/* v72 — Premium Dashboard Reset */
-
-:root {
-  --bg: #f3f7ff;
-  --surface: #ffffff;
-  --surface2: #f7faff;
-  --border: #e5edf8;
-  --text: #101828;
-  --text2: #475467;
-  --muted: #8a98ad;
-
-  --brand: #22c55e;
-  --brand2: #16a34a;
-  --brand-soft: #eafaf1;
+function hasTrackedData() {
+  return Boolean(
+    (Array.isArray(state.measurements) && state.measurements.length) ||
+    (Array.isArray(state.sleep) && state.sleep.length) ||
+    (Array.isArray(state.workouts) && state.workouts.length) ||
+    (Array.isArray(state.notes) && state.notes.length)
+  );
 }
 
-[data-theme="dark"] {
-  --bg: #0b0f17;
-  --surface: #151b26;
-  --surface2: #101621;
-  --border: #273244;
-  --text: #f5f7fb;
-  --text2: #c8d1e1;
-  --muted: #7f8aa3;
+function getSessionDisplayName(session) {
+  const metadata = session?.user?.user_metadata || {};
+  const metadataName = metadata.name || metadata.full_name || metadata.display_name;
+  const savedName = localStorage.getItem('ft_last_name');
+  const email = session?.user?.email || state.userEmail || '';
+  const emailName = email
+    ? email
+      .split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase())
+      .trim()
+    : '';
 
-  --brand-soft: rgba(34,197,94,.12);
+  return [state.name, savedName, metadataName, emailName, 'Sporcu']
+    .map(value => String(value || '').trim())
+    .find(value => value && value !== 'Sporcu') || 'Sporcu';
 }
 
-html,
-body,
-.app-shell,
-#panels {
-  background: var(--bg) !important;
-}
+function recoverOnboardingFromData() {
+  if (!hasTrackedData()) return false;
 
-body {
-  padding-bottom: 0 !important;
-  overflow-x: hidden;
-}
+  normalizeProfileState();
+  state.onboarded = true;
+  state.startDate = state.startDate || START_DATE;
 
-#panels {
-  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
-  min-height: auto !important;
-}
-
-.dashboard-wrap {
-  width: 100%;
-  max-width: 1180px !important;
-  margin: 0 auto !important;
-  padding: 0 18px 18px !important;
-}
-
-.hero {
-  padding: 18px 0 0 !important;
-}
-
-.hero-title {
-  font-size: 26px;
-  line-height: 1.15;
-  margin: 0 !important;
-}
-
-.hero-title span {
-  color: #2f80ed;
-}
-
-.hero-date {
-  margin-bottom: 6px;
-}
-
-.moti-card {
-  margin: 20px 0 0 !important;
-  padding: 16px 18px !important;
-  border-radius: 24px !important;
-  background: linear-gradient(135deg, #22c55e, #4ade80) !important;
-  box-shadow: 0 16px 36px rgba(34,197,94,.18) !important;
-}
-
-.moti-emoji {
-  width: 42px !important;
-  height: 42px !important;
-  min-width: 42px !important;
-  border-radius: 16px !important;
-  font-size: 22px !important;
-}
-
-.moti-text {
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  line-height: 1.35 !important;
-}
-
-.week-chip {
-  background: var(--surface) !important;
-  color: var(--text) !important;
-}
-
-[data-theme="dark"] .week-chip,
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .card,
-[data-theme="dark"] .quick-actions-card {
-  background: var(--surface) !important;
-  border-color: var(--border) !important;
-}
-
-#dashboardGoalCard .card:first-child {
-  background: var(--brand-soft) !important;
-  border-color: rgba(34,197,94,.22) !important;
-}
-
-#dashboardGoalCard > div {
-  margin: 18px 0 !important;
-}
-
-.stats-grid {
-  margin: 16px 0 0 !important;
-}
-
-.stat-card,
-.card,
-.quick-actions-card {
-  border-radius: 24px !important;
-  box-shadow: 0 10px 30px rgba(16,24,40,.06) !important;
-}
-
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .card,
-[data-theme="dark"] .quick-actions-card {
-  box-shadow: none !important;
-}
-
-.quick-actions-card {
-  margin: 18px 0 0 !important;
-}
-
-.bottom-nav {
-  background: var(--surface) !important;
-}
-
-[data-theme="dark"] .bottom-nav {
-  background: #151b26 !important;
-}
-
-@media (max-width: 700px) {
-  .dashboard-wrap {
-    padding: 0 14px 8px !important;
+  if (!Number.isFinite(Number(state.goalWeight))) {
+    const lastGoal = Array.isArray(state.milestones) && state.milestones.length
+      ? state.milestones[state.milestones.length - 1]
+      : 85;
+    state.goalWeight = Number(lastGoal);
   }
 
-  #panels {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
-  }
+  return true;
+}
 
-  .hero {
-    padding-top: 16px !important;
-  }
-
-  .hero-title {
-    font-size: 23px !important;
-  }
-
-  .moti-card {
-    padding: 14px 15px !important;
-    border-radius: 22px !important;
-  }
-
-  .week-chip {
-    border-radius: 22px !important;
-  }
-
-  #dashboardGoalCard > div {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-    margin: 14px 0 !important;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .quick-actions-card {
-    margin-bottom: 0 !important;
+// â”€â”€ PERSISTENCE â”€â”€
+function stateSave() {
+  try {
+    localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
+    setSyncDot('ok');
+  } catch (e) {
+    console.error('State kaydedilemedi:', e);
+    setSyncDot('err');
+    setStatus('Kayıt hatası: ' + e.message, 'error');
   }
 }
 
-/* v73 — Simplified dashboard grid */
-.stats-grid {
-  grid-template-columns: 1fr !important;
-}
+function stateLoad() {
+  try {
+    const raw = localStorage.getItem(getStateStorageKey());
+    if (!raw) return;
 
-@media (min-width: 701px) {
-  .stats-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
+    const savedState = JSON.parse(raw);
 
-  .stats-grid .stat-card {
-    max-width: 100%;
-  }
-}
-
-/* v76 — Premium dashboard layout */
-.stats-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 14px !important;
-  margin: 16px 0 0 !important;
-}
-
-.stat-card-blue {
-  background: linear-gradient(135deg,#eff6ff,#ffffff) !important;
-  border-color: rgba(59,130,246,.18) !important;
-}
-
-.stat-card-amber {
-  background: linear-gradient(135deg,#fff7ed,#ffffff) !important;
-  border-color: rgba(249,115,22,.18) !important;
-}
-
-#dashboardGoalCard .card:first-child {
-  background: linear-gradient(135deg,#ecfdf5,#ffffff) !important;
-  border-color: rgba(34,197,94,.22) !important;
-}
-
-.week-chip {
-  margin-top: 16px !important;
-  background: linear-gradient(135deg,#ffffff,#f8fafc) !important;
-}
-
-.moti-card {
-  background: linear-gradient(135deg,#22c55e,#86efac) !important;
-  box-shadow: 0 14px 34px rgba(34,197,94,.16) !important;
-}
-
-[data-theme="dark"] .stat-card-blue,
-[data-theme="dark"] .stat-card-amber,
-[data-theme="dark"] #dashboardGoalCard .card:first-child,
-[data-theme="dark"] .week-chip {
-  background: var(--surface) !important;
-  border-color: var(--border) !important;
-}
-
-@media (max-width:700px) {
-  .stats-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-  }
-
-  .stat-card {
-    min-height: 132px !important;
+    state = {
+      ...state,
+      ...savedState,
+      userId: savedState.userId || '',
+      userEmail: savedState.userEmail || '',
+      onboarded: Boolean(savedState.onboarded),
+      name: savedState.name || '',
+      startDate: savedState.startDate || START_DATE,
+      startWeight: savedState.startWeight ?? null,
+      startWaist: savedState.startWaist ?? null,
+      goalWeight: Number(savedState.goalWeight || 85),
+      milestones: Array.isArray(savedState.milestones) ? savedState.milestones : [95, 85],
+      preferences: {
+        measureReminder: savedState.preferences?.measureReminder ?? true,
+        dailyReminder: savedState.preferences?.dailyReminder ?? false,
+      },
+      measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
+      weights: Array.isArray(savedState.weights) ? savedState.weights : [],
+      nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
+      workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
+      notes: Array.isArray(savedState.notes) ? savedState.notes : [],
+      sleep: Array.isArray(savedState.sleep) ? savedState.sleep : [],
+      deletedRecords: {
+        measurements: Array.isArray(savedState.deletedRecords?.measurements) ? savedState.deletedRecords.measurements : [],
+        sleep: Array.isArray(savedState.deletedRecords?.sleep) ? savedState.deletedRecords.sleep : [],
+        workouts: Array.isArray(savedState.deletedRecords?.workouts) ? savedState.deletedRecords.workouts : [],
+        notes: Array.isArray(savedState.deletedRecords?.notes) ? savedState.deletedRecords.notes : [],
+      },
+    };
+    normalizeProfileState();
+  } catch (e) {
+    console.warn('State yüklenemedi:', e);
   }
 }
 
-/* v77 — Final dashboard order + premium soft cards */
+// â”€â”€ THEME â”€â”€
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.theme);
 
-.goal-hero-card {
-  margin: 18px 0 0;
-  padding: 22px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #ecfdf5, #ffffff);
-  border: 1px solid rgba(34,197,94,.20);
-  box-shadow: 0 14px 36px rgba(16,24,40,.07);
-}
+  const themeBtn = document.getElementById('themeBtn');
+  const themeMeta = document.getElementById('themeColorMeta');
 
-.goal-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  letter-spacing: .5px;
-}
-
-.goal-value {
-  font-size: 34px;
-  font-weight: 800;
-  margin-top: 10px;
-  color: var(--text);
-}
-
-.goal-sub {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-.goal-track {
-  height: 8px;
-  background: rgba(34,197,94,.14);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-top: 18px;
-}
-
-.goal-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #22c55e, #16a34a);
-  border-radius: 999px;
-}
-
-.goal-percent {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 8px;
-}
-
-.stats-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 16px !important;
-  margin: 18px 0 0 !important;
-}
-
-.stat-card {
-  min-height: 150px !important;
-  border-radius: 26px !important;
-  padding: 20px !important;
-}
-
-.stat-card-blue {
-  background: linear-gradient(135deg, #eff6ff, #ffffff) !important;
-  border-color: rgba(59,130,246,.18) !important;
-}
-
-.stat-card-amber {
-  background: linear-gradient(135deg, #fff7ed, #ffffff) !important;
-  border-color: rgba(249,115,22,.18) !important;
-}
-
-[data-theme="dark"] .goal-hero-card,
-[data-theme="dark"] .stat-card-blue,
-[data-theme="dark"] .stat-card-amber {
-  background: var(--surface) !important;
-  border-color: var(--border) !important;
-}
-
-@media (max-width: 700px) {
-  .stats-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
+  if (themeBtn) {
+    themeBtn.textContent = state.theme === 'dark' ? '☀️' : '🌙';
   }
 
-  .goal-hero-card {
-    padding: 18px !important;
-    border-radius: 24px !important;
-  }
-
-  .goal-value {
-    font-size: 30px !important;
-  }
-
-  .stat-card {
-    min-height: 132px !important;
-    padding: 16px !important;
+  if (themeMeta) {
+    themeMeta.content = state.theme === 'dark' ? '#0f1117' : '#3b82f6';
   }
 }
 
-/* v78 — Simplified premium dashboard */
-
-.stats-grid {
-  grid-template-columns: 1fr !important;
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  stateSave();
 }
 
-.stat-card {
-  min-height: 132px !important;
-}
+// â”€â”€ NAVIGATION â”€â”€
+function goPanel(idx) {
+  PANELS.forEach((id, i) => {
+    const panel = document.getElementById(id);
+    if (panel) panel.classList.toggle('active', i === idx);
+  });
 
-.stat-card-blue {
-  background:
-    radial-gradient(circle at top right, rgba(59,130,246,.10), transparent 30%),
-    linear-gradient(135deg,#f8fbff,#ffffff) !important;
+  BN_IDS.forEach((id, i) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.toggle('active', i === idx);
+  });
 
-  border: 1px solid rgba(59,130,246,.10) !important;
-}
-
-[data-theme="dark"] .stat-card-blue {
-  background:
-    linear-gradient(135deg,#182131,#151b26) !important;
-
-  border-color: #273244 !important;
-}
-
-.stat-card-blue .stat-val {
-  font-size: 34px !important;
-}
-
-.stat-card-blue .stat-unit {
-  font-size: 15px !important;
-}
-
-.week-chip {
-  margin-top: 18px !important;
-}
-
-.quick-actions-card {
-  margin-top: 18px !important;
-}
-
-
+  if (idx === 4) {
+    normalizeProfileState();
+    renderSettings();
   }
 
-  .stat-card-blue {
-    min-height: 128px !important;
-    padding: 18px !important;
+  requestAnimationFrame(() => {
+    if (idx === 3) {
+      normalizeProfileState();
+      renderProgressSummary();
+      renderMeasurementChart();
+      renderProgressCharts();
+      renderProgressList();
+    }
+
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    const appShell = document.querySelector('.app-shell');
+    if (appShell) appShell.scrollTop = 0;
+
+    const panels = document.getElementById('panels');
+    if (panels) panels.scrollTop = 0;
+
+    const activePanel = document.querySelector('.panel.active');
+    if (activePanel) activePanel.scrollTop = 0;
+  });
+}
+
+// â”€â”€ RENDER â”€â”€
+function renderHero() {
+  const dateEl = document.getElementById('heroDate');
+  const nameEl = document.getElementById('heroName');
+
+  if (dateEl) {
+    dateEl.textContent = new Date()
+      .toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
+      .toUpperCase();
   }
 
-  .week-chip {
-    padding: 16px !important;
-  }
-
-  .week-metrics {
-    grid-template-columns: 1fr !important;
-  }
-
-  .quick-actions-card {
-    padding: 16px !important;
-  }
-}
-
-/* v80 — Premium soft dashboard polish */
-
-.moti-card {
-  background:
-    radial-gradient(circle at 92% 20%, rgba(255,255,255,.28), transparent 30%),
-    linear-gradient(135deg, #86efac, #4ade80) !important;
-  color: #064e3b !important;
-  box-shadow: 0 14px 34px rgba(34,197,94,.12) !important;
-}
-
-.moti-emoji {
-  background: rgba(255,255,255,.42) !important;
-}
-
-.moti-text {
-  color: #064e3b !important;
-  font-weight: 800 !important;
-}
-
-.goal-hero-card {
-  display: grid;
-  grid-template-columns: 1.1fr .9fr;
-  align-items: center;
-  gap: 24px;
-  background:
-    radial-gradient(circle at 92% 20%, rgba(34,197,94,.10), transparent 32%),
-    linear-gradient(135deg, #f0fdf4, #ffffff) !important;
-  border-color: rgba(34,197,94,.16) !important;
-}
-
-.goal-label {
-  grid-column: 1 / -1;
-}
-
-.goal-value {
-  font-size: 38px !important;
-  justify-self: start;
-}
-
-.goal-sub,
-.goal-percent {
-  color: #64748b !important;
-}
-
-.goal-track {
-  width: 100%;
-  align-self: center;
-}
-
-.stat-card-blue {
-  background:
-    radial-gradient(circle at 92% 12%, rgba(59,130,246,.13), transparent 30%),
-    linear-gradient(135deg, #f8fbff, #ffffff) !important;
-  border-color: rgba(59,130,246,.14) !important;
-}
-
-.stat-card-blue .stat-icon {
-  opacity: .85;
-}
-
-.stat-card-blue .stat-val {
-  color: #0f172a !important;
-}
-
-.week-chip {
-  background:
-    radial-gradient(circle at 92% 14%, rgba(34,197,94,.07), transparent 32%),
-    linear-gradient(135deg, #ffffff, #f9fbff) !important;
-}
-
-.week-metric {
-  background: #f8fafc !important;
-  border-color: rgba(15,23,42,.06) !important;
-}
-
-.quick-actions-card {
-  background:
-    linear-gradient(135deg, #ffffff, #fbfdff) !important;
-  border-color: rgba(15,23,42,.06) !important;
-}
-
-/* Dark mode soft fix */
-[data-theme="dark"] .moti-card {
-  background:
-    radial-gradient(circle at 92% 20%, rgba(74,222,128,.16), transparent 32%),
-    linear-gradient(135deg, #14532d, #166534) !important;
-  color: #dcfce7 !important;
-}
-
-[data-theme="dark"] .moti-text {
-  color: #dcfce7 !important;
-}
-
-[data-theme="dark"] .goal-hero-card,
-[data-theme="dark"] .stat-card-blue,
-[data-theme="dark"] .week-chip,
-[data-theme="dark"] .quick-actions-card {
-  background: #151b26 !important;
-  border-color: #273244 !important;
-}
-
-[data-theme="dark"] .week-metric {
-  background: #1b2230 !important;
-}
-
-[data-theme="dark"] .stat-card-blue .stat-val {
-  color: var(--text) !important;
-}
-
-@media (max-width: 700px) {
-  .goal-hero-card {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .goal-label {
-    grid-column: auto;
-  }
-
-  .goal-value {
-    font-size: 32px !important;
+  if (nameEl) {
+    nameEl.textContent = state.name || 'Sporcu';
   }
 }
 
-/* v81 — Premium depth system */
+function renderMoti() {
+  const el = document.getElementById('motiText');
+  if (!el) return;
 
-body {
-  background:
-    radial-gradient(circle at top left, rgba(34,197,94,.04), transparent 24%),
-    radial-gradient(circle at top right, rgba(59,130,246,.04), transparent 24%),
-    var(--bg) !important;
+  const idx = Math.floor(Date.now() / 86400000) % MOTIVATIONS.length;
+  el.textContent = MOTIVATIONS[idx];
 }
 
-/* HERO CARD */
+function renderDashboardWeekLabel() {
+  const el = document.getElementById('dashboardWeekLabel');
+  if (!el) return;
 
-.goal-hero-card {
-  overflow: hidden;
-  position: relative;
+  const range = getDashboardWeekRange();
 
-  background:
-    radial-gradient(circle at 85% 18%, rgba(255,255,255,.65), transparent 24%),
-    linear-gradient(135deg,#f3fff7,#f8fffb) !important;
+  const sleepTotal = getCurrentWeekSleepTotal();
+  const sleepPct = Math.min(100, Math.round((sleepTotal / SLEEP_TARGET) * 100));
 
-  border: 1px solid rgba(34,197,94,.14) !important;
+  const workoutTotal = getCurrentWeekWorkoutTotal();
+  const workoutPct = Math.min(100, Math.round((workoutTotal / WORKOUT_TARGET) * 100));
+  const insight = sleepPct < 70
+    ? 'Uyku toparlanmaya ihtiyaç duyuyor'
+    : workoutPct < 70
+      ? 'Hareket hedefini tamamla'
+      : 'Hafta dengeli ilerliyor';
 
-  box-shadow:
-    0 18px 50px rgba(15,23,42,.04),
-    inset 0 1px 0 rgba(255,255,255,.7) !important;
+  el.innerHTML = `
+    <div class="week-card-head">
+      <div>
+        <div class="week-card-title">${getDashboardWeekTitle()}</div>
+        <div class="week-card-date">${formatDate(range.start)} - ${formatDate(range.end)}</div>
+      </div>
+
+      <div class="week-card-pill">
+        ${sleepPct >= 100 || workoutPct >= 100 ? 'İyi gidiyorsun' : 'Devam et'}
+      </div>
+    </div>
+
+    <div class="week-metrics">
+      <div class="week-metric">
+        <div class="week-metric-top">
+          <span>Uyku</span>
+          <strong>${sleepTotal.toFixed(1)} / ${SLEEP_TARGET} saat</strong>
+        </div>
+        <div class="week-track">
+          <div class="week-fill sleep" style="width:${sleepPct}%"></div>
+        </div>
+      </div>
+
+      <div class="week-metric">
+        <div class="week-metric-top">
+          <span>Antrenman</span>
+          <strong>${workoutTotal} / ${WORKOUT_TARGET} dk</strong>
+        </div>
+        <div class="week-track">
+          <div class="week-fill workout" style="width:${workoutPct}%"></div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-.goal-hero-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
+function renderDashboardGoalCard() {
+  const el = document.getElementById('dashboardGoalCard');
+  if (!el) return;
 
-  background:
-    linear-gradient(
-      120deg,
-      transparent 0%,
-      rgba(255,255,255,.16) 40%,
-      transparent 70%
+  const data = getMeasurementTrendData();
+
+  if (!data.length) {
+    setEmptyState(
+      el,
+      'Haftalık rapor henüz oluşmadı',
+      'Uyku, antrenman ve ölçüm kayıtları geldikçe haftalık özetler burada listelenir.'
     );
-
-  pointer-events: none;
-}
-
-/* WEIGHT CARD */
-
-.stat-card-blue {
-  position: relative;
-  overflow: hidden;
-
-  background:
-    linear-gradient(135deg,#ffffff,#fbfdff) !important;
-
-  border: 1px solid rgba(148,163,184,.12) !important;
-
-  box-shadow:
-    0 12px 34px rgba(15,23,42,.04),
-    inset 0 1px 0 rgba(255,255,255,.75) !important;
-}
-
-.stat-card-blue::before {
-  content: "";
-
-  position: absolute;
-  width: 180px;
-  height: 180px;
-
-  top: -80px;
-  right: -80px;
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(circle, rgba(59,130,246,.08), transparent 70%);
-}
-
-/* WEEK CARD */
-
-.week-chip {
-  position: relative;
-
-  background:
-    linear-gradient(135deg,#ffffff,#fcfffd) !important;
-
-  border: 1px solid rgba(148,163,184,.12) !important;
-
-  box-shadow:
-    0 14px 36px rgba(15,23,42,.045),
-    inset 0 1px 0 rgba(255,255,255,.72) !important;
-}
-
-.week-metric {
-  background:
-    linear-gradient(135deg,#ffffff,#f8fafc) !important;
-
-  border: 1px solid rgba(148,163,184,.08) !important;
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.65);
-}
-
-/* QUICK ACTIONS */
-
-.quick-actions-card {
-  background:
-    linear-gradient(135deg,#ffffff,#fbfdff) !important;
-
-  border: 1px solid rgba(148,163,184,.12) !important;
-
-  box-shadow:
-    0 14px 36px rgba(15,23,42,.04),
-    inset 0 1px 0 rgba(255,255,255,.72) !important;
-}
-
-/* BUTTONS */
-
-.quick-btn {
-  transition: .25s ease;
-}
-
-.quick-btn:hover {
-  transform: translateY(-1px);
-}
-
-/* DARK MODE */
-
-[data-theme="dark"] body {
-  background:
-    radial-gradient(circle at top left, rgba(34,197,94,.08), transparent 24%),
-    radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 24%),
-    #0b1020 !important;
-}
-
-[data-theme="dark"] .goal-hero-card {
-  background:
-    linear-gradient(135deg,#102218,#12261d) !important;
-
-  border-color: rgba(34,197,94,.16) !important;
-
-  box-shadow:
-    0 18px 50px rgba(0,0,0,.28),
-    inset 0 1px 0 rgba(255,255,255,.02) !important;
-}
-
-[data-theme="dark"] .stat-card-blue,
-[data-theme="dark"] .week-chip,
-[data-theme="dark"] .quick-actions-card {
-  background:
-    linear-gradient(135deg,#151b26,#171f2d) !important;
-
-  border-color: #273244 !important;
-
-  box-shadow:
-    0 18px 50px rgba(0,0,0,.24),
-    inset 0 1px 0 rgba(255,255,255,.02) !important;
-}
-
-[data-theme="dark"] .week-metric {
-  background:
-    linear-gradient(135deg,#1a2231,#1d2636) !important;
-
-  border-color: rgba(255,255,255,.04) !important;
-}
-
-/* v82 — Unified Premium Dashboard */
-
-:root {
-  --premium-bg: #f4f7fb;
-  --premium-surface: #ffffff;
-  --premium-border: #e6edf5;
-  --premium-text: #0f172a;
-  --premium-muted: #64748b;
-
-  --premium-green: #22c55e;
-  --premium-green-soft: #ecfdf5;
-  --premium-blue: #3b82f6;
-  --premium-blue-soft: #eff6ff;
-
-  --premium-shadow: 0 18px 44px rgba(15,23,42,.055);
-}
-
-[data-theme="dark"] {
-  --premium-bg: #0b1020;
-  --premium-surface: #151b26;
-  --premium-border: #273244;
-  --premium-text: #f8fafc;
-  --premium-muted: #94a3b8;
-  --premium-green-soft: #102218;
-  --premium-blue-soft: #111c2f;
-  --premium-shadow: 0 18px 44px rgba(0,0,0,.26);
-}
-
-body,
-.app-shell,
-#panels {
-  background:
-    radial-gradient(circle at top left, rgba(34,197,94,.035), transparent 28%),
-    radial-gradient(circle at top right, rgba(59,130,246,.04), transparent 28%),
-    var(--premium-bg) !important;
-}
-
-.dashboard-wrap {
-  max-width: 1080px !important;
-  padding: 0 18px 90px !important;
-}
-
-.hero {
-  padding: 22px 0 0 !important;
-}
-
-.hero-title {
-  font-size: 28px !important;
-  font-weight: 900 !important;
-  letter-spacing: -.8px !important;
-  color: var(--premium-text) !important;
-}
-
-.hero-title span {
-  color: var(--premium-blue) !important;
-}
-
-.hero-date {
-  color: var(--premium-muted) !important;
-  font-size: 11px !important;
-  letter-spacing: 2.4px !important;
-}
-
-/* Motivation */
-.moti-card {
-  margin-top: 22px !important;
-  padding: 15px 18px !important;
-  border-radius: 24px !important;
-  background: linear-gradient(135deg, #bbf7d0, #86efac) !important;
-  color: #064e3b !important;
-  box-shadow: 0 14px 34px rgba(34,197,94,.10) !important;
-}
-
-.moti-emoji {
-  width: 38px !important;
-  height: 38px !important;
-  min-width: 38px !important;
-  border-radius: 14px !important;
-  background: rgba(255,255,255,.45) !important;
-  font-size: 20px !important;
-}
-
-.moti-text {
-  color: #064e3b !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  line-height: 1.35 !important;
-}
-
-/* Goal */
-.goal-hero-card {
-  margin-top: 20px !important;
-  padding: 24px !important;
-  border-radius: 28px !important;
-  background:
-    radial-gradient(circle at 92% 15%, rgba(34,197,94,.09), transparent 34%),
-    linear-gradient(135deg, #f0fdf4, #ffffff) !important;
-  border: 1px solid rgba(34,197,94,.16) !important;
-  box-shadow: var(--premium-shadow) !important;
-}
-
-.goal-label {
-  color: var(--premium-muted) !important;
-}
-
-.goal-value {
-  color: var(--premium-text) !important;
-  font-size: 38px !important;
-  font-weight: 900 !important;
-}
-
-.goal-sub,
-.goal-percent {
-  color: var(--premium-muted) !important;
-}
-
-.goal-track {
-  height: 7px !important;
-  background: rgba(34,197,94,.14) !important;
-}
-
-.goal-fill {
-  background: linear-gradient(90deg, #22c55e, #16a34a) !important;
-}
-
-/* Progress Summary */
-.progress-summary-card {
-  margin-top: 18px;
-  padding: 24px;
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 92% 18%, rgba(59,130,246,.10), transparent 34%),
-    linear-gradient(135deg, #ffffff, #f8fbff);
-  border: 1px solid rgba(59,130,246,.13);
-  box-shadow: var(--premium-shadow);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-}
-
-.progress-summary-label {
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--premium-muted);
-  font-family: var(--font-mono);
-  letter-spacing: .5px;
-}
-
-.progress-summary-value {
-  margin-top: 10px;
-  font-size: 36px;
-  font-weight: 800;
-  color: var(--premium-text);
-  letter-spacing: -.8px;
-}
-
-.progress-summary-value span {
-  font-size: 16px;
-  color: var(--premium-muted);
-}
-
-.progress-summary-side {
-  text-align: right;
-}
-
-.progress-summary-small {
-  font-size: 12px;
-  color: var(--premium-muted);
-}
-
-.progress-summary-diff {
-  margin-top: 5px;
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.progress-summary-diff.good {
-  color: #16a34a;
-}
-
-.progress-summary-diff.bad {
-  color: #ef4444;
-}
-
-/* Week */
-.week-chip {
-  margin-top: 18px !important;
-  padding: 22px !important;
-  border-radius: 28px !important;
-  background: linear-gradient(135deg, #ffffff, #fbfdff) !important;
-  border: 1px solid var(--premium-border) !important;
-  box-shadow: var(--premium-shadow) !important;
-}
-
-.week-metric {
-  background: #f8fafc !important;
-  border-color: rgba(148,163,184,.14) !important;
-  border-radius: 18px !important;
-}
-
-/* Quick */
-.quick-actions-card {
-  margin-top: 18px !important;
-  padding: 20px !important;
-  border-radius: 28px !important;
-  background: linear-gradient(135deg, #ffffff, #fbfdff) !important;
-  border: 1px solid var(--premium-border) !important;
-  box-shadow: var(--premium-shadow) !important;
-}
-
-.quick-btn {
-  border-radius: 999px !important;
-  padding: 11px 16px !important;
-  font-size: 13px !important;
-}
-
-/* Dark */
-[data-theme="dark"] .moti-card {
-  background: linear-gradient(135deg, #14532d, #166534) !important;
-  color: #dcfce7 !important;
-}
-
-[data-theme="dark"] .moti-text {
-  color: #dcfce7 !important;
-}
-
-[data-theme="dark"] .goal-hero-card,
-[data-theme="dark"] .progress-summary-card,
-[data-theme="dark"] .week-chip,
-[data-theme="dark"] .quick-actions-card {
-  background: linear-gradient(135deg, #151b26, #171f2d) !important;
-  border-color: var(--premium-border) !important;
-}
-
-[data-theme="dark"] .week-metric {
-  background: #1b2230 !important;
-}
-
-/* Mobile */
-@media (max-width: 700px) {
-  .dashboard-wrap {
-    padding: 0 14px 78px !important;
-  }
-
-  .hero-title {
-    font-size: 24px !important;
-  }
-
-  .goal-hero-card,
-  .progress-summary-card,
-  .week-chip,
-  .quick-actions-card {
-    border-radius: 24px !important;
-    padding: 18px !important;
-  }
-
-  .progress-summary-card {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .progress-summary-side {
-    text-align: left;
-  }
-
-  .progress-summary-value,
-  .goal-value {
-    font-size: 32px !important;
-  }
-
-  .week-metrics {
-    grid-template-columns: 1fr !important;
-  }
-}
-/* v83 — Goal clarity polish */
-
-.goal-hero-card {
-  grid-template-columns: 1fr !important;
-}
-
-.goal-track {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-.goal-sub {
-  margin-top: 8px !important;
-  font-weight: 600 !important;
-}
-
-.goal-percent {
-  font-weight: 700 !important;
-}
-
-/* v84 — Dual goal progress */
-
-.goal-progress-block {
-  margin-top: 14px;
-}
-
-.goal-progress-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: var(--premium-muted);
-  margin-bottom: 7px;
-}
-
-.goal-progress-row strong {
-  color: var(--premium-text);
-  font-weight: 800;
-}
-
-.goal-track.final {
-  background: rgba(59,130,246,.12) !important;
-}
-
-.goal-fill.final {
-  background: linear-gradient(90deg, #38bdf8, #3b82f6) !important;
-}
-
-.goal-percent {
-  margin-top: 12px !important;
-}
-/* v85 — Balanced goal progress */
-
-.goal-progress-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.goal-progress-block {
-  margin-top: 0 !important;
-  padding: 14px;
-  border-radius: 18px;
-  background: rgba(255,255,255,.52);
-  border: 1px solid rgba(148,163,184,.10);
-}
-
-.goal-progress-row {
-  margin-bottom: 9px !important;
-}
-
-.goal-track {
-  width: 100% !important;
-}
-
-[data-theme="dark"] .goal-progress-block {
-  background: rgba(255,255,255,.04);
-  border-color: rgba(255,255,255,.06);
-}
-
-@media (max-width: 700px) {
-  .goal-progress-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .goal-progress-block {
-    padding: 13px;
-  }
-}
-/* v86 — Goal card premium layout */
-
-.goal-card-layout {
-  display: grid;
-  grid-template-columns: 1.15fr .85fr;
-  gap: 28px;
-  align-items: center;
-}
-
-.goal-main {
-  min-width: 0;
-}
-
-.goal-side {
-  display: grid;
-  gap: 14px;
-  min-width: 0;
-}
-
-.goal-caption {
-  margin-top: -4px;
-  color: var(--premium-muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.goal-progress-block.primary {
-  margin-top: 18px !important;
-}
-
-.goal-progress-block.secondary {
-  margin-top: 2px !important;
-}
-
-.goal-side-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(255,255,255,.54);
-  border: 1px solid rgba(148,163,184,.10);
-}
-
-.goal-side-item span {
-  font-size: 13px;
-  color: var(--premium-muted);
-  font-weight: 700;
-}
-
-.goal-side-item strong {
-  font-size: 18px;
-  color: var(--premium-text);
-  font-weight: 800;
-}
-
-.goal-progress-block {
-  background: rgba(255,255,255,.50) !important;
-}
-
-.goal-percent {
-  margin-top: 0 !important;
-  font-size: 12px !important;
-  color: var(--premium-muted) !important;
-  font-weight: 700 !important;
-}
-
-[data-theme="dark"] .goal-side-item,
-[data-theme="dark"] .goal-progress-block {
-  background: rgba(255,255,255,.04) !important;
-  border-color: rgba(255,255,255,.06) !important;
-}
-
-@media (max-width: 700px) {
-  .goal-card-layout {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .goal-side {
-    gap: 10px;
-  }
-
-  .goal-side-item {
-    padding: 11px 12px;
-  }
-}
-
-/* v87 — Premium polish */
-
-.goal-hero-card {
-  position: relative;
-  overflow: hidden;
-  align-items: center;
-}
-
-.goal-hero-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 85% 20%,
-    rgba(34,197,94,.08),
-    transparent 38%);
-  pointer-events: none;
-}
-
-.goal-card-layout {
-  align-items: center !important;
-}
-
-.goal-main {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.goal-side {
-  align-content: center;
-}
-
-.goal-percent {
-  display: none !important;
-}
-
-/* Son ölçüm premium */
-
-.progress-summary-card {
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255,255,255,.88),
-      rgba(241,245,249,.95)
-    ) !important;
-}
-
-.progress-summary-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at right center,
-      rgba(59,130,246,.10),
-      transparent 40%);
-  pointer-events: none;
-}
-
-[data-theme="dark"] .progress-summary-card {
-  background:
-    linear-gradient(
-      135deg,
-      rgba(15,23,42,.95),
-      rgba(17,24,39,.98)
-    ) !important;
-}
-.progress-summary-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* v88 — Current class premium polish */
-
-.moti-card {
-  background: linear-gradient(135deg, #bbf7d0, #86efac) !important;
-  border: 1px solid rgba(255,255,255,.45) !important;
-  box-shadow: 0 12px 30px rgba(34,197,94,.12) !important;
-}
-
-.goal-hero-card,
-.progress-summary-card,
-.week-chip,
-.quick-actions-card {
-  backdrop-filter: blur(18px);
-  transition: .28s ease;
-}
-
-.goal-hero-card {
-  background:
-    radial-gradient(circle at 86% 18%, rgba(34,197,94,.08), transparent 38%),
-    linear-gradient(135deg, rgba(255,255,255,.88), rgba(240,255,244,.82)) !important;
-  border: 1px solid rgba(34,197,94,.16) !important;
-}
-
-.progress-summary-card {
-  background:
-    radial-gradient(circle at 90% 20%, rgba(59,130,246,.10), transparent 38%),
-    linear-gradient(135deg, rgba(255,255,255,.90), rgba(239,246,255,.82)) !important;
-  border: 1px solid rgba(96,165,250,.14) !important;
-}
-
-.week-chip {
-  background:
-    radial-gradient(circle at 92% 14%, rgba(59,130,246,.055), transparent 35%),
-    linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,250,252,.86)) !important;
-}
-
-.week-fill.workout,
-.goal-fill {
-  box-shadow: 0 0 12px rgba(34,197,94,.22);
-}
-
-.week-fill.sleep,
-.goal-fill.final {
-  box-shadow: 0 0 12px rgba(59,130,246,.24);
-}
-
-.goal-hero-card:hover,
-.progress-summary-card:hover,
-.week-chip:hover,
-.quick-actions-card:hover {
-  transform: translateY(-2px);
-}
-
-/* v91 — Goal card final balance */
-
-.goal-hero-card {
-  position: relative !important;
-  overflow: hidden !important;
-  min-height: 260px;
-}
-
-.goal-hero-card::before {
-  content: "";
-  position: absolute;
-  right: -90px;
-  top: -110px;
-  width: 360px;
-  height: 360px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(34,197,94,.13), transparent 68%);
-  pointer-events: none;
-}
-
-.goal-card-layout {
-  position: relative;
-  z-index: 1;
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 360px !important;
-  gap: 36px !important;
-  align-items: center !important;
-}
-
-.goal-main {
-  max-width: 380px;
-}
-
-.goal-side {
-  width: 100%;
-  display: grid !important;
-  gap: 14px !important;
-}
-
-.goal-side-item,
-.goal-progress-block {
-  background: rgba(255,255,255,.58) !important;
-  border: 1px solid rgba(148,163,184,.12) !important;
-  backdrop-filter: blur(14px);
-}
-
-.goal-side-item {
-  min-height: 58px;
-}
-
-.goal-progress-block.primary {
-  max-width: 340px;
-}
-
-.goal-progress-block.secondary {
-  width: 100%;
-}
-
-[data-theme="dark"] .goal-side-item,
-[data-theme="dark"] .goal-progress-block {
-  background: rgba(255,255,255,.045) !important;
-  border-color: rgba(255,255,255,.07) !important;
-}
-
-@media (max-width: 700px) {
-  .goal-hero-card {
-    min-height: auto;
-  }
-
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-
-  .goal-main,
-  .goal-progress-block.primary {
-    max-width: 100%;
-  }
-}
-
-/* v92 — Fix empty right area in goal card */
-
-#dashboardGoalCard > div {
-  display: block !important;
-  grid-template-columns: none !important;
-  gap: 0 !important;
-}
-
-.goal-hero-card {
-  min-height: auto !important;
-  padding: 28px !important;
-}
-
-.goal-card-layout {
-  display: grid !important;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.1fr) !important;
-  gap: 32px !important;
-  align-items: center !important;
-  width: 100% !important;
-}
-
-.goal-main {
-  max-width: none !important;
-}
-
-.goal-side {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 14px !important;
-  width: 100% !important;
-}
-
-.goal-side-item,
-.goal-progress-block.secondary {
-  min-height: 92px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-}
-
-.goal-side-item {
-  align-items: flex-start !important;
-}
-
-.goal-side-item strong {
-  font-size: 24px !important;
-  margin-top: 6px !important;
-}
-
-.goal-progress-block.primary {
-  max-width: 100% !important;
-}
-
-@media (max-width: 900px) {
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-  }
-
-  .goal-side {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* v93 — Goal card balanced final fix */
-
-#dashboardGoalCard > div {
-  display: block !important;
-}
-
-.goal-hero-card {
-  min-height: auto !important;
-  padding: 28px !important;
-}
-
-.goal-card-layout {
-  display: grid !important;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) !important;
-  gap: 28px !important;
-  align-items: center !important;
-}
-
-.goal-main {
-  max-width: none !important;
-}
-
-.goal-side {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 14px !important;
-}
-
-.goal-side-item,
-.goal-progress-block.secondary {
-  min-height: auto !important;
-  padding: 16px !important;
-  border-radius: 20px !important;
-}
-
-.goal-progress-block.secondary {
-  grid-column: 1 / -1 !important;
-}
-
-.goal-side-item {
-  display: block !important;
-}
-
-.goal-side-item span {
-  display: block;
-  margin-bottom: 6px;
-}
-
-.goal-side-item strong {
-  font-size: 22px !important;
-}
-
-.goal-progress-block.primary {
-  max-width: 100% !important;
-}
-
-@media (max-width: 700px) {
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-  }
-
-  .goal-side {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* v94 — Goal Card Final Layout */
-
-#dashboardGoalCard > div {
-  display: block !important;
-  grid-template-columns: none !important;
-  gap: 0 !important;
-}
-
-.goal-hero-card {
-  padding: 30px !important;
-  min-height: auto !important;
-}
-
-.goal-card-layout {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(420px, .95fr) !important;
-  gap: 44px !important;
-  align-items: center !important;
-  width: 100% !important;
-}
-
-.goal-main {
-  max-width: none !important;
-}
-
-.goal-big-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.goal-value {
-  font-size: 64px !important;
-  line-height: .92 !important;
-  font-weight: 800 !important;
-  letter-spacing: -2.8px !important;
-}
-
-.goal-kg {
-  font-size: 27px;
-  font-weight: 700;
-  color: var(--premium-text);
-}
-
-.goal-caption {
-  margin-top: 12px !important;
-  font-size: 15px !important;
-}
-
-.goal-progress-block.primary {
-  margin-top: 24px !important;
-  max-width: 460px !important;
-}
-
-.goal-side {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 18px !important;
-  width: 100% !important;
-}
-
-.goal-side-top {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.goal-side-item {
-  min-height: 110px !important;
-  padding: 22px !important;
-  border-radius: 24px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  justify-content: center !important;
-}
-
-.goal-side-item span {
-  font-size: 14px !important;
-  margin-bottom: 10px !important;
-}
-
-.goal-side-item strong {
-  font-size: 31px !important;
-  line-height: 1 !important;
-}
-
-.goal-progress-block.secondary {
-  min-height: 96px !important;
-  padding: 20px !important;
-  border-radius: 24px !important;
-}
-
-.goal-track,
-.week-track {
-  height: 8px !important;
-}
-
-.goal-progress-row {
-  margin-bottom: 12px !important;
-}
-
-@media (max-width: 900px) {
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-    gap: 22px !important;
-  }
-
-  .goal-side-top {
-    grid-template-columns: 1fr !important;
-  }
-
-  .goal-value {
-    font-size: 48px !important;
-  }
-}
-/* v95 — Goal progress compact alignment */
-
-.goal-caption {
-  margin-top: 6px !important;
-  padding: 0 !important;
-  line-height: 1.2 !important;
-}
-
-.goal-progress-block.primary,
-.goal-progress-block.secondary {
-  min-height: auto !important;
-  padding: 14px 16px !important;
-  border-radius: 20px !important;
-}
-
-.goal-progress-block.primary {
-  margin-top: 16px !important;
-}
-
-.goal-progress-block.secondary {
-  margin-top: 0 !important;
-}
-
-.goal-progress-row {
-  margin-bottom: 8px !important;
-  line-height: 1.2 !important;
-}
-
-.goal-track {
-  height: 7px !important;
-  margin-top: 0 !important;
-}
-
-.goal-side-item {
-  min-height: 92px !important;
-  padding: 18px 20px !important;
-}
-
-.goal-side {
-  gap: 14px !important;
-}
-
-.goal-side-top {
-  gap: 14px !important;
-}
-
-@media (max-width: 900px) {
-  .goal-side-item {
-    min-height: auto !important;
-  }
-}
-/* v96 — Bottom nav overlap fix */
-
-.dashboard-wrap {
-  padding-bottom: 150px !important;
-}
-
-.quick-actions-card {
-  margin-bottom: 28px !important;
-}
-
-@media (max-width: 700px) {
-  .dashboard-wrap {
-    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .quick-actions-card {
-    margin-bottom: 36px !important;
-  }
-}
-/* v97 — FINAL dashboard spacing override */
-
-#pHome .dashboard-wrap {
-  padding: 0 18px 28px !important;
-  max-width: 1080px !important;
-  min-height: auto !important;
-}
-
-#pHome .quick-actions-card {
-  margin-bottom: 0 !important;
-}
-
-@media (max-width: 700px) {
-  #pHome .dashboard-wrap {
-    padding: 0 14px calc(88px + env(safe-area-inset-bottom)) !important;
-  }
-
-  #pHome .quick-actions-card {
-    margin-bottom: 0 !important;
-  }
-}
-/* v98 — Premium compact rhythm */
-
-.goal-hero-card {
-  padding: 26px 30px !important;
-}
-
-.goal-card-layout {
-  gap: 26px !important;
-}
-
-.goal-main {
-  padding-right: 8px !important;
-}
-
-.goal-big-row {
-  margin-top: 4px !important;
-}
-
-.goal-value {
-  font-size: 58px !important;
-  letter-spacing: -2px !important;
-}
-
-.goal-progress-block.primary {
-  margin-top: 14px !important;
-}
-
-.goal-side {
-  gap: 14px !important;
-}
-
-.goal-side-item {
-  min-height: 92px !important;
-}
-
-.goal-side-item strong {
-  font-size: 26px !important;
-}
-
-.goal-progress-block.secondary {
-  min-height: 92px !important;
-}
-/* v98 — Measurement card */
-
-.measurement-card {
-  min-height: 150px !important;
-  padding: 28px 32px !important;
-}
-
-.measurement-card .stat-val {
-  font-size: 54px !important;
-  letter-spacing: -2px !important;
-}
-
-.measurement-card .progress-summary-diff {
-  font-size: 20px !important;
-}
-/* v98 — Week compact */
-
-.week-card {
-  padding: 24px !important;
-}
-
-.week-metric {
-  padding: 14px 16px !important;
-}
-
-.week-track {
-  height: 8px !important;
-}
-
-.week-card-title {
-  margin-bottom: 2px !important;
-}
-/* v99 — Premium blur override */
-
-#pHome .dashboard-card,
-#pHome .goal-hero-card,
-#pHome .week-card,
-#pHome .measurement-card,
-#pHome .quick-actions-card,
-#pHome .motivation-banner {
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-}
-/* v100 — Final goal card 2x2 balance */
-
-.goal-card-layout {
-  grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr) !important;
-  gap: 34px !important;
-}
-
-.goal-side-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 14px !important;
-  width: 100% !important;
-}
-
-.goal-side-grid .goal-side-item,
-.goal-side-grid .goal-progress-block.secondary {
-  min-height: 104px !important;
-  padding: 18px 20px !important;
-  border-radius: 24px !important;
-  margin: 0 !important;
-}
-
-.goal-side-grid .goal-progress-block.secondary {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-}
-
-.goal-side-grid .goal-progress-row {
-  margin-bottom: 10px !important;
-}
-
-.goal-side-grid .goal-track {
-  height: 7px !important;
-}
-
-.goal-progress-block.primary {
-  display: none !important;
-}
-
-.goal-caption {
-  margin-top: 8px !important;
-}
-
-@media (max-width: 900px) {
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-  }
-
-  .goal-side-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-}
-
-@media (max-width: 520px) {
-  .goal-side-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-/* v101 — Restore balanced goal layout */
-
-.goal-card-layout {
-  grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr) !important;
-  gap: 34px !important;
-  align-items: center !important;
-}
-
-.goal-progress-block.primary {
-  display: block !important;
-  max-width: 460px !important;
-  margin-top: 18px !important;
-}
-
-.goal-side-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 14px !important;
-}
-
-.goal-side-grid .goal-progress-block.secondary {
-  grid-column: 1 / -1 !important;
-  min-height: 88px !important;
-}
-
-.goal-side-grid .goal-side-item {
-  min-height: 96px !important;
-}
-
-.goal-hero-card {
-  padding: 28px !important;
-}
-
-@media (max-width: 900px) {
-  .goal-card-layout {
-    grid-template-columns: 1fr !important;
-  }
-
-  .goal-side-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-}
-/* v102 — FINAL DASHBOARD GOAL RESET */
-
-#pHome #dashboardGoalCard > div {
-  display: block !important;
-  grid-template-columns: none !important;
-  gap: 0 !important;
-  margin: 20px 0 !important;
-}
-
-#pHome .goal-hero-card {
-  display: block !important;
-  position: relative !important;
-  overflow: hidden !important;
-  min-height: auto !important;
-  padding: 32px !important;
-  border-radius: 32px !important;
-}
-
-#pHome .goal-card-layout {
-  display: grid !important;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important;
-  gap: 36px !important;
-  align-items: center !important;
-  width: 100% !important;
-}
-
-#pHome .goal-left {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  min-width: 0 !important;
-}
-
-#pHome .goal-right {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 16px !important;
-  min-width: 0 !important;
-}
-
-#pHome .goal-label {
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  color: var(--premium-muted) !important;
-  font-family: var(--font-mono) !important;
-  letter-spacing: .5px !important;
-}
-
-#pHome .goal-big {
-  margin-top: 14px !important;
-  display: flex !important;
-  align-items: baseline !important;
-  gap: 8px !important;
-}
-
-#pHome .goal-big span {
-  font-size: 64px !important;
-  line-height: .9 !important;
-  font-weight: 800 !important;
-  letter-spacing: -2.6px !important;
-  color: var(--premium-text) !important;
-}
-
-#pHome .goal-big small {
-  font-size: 28px !important;
-  font-weight: 700 !important;
-  color: var(--premium-text) !important;
-}
-
-#pHome .goal-caption {
-  margin-top: 12px !important;
-  font-size: 15px !important;
-  font-weight: 700 !important;
-  color: var(--premium-muted) !important;
-}
-
-#pHome .goal-mini-card,
-#pHome .goal-info-card {
-  background: rgba(255,255,255,.58) !important;
-  border: 1px solid rgba(148,163,184,.12) !important;
-  border-radius: 24px !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-}
-
-#pHome .goal-left .goal-mini-card {
-  margin-top: 24px !important;
-  width: 100% !important;
-  max-width: 460px !important;
-  padding: 16px 18px !important;
-}
-
-#pHome .goal-info-card {
-  min-height: 112px !important;
-  padding: 22px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-}
-
-#pHome .goal-info-card span {
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  color: var(--premium-muted) !important;
-  margin-bottom: 12px !important;
-}
-
-#pHome .goal-info-card strong {
-  font-size: 31px !important;
-  line-height: 1 !important;
-  font-weight: 800 !important;
-  color: var(--premium-text) !important;
-}
-
-#pHome .goal-final-card {
-  grid-column: 1 / -1 !important;
-  min-height: 96px !important;
-  padding: 18px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-}
-
-#pHome .goal-progress-row {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  margin-bottom: 10px !important;
-  font-size: 13px !important;
-  color: var(--premium-muted) !important;
-}
-
-#pHome .goal-progress-row strong {
-  font-weight: 800 !important;
-  color: var(--premium-text) !important;
-}
-
-#pHome .goal-track {
-  height: 8px !important;
-  width: 100% !important;
-  margin: 0 !important;
-  background: rgba(34,197,94,.14) !important;
-  border-radius: 999px !important;
-  overflow: hidden !important;
-}
-
-#pHome .goal-track.final {
-  background: rgba(59,130,246,.13) !important;
-}
-
-#pHome .goal-fill {
-  height: 100% !important;
-  border-radius: 999px !important;
-  background: linear-gradient(90deg, #22c55e, #16a34a) !important;
-}
-
-#pHome .goal-fill.final {
-  background: linear-gradient(90deg, #38bdf8, #3b82f6) !important;
-}
-
-#pHome .goal-progress-block,
-#pHome .goal-side,
-#pHome .goal-side-grid,
-#pHome .goal-side-top,
-#pHome .goal-main {
-  all: unset;
-}
-
-[data-theme="dark"] #pHome .goal-mini-card,
-[data-theme="dark"] #pHome .goal-info-card {
-  background: rgba(255,255,255,.045) !important;
-  border-color: rgba(255,255,255,.07) !important;
-}
-
-@media (max-width: 900px) {
-  #pHome .goal-card-layout {
-    grid-template-columns: 1fr !important;
-    gap: 22px !important;
-  }
-
-  #pHome .goal-right {
-    grid-template-columns: 1fr 1fr !important;
-  }
-
-  #pHome .goal-big span {
-    font-size: 52px !important;
-  }
-}
-
-@media (max-width: 520px) {
-  #pHome .goal-hero-card {
-    padding: 22px !important;
-  }
-
-  #pHome .goal-right {
-    grid-template-columns: 1fr !important;
-  }
-
-  #pHome .goal-big span {
-    font-size: 46px !important;
-  }
-}
-
-.dashboard-wrap {
-  max-width: 1080px !important;
-}
-
-.moti-card {
-  margin-top: 18px !important;
-  margin-bottom: 20px !important;
-}
-
-.goal-hero-card {
-  margin-top: 0 !important;
-}
-.goal-hero-card {
-  padding: 26px 30px !important;
-}
-
-.last-meas-card,
-.progress-summary-card {
-  min-height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.week-track {
-  height: 9px !important;
-}
-
-.goal-hero-card {
-  padding: 26px 30px !important;
-}
-
-.last-meas-card,
-.progress-summary-card {
-  min-height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.week-track {
-  height: 9px !important;
-}
-
-@media (max-width:700px){
-
-  .last-meas-card,
-  .progress-summary-card{
-    text-align:center;
-    flex-direction:column;
-    justify-content:center;
-    gap:14px;
-  }
-
-  .last-meas-card > div:last-child,
-  .progress-summary-card > div:last-child{
-    text-align:center !important;
-  }
-
-}
-[data-theme="dark"] .goal-info-card,
-[data-theme="dark"] .goal-final-card,
-[data-theme="dark"] .week-metric{
-  border-color:rgba(255,255,255,.05) !important;
-}
-
-[data-theme="dark"] .quick-btn.sleep{
-  background:rgba(6,182,212,.18);
-}
-
-[data-theme="dark"] .quick-btn.workout{
-  background:rgba(139,92,246,.18);
-}
-
-[data-theme="dark"] .quick-btn.note{
-  background:rgba(34,197,94,.16);
-}
-
-.dashboard-wrap,
-.dashboard-screen,
-main{
-  padding-bottom:110px !important;
-  min-height:auto !important;
-}
-
-.quick-actions-card{
-  margin-bottom:20px !important;
-}
-
-body{
-  overflow-x:hidden;
-}
-
-/* Product polish pass */
-:root {
-  --bg: #f5f7fb;
-  --surface: #ffffff;
-  --surface2: #edf2f7;
-  --border: #d7e0ec;
-  --text: #111827;
-  --text2: #374151;
-  --muted: #66758a;
-  --blue: #2563eb;
-  --green: #0f766e;
-  --red: #dc2626;
-  --cyan: #0e7490;
-  --purple: #6d5bd0;
-  --amber: #b7791f;
-  --coral: #dc5f4a;
-  --shadow: 0 10px 30px rgba(15, 23, 42, .07);
-  --radius: 18px;
-}
-
-[data-theme="dark"] {
-  --bg: #0e1219;
-  --surface: #171d27;
-  --surface2: #111722;
-  --border: #273244;
-  --text: #f8fafc;
-  --text2: #d5dce8;
-  --muted: #95a1b4;
-}
-
-html,
-body,
-.app-shell,
-#panels {
-  min-height: 100dvh;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(37,99,235,.08), transparent 280px),
-    linear-gradient(180deg, rgba(15,118,110,.05), transparent 260px),
-    var(--bg) !important;
-}
-
-body {
-  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
-}
-
-#panels {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 0 18px calc(96px + env(safe-area-inset-bottom));
-}
-
-.panel.active {
-  display: block;
-}
-
-.section {
-  margin: 18px 0 0 !important;
-}
-
-.page-intro {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding-top: 16px;
-}
-
-.page-intro h2 {
-  font-size: 26px;
-  line-height: 1.1;
-  color: var(--text);
-  margin-top: 6px;
-  letter-spacing: 0;
-}
-
-.page-intro p {
-  max-width: 620px;
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.card,
-.week-chip,
-.quick-actions-card,
-.moti-card,
-.progress-summary-card,
-.goal-hero-card {
-  border-radius: 18px !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: var(--shadow) !important;
-}
-
-.card,
-.quick-actions-card,
-.week-chip {
-  background: rgba(255,255,255,.92) !important;
-}
-
-[data-theme="dark"] .card,
-[data-theme="dark"] .quick-actions-card,
-[data-theme="dark"] .week-chip {
-  background: rgba(23,29,39,.94) !important;
-}
-
-.dashboard-wrap {
-  max-width: none !important;
-  padding: 0 0 8px !important;
-}
-
-.hero {
-  padding: 18px 0 0 !important;
-}
-
-.hero-title {
-  font-size: clamp(24px, 4vw, 34px) !important;
-  letter-spacing: 0 !important;
-}
-
-.moti-card {
-  margin-top: 16px !important;
-  background: linear-gradient(135deg, #ecfdf5, #eff6ff) !important;
-  color: var(--text) !important;
-}
-
-[data-theme="dark"] .moti-card {
-  background: linear-gradient(135deg, rgba(5,150,105,.18), rgba(37,99,235,.16)) !important;
-}
-
-.dashboard-measure-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 16px;
-}
-
-.progress-summary-card {
-  min-height: 138px;
-  padding: 20px !important;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: var(--surface) !important;
-}
-
-.progress-summary-label,
-.sec-title,
-.list-title {
-  color: var(--muted) !important;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-}
-
-.progress-summary-value {
-  font-size: 38px !important;
-  line-height: 1;
-  letter-spacing: 0 !important;
-}
-
-.progress-summary-value span {
-  font-size: 16px !important;
-}
-
-.progress-summary-side {
-  text-align: right;
-}
-
-.progress-summary-small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.progress-summary-diff.good {
-  color: var(--green) !important;
-}
-
-.progress-summary-diff.bad {
-  color: var(--red) !important;
-}
-
-.input-card {
-  padding: 16px;
-}
-
-.form-grid {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px !important;
-  align-items: end !important;
-}
-
-.form-grid label {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.form-grid input,
-.form-grid select {
-  width: 100% !important;
-  min-width: 0 !important;
-  height: 44px;
-  padding: 0 12px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 12px !important;
-  background: var(--surface) !important;
-  color: var(--text) !important;
-  font: inherit;
-}
-
-.form-submit,
-.form-grid > .btn {
-  height: 44px;
-  border-radius: 12px;
-}
-
-.quick-picks {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.quick-picks button {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface2);
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.quick-picks button:hover {
-  border-color: var(--blue);
-  color: var(--blue);
-}
-
-.note-compose {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-}
-
-.note-compose textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 86px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-.daily-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.daily-filter-bar {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px;
-  margin: 0 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface) 88%, var(--surface2));
-  box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
-}
-
-.daily-filter-bar button {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text2);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.daily-filter-bar button.active {
-  background: var(--blue);
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, .22);
-}
-
-.list-card {
-  overflow: hidden;
-  min-height: 250px;
-  max-height: none;
-  display: flex;
-  flex-direction: column;
-}
-
-.daily-grid[data-view="all"] .list-card {
-  max-height: 560px;
-}
-
-.list-title {
-  padding: 16px 16px 0;
-}
-
-#sleepSummary,
-#workoutSummary {
-  display: grid;
-  gap: 6px;
-  padding: 12px 16px 10px;
-}
-
-.daily-stat-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
-  color: var(--text);
-  font-size: 14px;
-}
-
-.daily-stat-line strong {
-  font-size: 18px;
-}
-
-.daily-stat-line.muted {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.daily-stat-line.muted strong {
-  font-size: 13px;
-  color: var(--text2);
-}
-
-.daily-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 13px 16px;
-  border-top: 1px solid var(--border);
-}
-
-#sleepList,
-#workoutList {
-  display: grid;
-  margin-top: 2px;
-  overflow: visible;
-}
-
-.daily-grid[data-view="all"] #sleepList,
-.daily-grid[data-view="all"] #workoutList {
-  overflow: auto;
-}
-
-.progress-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 14px;
-}
-
-.progress-metric-card {
-  min-height: 142px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.progress-metric-card span {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.progress-metric-card strong {
-  margin-top: 10px;
-  color: var(--text);
-  font-size: 25px;
-  line-height: 1;
-}
-
-.progress-metric-card small {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.progress-insight-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 0 14px 14px;
-}
-
-.progress-insight-card {
-  min-height: 112px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.9));
-  display: grid;
-  align-content: start;
-  gap: 7px;
-}
-
-.progress-insight-card span {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.progress-insight-card strong {
-  color: var(--text);
-  font-size: 17px;
-  line-height: 1.25;
-}
-
-.progress-insight-card small {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.metric-track {
-  height: 7px;
-  margin: 12px 0 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--surface2);
-}
-
-.metric-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--green), var(--blue));
-}
-
-.week-insight {
-  margin-top: 14px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--surface2);
-  color: var(--text2);
-  font-weight: 800;
-  font-size: 13px;
-}
-
-.daily-row-title {
-  color: var(--text);
-  font-weight: 800;
-}
-
-.daily-row-meta {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.row-delete {
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 18px;
-}
-
-.weekly-report-list {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-}
-
-.weekly-report-row {
-  display: grid;
-  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-}
-
-.weekly-report-row > div:first-child {
-  display: grid;
-  gap: 5px;
-}
-
-.weekly-report-row > div:first-child strong {
-  color: var(--text);
-  font-size: 14px;
-}
-
-.weekly-report-row > div:first-child span {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.weekly-report-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.weekly-report-metrics div {
-  display: grid;
-  gap: 6px;
-}
-
-.weekly-report-metrics span {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.weekly-report-metrics strong {
-  color: var(--text);
-  font-size: 15px;
-}
-
-.weekly-report-metrics i {
-  height: 7px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--surface2);
-}
-
-.weekly-report-metrics b {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--green), var(--blue));
-}
-
-.empty-state.compact {
-  padding: 16px;
-  text-align: left;
-}
-
-.onboarding-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, .52);
-  backdrop-filter: blur(14px);
-}
-
-.onboarding-card {
-  width: min(100%, 620px);
-  max-height: calc(100dvh - 40px);
-  overflow: auto;
-  padding: 26px;
-  border-radius: 22px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
-}
-
-.onboarding-kicker {
-  color: var(--blue);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-}
-
-.onboarding-card h2 {
-  margin-top: 8px;
-  font-size: 28px;
-  line-height: 1.1;
-  color: var(--text);
-}
-
-.onboarding-card p {
-  margin-top: 8px;
-  color: var(--muted);
-}
-
-.onboarding-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.onboarding-grid label {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.onboarding-grid input {
-  height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-.onboarding-submit {
-  width: 100%;
-  height: 46px;
-  margin-top: 16px;
-}
-
-.auth-card {
-  width: min(100%, 480px);
-}
-
-.auth-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 18px;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--surface2);
-}
-
-.auth-tabs button {
-  height: 38px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.auth-tabs button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 4px 14px rgba(15,23,42,.08);
-}
-
-.onboarding-grid.single {
-  grid-template-columns: 1fr;
-}
-
-.auth-secondary {
-  width: 100%;
-  margin-top: 10px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.auth-message {
-  min-height: 18px;
-  margin-top: 12px;
-  color: var(--green);
-  font-size: 13px;
-  text-align: center;
-}
-
-.auth-message.error {
-  color: var(--red);
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.settings-card {
-  min-height: 172px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 10px 26px rgba(15,23,42,.04);
-}
-
-.settings-card-title {
-  margin-bottom: 14px;
-  color: var(--text);
-  font-weight: 900;
-}
-
-.settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.settings-row strong {
-  color: var(--text);
-  text-align: right;
-}
-
-.settings-copy {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.sync-status-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 8px 0 16px;
-}
-
-.sync-status-grid div {
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface2) 70%, transparent);
-}
-
-.sync-status-grid span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.sync-status-grid strong {
-  display: block;
-  margin-top: 5px;
-  color: var(--text);
-  font-size: 13px;
-}
-
-.settings-action {
-  width: 100%;
-  margin-top: 12px;
-}
-
-.chart-card {
-  min-height: 330px;
-  height: auto;
-  padding: 18px;
-  overflow: hidden;
-}
-
-#measurementChartHost {
-  min-height: 360px;
-}
-
-.measurement-insight-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  gap: 18px;
-  height: 100%;
-}
-
-.weight-trend-panel,
-.waist-tracking-panel {
-  min-width: 0;
-  border: 1px solid rgba(203,213,225,.72);
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,250,252,.92));
-}
-
-.weight-trend-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-}
-
-.measurement-chart-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-}
-
-.measurement-chart-top span {
-  display: block;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.measurement-chart-top strong {
-  display: block;
-  margin-top: 4px;
-  color: var(--text);
-  font-size: 22px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.measurement-chart-top .good,
-.measurement-chart-top .bad {
-  justify-self: end;
-  padding: 7px 11px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.measurement-chart-top .good {
-  background: rgba(16,185,129,.12);
-  color: #047857;
-}
-
-.measurement-chart-top .bad {
-  background: rgba(239,68,68,.12);
-  color: #b91c1c;
-}
-
-.measurement-chart-canvas {
-  position: relative;
-  flex: 1;
-  min-height: 168px;
-}
-
-.measurement-chart-canvas canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.measurement-detail-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.measurement-detail-row div {
-  min-width: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(241,245,249,.72);
-}
-
-.measurement-detail-row span,
-.waist-tracking-panel span {
-  display: block;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.measurement-detail-row strong {
-  display: block;
-  margin-top: 5px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 850;
-  line-height: 1.35;
-}
-
-.waist-tracking-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 18px;
-}
-
-.waist-tracking-panel strong {
-  margin-top: 8px;
-  color: var(--text);
-  font-size: 30px;
-  font-weight: 950;
-  letter-spacing: 0;
-}
-
-.waist-tracking-panel p {
-  margin: 12px 0 16px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.waist-tracking-panel small {
-  margin-top: 10px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.waist-rhythm {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
-}
-
-.waist-rhythm i {
-  display: block;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(203,213,225,.9);
-}
-
-.waist-rhythm i.active {
-  background: linear-gradient(90deg, #0f766e, #14b8a6);
-}
-
-[data-theme="dark"] .weight-trend-panel,
-[data-theme="dark"] .waist-tracking-panel {
-  border-color: rgba(71,85,105,.72);
-  background:
-    linear-gradient(180deg, rgba(23,29,39,.94), rgba(15,23,42,.9));
-}
-
-[data-theme="dark"] .measurement-detail-row div {
-  background: rgba(30,41,59,.68);
-}
-
-#sleepBars,
-#workoutBars {
-  height: 100%;
-}
-
-.bottom-nav {
-  width: min(100%, 1120px);
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 18px 18px 0 0;
-  box-shadow: 0 -12px 28px rgba(15,23,42,.08);
-}
-
-.bn-item {
-  min-height: 62px;
-}
-
-.btn,
-.quick-btn {
-  border-radius: 12px !important;
-}
-
-@media (max-width: 760px) {
-  #panels {
-    padding: 0 14px calc(88px + env(safe-area-inset-bottom));
-  }
-
-  .page-intro,
-  .progress-summary-card {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .dashboard-measure-grid,
-  .daily-grid,
-  .form-grid,
-  .progress-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .progress-summary-side {
-    text-align: left;
-  }
-
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-card {
-    min-height: 260px;
-  }
-
-  #measurementChartHost {
-    min-height: 520px;
-  }
-
-  .measurement-insight-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .measurement-chart-top strong {
-    font-size: 17px;
-  }
-
-  .measurement-detail-row {
-    grid-template-columns: 1fr;
-  }
-
-  .waist-tracking-panel {
-    min-height: 180px;
-  }
-
-  .weekly-report-row,
-  .weekly-report-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .daily-filter-bar {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-  }
-
-  .daily-filter-bar button {
-    padding: 0 8px;
-  }
-
-  .list-card {
-    max-height: none;
-  }
-
-  .onboarding-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .bottom-nav {
-    border-radius: 16px 16px 0 0;
-  }
-}
-
-/* Premium readiness pass */
-.status-bar {
-  display: none !important;
-}
-
-.status-bar.visible {
-  display: flex !important;
-}
-
-.topnav {
-  height: calc(62px + env(safe-area-inset-top)) !important;
-  padding-inline: 18px !important;
-}
-
-.nav-actions {
-  gap: 10px !important;
-}
-
-.nav-logout-btn {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  min-width: 74px;
-  min-height: 36px;
-  padding: 0 14px !important;
-  border: 1px solid rgba(220,38,38,.18) !important;
-  border-radius: 999px !important;
-  background: rgba(255,255,255,.8) !important;
-  color: #b91c1c !important;
-  font: 800 12px var(--font-main) !important;
-  box-shadow: 0 8px 18px rgba(15,23,42,.06);
-}
-
-.nav-logout-btn:hover {
-  background: rgba(254,242,242,.95) !important;
-  border-color: rgba(220,38,38,.34) !important;
-}
-
-[data-theme="dark"] .nav-logout-btn {
-  background: rgba(127,29,29,.18) !important;
-  color: #fecaca !important;
-  border-color: rgba(248,113,113,.2) !important;
-}
-
-#pSettings .section {
-  max-width: 1120px;
-  margin-inline: auto !important;
-}
-
-#pSettings .sec-head {
-  margin-bottom: 14px;
-}
-
-#pSettings .settings-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 16px !important;
-}
-
-#pSettings .settings-card {
-  display: flex;
-  flex-direction: column;
-  min-height: 214px;
-  padding: 20px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 18px !important;
-  background: rgba(255,255,255,.94) !important;
-  box-shadow: 0 18px 36px rgba(15,23,42,.08) !important;
-}
-
-[data-theme="dark"] #pSettings .settings-card {
-  background: rgba(23,29,39,.94) !important;
-}
-
-#pSettings .settings-card-title {
-  margin: 0 0 16px !important;
-  color: var(--text) !important;
-  font-size: 16px !important;
-  font-weight: 900 !important;
-}
-
-#pSettings .settings-row {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 16px !important;
-  padding: 12px 0 !important;
-  border-top: 1px solid var(--border) !important;
-  color: var(--muted) !important;
-  font-size: 13px !important;
-}
-
-#pSettings .settings-row strong {
-  color: var(--text) !important;
-  font-size: 14px !important;
-  text-align: right !important;
-  overflow-wrap: anywhere;
-}
-
-#pSettings .settings-copy {
-  flex: 1;
-  margin: 0 0 12px !important;
-  color: var(--muted) !important;
-  font-size: 13px !important;
-  line-height: 1.55 !important;
-}
-
-#pSettings .settings-action {
-  margin-top: auto !important;
-  height: 42px !important;
-}
-
-.settings-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 13px 0;
-  border-top: 1px solid var(--border);
-}
-
-.settings-toggle-row div {
-  display: grid;
-  gap: 4px;
-}
-
-.settings-toggle-row strong {
-  color: var(--text);
-  font-size: 14px;
-}
-
-.settings-toggle-row span {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.switch {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-  width: 48px;
-  height: 28px;
-}
-
-.switch input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.switch > span {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: background .2s, border-color .2s;
-}
-
-.switch > span::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 4px 10px rgba(15,23,42,.18);
-  transition: transform .2s;
-}
-
-.switch input:checked + span {
-  background: rgba(37,99,235,.92);
-  border-color: rgba(37,99,235,.92);
-}
-
-.switch input:checked + span::after {
-  transform: translateX(20px);
-}
-
-.field-hint {
-  display: block;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.field-hint.important {
-  color: var(--green);
-  font-weight: 800;
-}
-
-.measure-hint-strip {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(15,118,110,.12);
-  border-radius: 12px;
-  background: rgba(15,118,110,.06);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.measure-hint-strip.important {
-  border-color: rgba(15,118,110,.24);
-  background: rgba(15,118,110,.10);
-  color: var(--green);
-}
-
-.delta-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 74px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-family: var(--font-main);
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.delta-pill.good {
-  background: rgba(15,118,110,.10);
-  color: var(--green);
-}
-
-.delta-pill.bad {
-  background: rgba(220,38,38,.09);
-  color: var(--red);
-}
-
-.delta-pill.neutral {
-  background: var(--surface2);
-  color: var(--muted);
-}
-
-.fallback-line-chart {
-  min-height: 250px;
-  display: grid;
-  grid-template-rows: minmax(180px, 1fr) auto;
-  gap: 16px;
-  padding: 18px;
-}
-
-.fallback-line-chart svg {
-  width: 100%;
-  height: 100%;
-  min-height: 180px;
-  overflow: visible;
-}
-
-.fallback-chart-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.fallback-chart-labels div {
-  display: grid;
-  gap: 4px;
-}
-
-.fallback-chart-labels strong {
-  color: var(--text);
-  font-size: 14px;
-}
-
-.chart-card {
-  min-height: 260px;
-}
-
-.chart-mini-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px 0;
-}
-
-.chart-mini-head strong {
-  display: block;
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.2;
-}
-
-.chart-mini-head span {
-  display: block;
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.chart-mini-head em {
-  flex: 0 0 auto;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: rgba(37,99,235,.1);
-  color: var(--blue);
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.bar-chart {
-  height: auto;
-  min-height: 196px;
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 22px 12px 8px;
-}
-
-.bar-item {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.bar-fill {
-  width: min(100%, 42px);
-  min-height: 12px;
-  border-radius: 999px 999px 8px 8px;
-  box-shadow: inset 0 -10px 18px rgba(255,255,255,.18), 0 10px 18px rgba(15,23,42,.08);
-}
-
-.bar-fill.sleep {
-  background: linear-gradient(180deg, #22d3ee, #2563eb);
-}
-
-.bar-fill.workout {
-  background: linear-gradient(180deg, #f59e0b, #dc5f4a);
-}
-
-.bar-label {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: capitalize;
-}
-
-.bar-value {
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-[data-theme="dark"] .bar-fill {
-  box-shadow: inset 0 -10px 18px rgba(255,255,255,.08), 0 10px 18px rgba(0,0,0,.18);
-}
-
-[data-theme="dark"] .progress-insight-card {
-  background: rgba(23,29,39,.94);
-}
-
-[data-theme="dark"] .chart-mini-head em {
-  background: rgba(96,165,250,.14);
-}
-
-.empty-state {
-  min-height: 220px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 28px;
-  text-align: center;
-  color: var(--muted);
-}
-
-.empty-state .empty-icon {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(37,99,235,.1);
-  color: var(--blue);
-  font-size: 24px;
-  font-weight: 900;
-}
-
-.empty-state strong {
-  color: var(--text);
-  font-size: 16px;
-}
-
-.empty-state p {
-  max-width: 420px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.empty-state .btn {
-  margin-top: 4px;
-}
-
-#progressList .empty-state {
-  min-height: 150px;
-}
-
-@media (max-width: 860px) {
-  #pSettings .settings-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .progress-insight-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 560px) {
-  .nav-logout-btn {
-    min-width: 58px;
-    padding-inline: 10px !important;
-  }
-
-  .empty-state {
-    min-height: 190px;
-    padding: 22px 16px;
-  }
-
-  .progress-insight-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-mini-head {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .bar-chart {
-    gap: 8px;
-    padding-inline: 4px;
-  }
-}
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  const milestones = state.milestones || [95, 90, 85];
+  let currentGoal = milestones.find(goal => last.weight > goal);
+  if (!currentGoal) currentGoal = milestones[milestones.length - 1];
+
+  const completed = first.weight - last.weight;
+
+  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
+  const finalKgLeft = Math.max(0, Number(last.weight - state.goalWeight).toFixed(1));
+
+  const firstNeeded = first.weight - currentGoal;
+  const firstPct = firstNeeded > 0
+    ? Math.min(100, Math.round((completed / firstNeeded) * 100))
+    : 100;
+
+  const finalNeeded = first.weight - state.goalWeight;
+  const finalPct = finalNeeded > 0
+    ? Math.min(100, Math.round((completed / finalNeeded) * 100))
+    : 100;
+
+  el.innerHTML = `
+    <div class="goal-hero-card">
+      <div class="goal-card-layout">
+
+        <div class="goal-left">
+          <div class="goal-label">ŞU ANKİ ARA HEDEF</div>
+
+          <div class="goal-big">
+            <span>${currentGoal}</span>
+            <small>kg</small>
+          </div>
+
+          <div class="goal-caption">İlk hedef</div>
+
+          <div class="goal-mini-card">
+            <div class="goal-progress-row">
+              <span>İlk hedef ilerlemesi</span>
+              <strong>%${firstPct}</strong>
+            </div>
+            <div class="goal-track">
+              <div class="goal-fill" style="width:${firstPct}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="goal-right">
+          <div class="goal-info-card">
+            <span>İlk hedefe kalan</span>
+            <strong>${kgLeft} kg</strong>
+          </div>
+
+          <div class="goal-info-card">
+            <span>Final hedefe kalan</span>
+            <strong>${finalKgLeft} kg</strong>
+          </div>
+
+          <div class="goal-mini-card goal-final-card">
+            <div class="goal-progress-row">
+              <span>Final ilerleme</span>
+              <strong>%${finalPct}</strong>
+            </div>
+            <div class="goal-track final">
+              <div class="goal-fill final" style="width:${finalPct}%"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function renderStats() {
+  const el = document.getElementById('dashboardProgressCard');
+  if (!el) return;
+
+  const data = getMeasurementTrendData();
+
+  if (!data.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        İlk ölçümünü eklediğinde kilo ve bel kartları burada görünecek.
+      </div>
+    `;
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+  const waistMeasurements = getWaistMeasurements();
+  const firstWaist = waistMeasurements[0];
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+  const weightDiff = Number(last.weight - first.weight);
+  const waistDiff = waistMeasurements.length >= 2 ? Number(lastWaist.waist - firstWaist.waist) : null;
+  const startDateText = formatDate(first.date);
+
+  el.innerHTML = `
+    <div class="dashboard-measure-grid">
+      <div class="progress-summary-card">
+        <div>
+          <div class="progress-summary-label">Son Kilo</div>
+          <div class="progress-summary-value">${last.weight} <span>kg</span></div>
+        </div>
+        <div class="progress-summary-side">
+          <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
+          <div class="progress-summary-diff ${weightDiff <= 0 ? 'good' : 'bad'}">
+            ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-summary-card">
+        <div>
+          <div class="progress-summary-label">Son Bel Ölçümü</div>
+          <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
+        </div>
+        <div class="progress-summary-side">
+          <div class="progress-summary-small">${waistMeasurements.length ? 'Sonraki bel 4. tartıda' : 'Her 4. tartıda'}</div>
+          <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
+            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMeasurementChart() {
+  const host = document.getElementById('measurementChartHost');
+  if (!host) return;
+
+  normalizeProfileState();
+  const data = getChartMeasurementData();
+
+  if (measurementChart) {
+    measurementChart.destroy();
+    measurementChart = null;
+  }
+
+  if (data.length < 2) {
+    host.innerHTML = '';
+    setEmptyState(
+      host,
+      'Grafik için iki ölçüm gerekli',
+      'Başlangıç kilosu ve en az bir sonraki kilo ölçümü olduğunda trend burada görünür.',
+      'Ölçüm Ekle',
+      1
+    );
+    return;
+  }
+
+  if (typeof Chart === 'undefined') {
+    renderFallbackMeasurementChart(host, data);
+    return;
+  }
+
+  renderMeasurementInsight(host, data, '<canvas id="measurementChart"></canvas>');
+  const canvas = document.getElementById('measurementChart');
+  if (!canvas) return;
+
+  canvas.style.display = 'block';
+
+  measurementChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: data.map(item => formatDate(item.date)),
+      datasets: [
+        {
+          label: 'Kilo (kg)',
+          data: data.map(item => item.weight),
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37,99,235,.08)',
+          fill: true,
+          tension: 0.42,
+          borderWidth: 3,
+          pointRadius: 5,
+          pointHoverRadius: 6,
+          pointBorderWidth: 3,
+          pointBorderColor: '#ffffff',
+          pointBackgroundColor: '#2563eb'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: context => `${context.parsed.y} kg`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          position: 'left',
+          beginAtZero: false,
+          suggestedMin: Math.min(...data.map(item => Number(item.weight))) - 1,
+          suggestedMax: Math.max(...data.map(item => Number(item.weight))) + 1,
+          grid: {
+            color: 'rgba(113,128,150,.18)'
+          },
+          ticks: {
+            callback: value => `${value} kg`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderWeightSummary() {
+  const el = document.getElementById('weightSummary');
+  if (!el) return;
+
+  const data = getSortedMeasurements();
+
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const first = data[0];
+  const last = data[data.length - 1];
+  const waistMeasurements = getWaistMeasurements();
+  const firstWaist = waistMeasurements[0];
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+
+  const weightDiff = last.weight - first.weight;
+  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
+
+  const milestones = state.milestones || [95, 90, 85, 80, 75];
+
+  let currentGoal = milestones.find(goal => last.weight > goal);
+
+  if (!currentGoal) {
+    currentGoal = milestones[milestones.length - 1];
+  }
+
+  const kgLeft = Math.max(0, (last.weight - currentGoal).toFixed(1));
+
+  const startWeight = first.weight;
+  const totalNeeded = startWeight - currentGoal;
+  const completed = startWeight - last.weight;
+
+  const progressPct = totalNeeded > 0
+    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
+    : 100;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          SON KİLO
+        </div>
+
+        <div style="font-size:24px;font-weight:900;margin-top:6px">
+          ${last.weight} kg
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          TOPLAM DEĞİŞİM
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:900;
+          margin-top:6px;
+          color:${weightDiff <= 0 ? 'var(--green)' : 'var(--red)'}
+        ">
+          ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          İLK ARA HEDEF
+        </div>
+
+        <div style="font-size:24px;font-weight:900;margin-top:6px">
+          ${currentGoal} kg
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">
+          İlk hedefe kalan: ${kgLeft} kg · Final hedef: ${state.goalWeight} kg
+        </div>
+
+        <div style="
+          height:8px;
+          background:var(--border);
+          border-radius:999px;
+          overflow:hidden;
+          margin-top:10px
+        ">
+          <div style="
+            height:100%;
+            width:${progressPct}%;
+            background:linear-gradient(90deg,#3b82f6,#06b6d4);
+            border-radius:999px
+          "></div>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">
+          %${progressPct} tamamlandı
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          BEL DEĞİŞİMİ
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:900;
+          margin-top:6px;
+          color:${waistDiff === null || waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
+        ">
+          ${waistDiff === null ? 'Sonraki ölçüm 4. tartıda' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
+function renderWeightList() {
+  const list = document.getElementById('weightList');
+  const empty = document.getElementById('weightEmpty');
+  if (!list || !empty) return;
+
+  const data = getSortedMeasurements().sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!data.length) {
+    empty.style.display = 'block';
+    list.innerHTML = '';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  list.innerHTML = data.map((m, index) => {
+    const prev = data[index + 1];
+
+    const weightDiff = prev && m.weight != null && prev.weight != null
+      ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
+      : null;
+
+    const isWaistWeek = shouldTrackWaist(m.date);
+    const prevWaist = getWaistMeasurements()
+      .filter(item => item.date < m.date)
+      .at(-1);
+    const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist))
+      ? (parseFloat(m.waist) - parseFloat(prev.waist)).toFixed(1)
+      : null;
+
+    const weightDiffHtml = weightDiff
+      ? `<span class="delta-pill ${weightDiff < 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
+      : '<span class="delta-pill neutral">Başlangıç</span>';
+
+    const waistDiffHtml = waistDiff
+      ? `<span class="delta-pill ${waistDiff < 0 ? 'good' : 'bad'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
+      : `<span class="delta-pill neutral">${isWaistWeek ? 'İlk bel' : '4. tartıda'}</span>`;
+
+    const waistText = isWaistWeek && Number.isFinite(Number(m.waist))
+      ? `${m.waist} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
+      : `<span style="font-size:12px;color:var(--muted)">Bel: aylık takip</span>`;
+
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-weight:700">
+            ${m.weight ?? '?'} <span style="font-size:12px;color:var(--muted)">kg</span>
+            ·
+            ${waistText}
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+            ${formatDate(m.date)}
+          </div>
+        </div>
+
+        <div style="font-family:var(--font-mono);font-size:11px;text-align:right">
+          <div>${weightDiffHtml}</div>
+          <div>${waistDiffHtml}</div>
+        </div>
+
+        <button onclick="deleteWeight(${index})"
+          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+          aria-label="Sil">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderNotes() {
+  const list = document.getElementById('noteList');
+  if (!list) return;
+
+  const notes = (Array.isArray(state.notes) ? state.notes : [])
+    .map((note, stateIndex) => ({ ...note, stateIndex }))
+    .filter(note => note.date === today());
+
+  if (!notes.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        Bugün için not yok.
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = notes.map(note => `
+    <div class="daily-row">
+      <div>
+        <div class="daily-row-title">${note.text}</div>
+        <div class="daily-row-meta">Bugün</div>
+      </div>
+      <button onclick="deleteNote(${note.stateIndex})" class="row-delete" aria-label="Sil">×</button>
+    </div>
+  `).join('');
+}
+function getWeekRange(dateValue) {
+  const parts = String(dateValue || '').split('-').map(Number);
+  const date = parts.length === 3 && parts.every(Number.isFinite)
+    ? new Date(parts[0], parts[1] - 1, parts[2])
+    : new Date(dateValue);
+
+  const sunday = new Date(date);
+  sunday.setDate(date.getDate() - date.getDay());
+
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+
+  return {
+    start: toLocalIsoDate(sunday),
+    end: toLocalIsoDate(saturday),
+  };
+}
+
+function getDashboardWeekRange() {
+  const dates = [
+    ...(state.sleep || []).map(item => item.date),
+    ...(state.workouts || []).map(item => item.date),
+  ].filter(Boolean);
+
+  if (!dates.length) {
+    return getWeekRange(today());
+  }
+
+  const latestDate = dates.sort((a, b) => b.localeCompare(a))[0];
+  return getWeekRange(latestDate);
+}
+
+function getDashboardWeekTitle() {
+  const range = getDashboardWeekRange();
+  const current = getWeekRange(today());
+  return range.start === current.start ? 'Bu Hafta' : 'Son Aktif Hafta';
+}
+
+function getDailyViewRange() {
+  if (dailyView === 'today') {
+    const date = today();
+    return { start: date, end: date, title: 'Bugün', targetMode: 'today' };
+  }
+
+  if (dailyView === 'all') {
+    return { start: null, end: null, title: 'Tüm Geçmiş', targetMode: 'all' };
+  }
+
+  return { ...getDashboardWeekRange(), title: getDashboardWeekTitle(), targetMode: 'week' };
+}
+
+function itemMatchesDailyView(item) {
+  const range = getDailyViewRange();
+  if (!item?.date) return false;
+  if (!range.start || !range.end) return true;
+  return item.date >= range.start && item.date <= range.end;
+}
+
+function renderDailyViewControls() {
+  const range = getDailyViewRange();
+  const grid = document.getElementById('dailyGrid');
+  if (grid) grid.dataset.view = dailyView;
+
+  document.querySelectorAll('[data-daily-view]').forEach(btn => {
+    const isActive = btn.dataset.dailyView === dailyView;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+
+    if (btn.dataset.dailyView === 'week') {
+      btn.textContent = getDashboardWeekTitle();
+    }
+  });
+
+  return range;
+}
+
+function getCurrentWeekSleepTotal() {
+  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
+  const range = getDashboardWeekRange();
+
+  return sleep
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .reduce((total, item) => total + Number(item.hours || 0), 0);
+}
+
+function renderSleepSummary() {
+  const el = document.getElementById('sleepSummary');
+  if (!el) return;
+
+  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
+  const range = getDailyViewRange();
+  const todayTotal = sleep
+    .filter(item => item.date === today())
+    .reduce((total, item) => total + Number(item.hours || 0), 0);
+  const viewTotal = sleep
+    .filter(itemMatchesDailyView)
+    .reduce((total, item) => total + Number(item.hours || 0), 0);
+  const viewValue = range.targetMode === 'week'
+    ? `${viewTotal.toFixed(1)} / ${SLEEP_TARGET} saat`
+    : `${viewTotal.toFixed(1)} saat`;
+
+  el.innerHTML = `
+    <div class="daily-stat-line">
+      <span>Bugün</span>
+      <strong>${todayTotal.toFixed(1)} saat</strong>
+    </div>
+    <div class="daily-stat-line muted">
+      <span>${range.title}</span>
+      <strong>${viewValue}</strong>
+    </div>
+  `;
+}
+function renderSleepList() {
+  const list = document.getElementById('sleepList');
+  if (!list) return;
+
+  const range = getDailyViewRange();
+  const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const sleep = sorted
+    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
+    .filter(itemMatchesDailyView);
+
+  if (!sleep.length) {
+    list.innerHTML = `<div class="empty-state compact">${range.title} için uyku kaydı yok.</div>`;
+    return;
+  }
+
+  list.innerHTML = sleep.map(item => `
+    <div class="daily-row">
+      <div>
+        <div class="daily-row-title">${Number(item.hours).toFixed(1)} saat</div>
+        <div class="daily-row-meta">${item.date === today() ? 'Bugün' : formatDate(item.date)}</div>
+      </div>
+      <button onclick="deleteSleep(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
+    </div>
+  `).join('');
+}
+function getCurrentWeekWorkoutTotal() {
+  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
+  const range = getDashboardWeekRange();
+
+  return workouts
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .reduce((total, item) => total + Number(item.duration || 0), 0);
+}
+
+function renderWorkoutSummary() {
+  const el = document.getElementById('workoutSummary');
+  if (!el) return;
+
+  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
+  const range = getDailyViewRange();
+  const todayTotal = workouts
+    .filter(item => item.date === today())
+    .reduce((total, item) => total + Number(item.duration || 0), 0);
+  const viewTotal = workouts
+    .filter(itemMatchesDailyView)
+    .reduce((total, item) => total + Number(item.duration || 0), 0);
+  const viewValue = range.targetMode === 'week'
+    ? `${viewTotal} / ${WORKOUT_TARGET} dk`
+    : `${viewTotal} dk`;
+
+  el.innerHTML = `
+    <div class="daily-stat-line">
+      <span>Bugün</span>
+      <strong>${todayTotal} dk</strong>
+    </div>
+    <div class="daily-stat-line muted">
+      <span>${range.title}</span>
+      <strong>${viewValue}</strong>
+    </div>
+  `;
+}
+function renderWorkoutList() {
+  const list = document.getElementById('workoutList');
+  if (!list) return;
+
+  const range = getDailyViewRange();
+  const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const workouts = sorted
+    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
+    .filter(itemMatchesDailyView);
+
+  if (!workouts.length) {
+    list.innerHTML = `<div class="empty-state compact">${range.title} için antrenman kaydı yok.</div>`;
+    return;
+  }
+
+  list.innerHTML = workouts.map(item => `
+    <div class="daily-row">
+      <div>
+        <div class="daily-row-title">${item.type} · ${Number(item.duration)} dk</div>
+        <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
+      </div>
+      <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
+    </div>
+  `).join('');
+}
+function getWeeklyProgressData() {
+  const weeks = {};
+
+  (state.sleep || []).forEach(item => {
+    const range = getWeekRange(item.date);
+    const key = `${range.start}_${range.end}`;
+
+    if (!weeks[key]) {
+      weeks[key] = {
+        start: range.start,
+        end: range.end,
+        sleep: 0,
+        workouts: 0,
+      };
+    }
+
+    weeks[key].sleep += Number(item.hours || 0);
+  });
+
+  (state.workouts || []).forEach(item => {
+    const range = getWeekRange(item.date);
+    const key = `${range.start}_${range.end}`;
+
+    if (!weeks[key]) {
+      weeks[key] = {
+        start: range.start,
+        end: range.end,
+        sleep: 0,
+        workouts: 0,
+      };
+    }
+
+    weeks[key].workouts += Number(item.duration || 0);
+  });
+
+  return Object.values(weeks)
+    .sort((a, b) => a.start.localeCompare(b.start));
+}
+
+function getWorkoutCategoriesForRange(range) {
+  const categories = {};
+
+  (state.workouts || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      const category = getWorkoutCategoryFromNote(item.note, item.type);
+      categories[category] = (categories[category] || 0) + Number(item.duration || 0);
+    });
+
+  return Object.entries(categories)
+    .sort((a, b) => b[1] - a[1]);
+}
+
+function getCurrentWeekWorkoutCategories() {
+  return getWorkoutCategoriesForRange(getDashboardWeekRange());
+}
+
+function getWeekDailyTotals(range) {
+  const sleepByDay = {};
+  const workoutByDay = {};
+
+  (state.sleep || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
+    });
+
+  (state.workouts || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      if (!workoutByDay[item.date]) {
+        workoutByDay[item.date] = {
+          date: item.date,
+          duration: 0,
+          categories: {},
+        };
+      }
+
+      const category = getWorkoutCategoryFromNote(item.note, item.type);
+      workoutByDay[item.date].duration += Number(item.duration || 0);
+      workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
+    });
+
+  return {
+    sleep: Object.entries(sleepByDay)
+      .map(([date, hours]) => ({ date, hours: Number(hours.toFixed(1)) }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    workouts: Object.values(workoutByDay)
+      .sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+function getWeekInsights(current, range) {
+  const totals = getWeekDailyTotals(range);
+  const sleepAvg = current.sleep ? current.sleep / 7 : 0;
+  const bestSleep = totals.sleep.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
+  const bestWorkout = totals.workouts.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
+  const categories = getWorkoutCategoriesForRange(range);
+  const topCategory = categories[0];
+
+  return {
+    sleepAvg,
+    bestSleep,
+    workoutDays: totals.workouts.length,
+    bestWorkout,
+    topCategory,
+  };
+}
+
+function renderProgressSummary() {
+  const el = document.getElementById('progressSummary');
+  if (!el) return;
+
+  const weekly = getWeeklyProgressData();
+  const current = weekly[weekly.length - 1] || { sleep: 0, workouts: 0 };
+  const range = current.start ? current : getDashboardWeekRange();
+  const prev = weekly[weekly.length - 2];
+  const measurements = getSortedMeasurements();
+  const first = measurements[0];
+  const last = measurements[measurements.length - 1];
+  const previousMeasure = measurements[measurements.length - 2];
+  const waistMeasurements = getWaistMeasurements();
+  const firstWaist = waistMeasurements[0];
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+  const previousWaist = waistMeasurements[waistMeasurements.length - 2];
+
+  const sleepPct = Math.min(100, Math.round((current.sleep / SLEEP_TARGET) * 100));
+  const workoutPct = Math.min(100, Math.round((current.workouts / WORKOUT_TARGET) * 100));
+  const sleepDiff = prev ? current.sleep - prev.sleep : 0;
+  const workoutDiff = prev ? current.workouts - prev.workouts : 0;
+  const weightDiff = first && last ? last.weight - first.weight : 0;
+  const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
+  const waistDiff = firstWaist && lastWaist ? lastWaist.waist - firstWaist.waist : null;
+  const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
+  const categories = getWorkoutCategoriesForRange(range);
+  const categoryText = categories.length
+    ? categories.map(([category, minutes]) => `${category}: ${minutes} dk`).join(' · ')
+    : 'Bu hafta kategori verisi yok';
+  const insights = getWeekInsights(current, range);
+  const topCategoryLabel = insights.topCategory
+    ? `${insights.topCategory[0]} · ${insights.topCategory[1]} dk`
+    : 'Veri bekleniyor';
+  const bestSleepLabel = insights.bestSleep
+    ? `${formatDate(insights.bestSleep.date)} · ${insights.bestSleep.hours} saat`
+    : 'Veri bekleniyor';
+  const bestWorkoutLabel = insights.bestWorkout
+    ? `${formatDate(insights.bestWorkout.date)} · ${insights.bestWorkout.duration} dk`
+    : 'Veri bekleniyor';
+
+  el.innerHTML = `
+    <div class="progress-grid">
+      <div class="progress-metric-card">
+        <span>Uyku</span>
+        <strong>${current.sleep.toFixed(1)} saat</strong>
+        <div class="metric-track"><i style="width:${sleepPct}%"></i></div>
+        <small>${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / geçen hafta</small>
+      </div>
+
+      <div class="progress-metric-card">
+        <span>Antrenman</span>
+        <strong>${current.workouts} dk</strong>
+        <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
+        <small>${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk / geçen hafta</small>
+        <small>${categoryText}</small>
+      </div>
+
+      <div class="progress-metric-card">
+        <span>Kilo</span>
+        <strong>${last ? `${last.weight} kg` : '—'}</strong>
+        <small>Toplam: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg · Son: ${lastWeightDiff > 0 ? '+' : ''}${lastWeightDiff.toFixed(1)} kg</small>
+      </div>
+
+      <div class="progress-metric-card">
+        <span>Bel</span>
+        <strong>${lastWaist ? `${lastWaist.waist} cm` : '—'}</strong>
+        <small>${waistDiff === null ? 'Her 4. tartıda takip edilir' : `Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff === null ? '—' : `${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm`}`}</small>
+      </div>
+    </div>
+
+    <div class="progress-insight-grid">
+      <div class="progress-insight-card">
+        <span>Uyku ortalaması</span>
+        <strong>${insights.sleepAvg.toFixed(1)} saat/gün</strong>
+        <small>Haftalık hedef: 7 saat/gün</small>
+      </div>
+      <div class="progress-insight-card">
+        <span>En iyi uyku</span>
+        <strong>${bestSleepLabel}</strong>
+        <small>Haftanın en yüksek uyku kaydı</small>
+      </div>
+      <div class="progress-insight-card">
+        <span>Aktif gün</span>
+        <strong>${insights.workoutDays} gün</strong>
+        <small>Bu hafta antrenman yapılan gün</small>
+      </div>
+      <div class="progress-insight-card">
+        <span>Öne çıkan kategori</span>
+        <strong>${topCategoryLabel}</strong>
+        <small>${bestWorkoutLabel}</small>
+      </div>
+    </div>
+  `;
+}
+function renderProgressCharts() {
+  const weekly = getWeeklyProgressData();
+
+  const latestWeek = weekly[weekly.length - 1];
+
+  const sleepWrap = document.getElementById('sleepBars');
+  const workoutWrap = document.getElementById('workoutBars');
+
+  if (!latestWeek) {
+    setEmptyState(
+      sleepWrap,
+      'Uyku grafiği için kayıt bekleniyor',
+      'İlk uyku kaydını eklediğinde haftalık uyku düzenin burada görünür.',
+      'Uyku Ekle',
+      2
+    );
+    setEmptyState(
+      workoutWrap,
+      'Antrenman grafiği için kayıt bekleniyor',
+      'İlk antrenmanı eklediğinde süre ve yoğunluk dağılımı burada görünür.',
+      'Antrenman Ekle',
+      2
+    );
+    return;
+  }
+
+  if (sleepWrap) {
+    const sleepData = getWeekDailyTotals(latestWeek).sleep;
+    const sleepAvg = latestWeek.sleep ? latestWeek.sleep / 7 : 0;
+
+    if (!sleepData.length) {
+      setEmptyState(
+        sleepWrap,
+        'Bu hafta uyku kaydı yok',
+        'Bir uyku kaydı eklediğinde günlük uyku düzenin burada grafik olarak görünecek.',
+        'Uyku Ekle',
+        2
+      );
+    } else {
+    sleepWrap.innerHTML = `
+      <div class="chart-mini-head">
+        <div>
+          <strong>Günlük uyku dağılımı</strong>
+          <span>Haftalık ortalama ${sleepAvg.toFixed(1)} saat/gün</span>
+        </div>
+        <em>${latestWeek.sleep.toFixed(1)} / ${SLEEP_TARGET} saat</em>
+      </div>
+      <div class="bar-chart sleep-chart">
+        ${sleepData.map(item => {
+          const h = Math.min(140, Math.max(18, item.hours * 14));
+
+          return `
+            <div class="bar-item">
+              <div class="bar-fill sleep" style="height:${h}px"></div>
+              <div class="bar-label">
+                ${new Date(item.date)
+                  .toLocaleDateString('tr-TR', { weekday: 'short' })}
+              </div>
+              <div class="bar-value">${item.hours} saat</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    }
+  }
+
+  if (workoutWrap) {
+    const workoutData = getWeekDailyTotals(latestWeek).workouts;
+    const categories = getWorkoutCategoriesForRange(latestWeek);
+    const categoryText = categories.length
+      ? categories.map(([category, duration]) => `${category}: ${duration} dk`).join(' · ')
+      : 'Kategori verisi bekleniyor';
+
+    if (!workoutData.length) {
+      setEmptyState(
+        workoutWrap,
+        'Bu hafta antrenman kaydı yok',
+        'Antrenman eklediğinde süre, kategori ve haftalık dağılım burada görünür.',
+        'Antrenman Ekle',
+        2
+      );
+    } else {
+    workoutWrap.innerHTML = `
+      <div class="chart-mini-head">
+        <div>
+          <strong>Günlük antrenman dağılımı</strong>
+          <span>${categoryText}</span>
+        </div>
+        <em>${latestWeek.workouts} / ${WORKOUT_TARGET} dk</em>
+      </div>
+      <div class="bar-chart workout-chart">
+        ${workoutData.map(item => {
+          const h = Math.min(140, Math.max(18, item.duration * 1.35));
+          const category = Object.entries(item.categories)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, duration]) => `${name}: ${duration} dk`)
+            .join(' · ');
+
+          return `
+            <div class="bar-item">
+              <div class="bar-fill workout" style="height:${h}px" title="${category}"></div>
+              <div class="bar-label">
+                ${new Date(item.date)
+                  .toLocaleDateString('tr-TR', { weekday: 'short' })}
+              </div>
+              <div class="bar-value">${item.duration} dk</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    }
+  }
+}
+function renderProgressList() {
+  const el = document.getElementById('progressList');
+  if (!el) return;
+
+  const data = getWeeklyProgressData()
+    .sort((a, b) => b.start.localeCompare(a.start));
+
+  if (!data.length) {
+    setEmptyState(
+      el,
+      'Haftalık rapor henüz yok',
+      'Uyku ve antrenman kayıtları geldikçe haftalık özetler burada görünür.'
+    );
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="weekly-report-list">
+      ${data.map(item => {
+        const sleepPct = Math.min(100, Math.round((item.sleep / SLEEP_TARGET) * 100));
+        const workoutPct = Math.min(100, Math.round((item.workouts / WORKOUT_TARGET) * 100));
+        const isStrong = sleepPct >= 90 && workoutPct >= 90;
+        const isLight = sleepPct < 65 || workoutPct < 65;
+        const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
+
+        return `
+          <div class="weekly-report-row">
+            <div>
+              <strong>${formatDate(item.start)} - ${formatDate(item.end)}</strong>
+              <span>${status}</span>
+            </div>
+            <div class="weekly-report-metrics">
+              <div>
+                <span>Uyku</span>
+                <strong>${item.sleep.toFixed(1)} saat</strong>
+                <i><b style="width:${sleepPct}%"></b></i>
+              </div>
+              <div>
+                <span>Antrenman</span>
+                <strong>${item.workouts} dk</strong>
+                <i><b style="width:${workoutPct}%"></b></i>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderSettings() {
+  normalizeProfileState();
+
+  const nameEl = document.getElementById('settingsName');
+  const startEl = document.getElementById('settingsStartDate');
+  const emailEl = document.getElementById('settingsEmail');
+  const startWeightEl = document.getElementById('settingsStartWeight');
+  const currentWeightEl = document.getElementById('settingsCurrentWeight');
+  const currentWaistEl = document.getElementById('settingsCurrentWaist');
+  const firstGoalEl = document.getElementById('settingsFirstGoal');
+  const finalGoalEl = document.getElementById('settingsFinalGoal');
+  const syncEl = document.getElementById('settingsSyncState');
+  const profileThemeToggle = document.getElementById('profileThemeToggle');
+  const measureReminderToggle = document.getElementById('measureReminderToggle');
+  const dailyReminderToggle = document.getElementById('dailyReminderToggle');
+
+  const measurements = getSortedMeasurements();
+  const firstMeasurement = measurements[0];
+  const lastMeasurement = measurements[measurements.length - 1];
+  const lastWaistMeasurement = getLatestWaistMeasurement();
+  const goals = (state.milestones || [])
+    .map(Number)
+    .filter(value => Number.isFinite(value));
+  const firstGoal = goals[0];
+  const finalGoal = Number.isFinite(Number(state.goalWeight))
+    ? Number(state.goalWeight)
+    : goals[goals.length - 1];
+
+  if (nameEl) nameEl.textContent = state.name || 'Sporcu';
+  if (startEl) startEl.textContent = formatDate(state.startDate || START_DATE);
+  if (emailEl) emailEl.textContent = state.userEmail || '—';
+  if (startWeightEl) {
+    const startWeight = state.startWeight ?? firstMeasurement?.weight;
+    startWeightEl.textContent = Number.isFinite(Number(startWeight)) ? `${Number(startWeight).toFixed(1)} kg` : '— kg';
+  }
+  if (currentWeightEl) {
+    currentWeightEl.textContent = lastMeasurement?.weight ? `${Number(lastMeasurement.weight).toFixed(1)} kg` : '— kg';
+  }
+  if (currentWaistEl) {
+    currentWaistEl.textContent = lastWaistMeasurement?.waist ? `${Number(lastWaistMeasurement.waist).toFixed(1)} cm` : 'Aylık takip';
+  }
+  if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
+  if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
+  if (syncEl) syncEl.textContent = navigator.onLine ? 'Cloud senkron aktif' : 'Çevrimdışı kayıt';
+  if (profileThemeToggle) profileThemeToggle.checked = state.theme === 'dark';
+  if (measureReminderToggle) measureReminderToggle.checked = Boolean(state.preferences?.measureReminder);
+  if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
+}
+
+function renderAll() {
+  normalizeProfileState();
+
+  [
+    renderHero,
+    renderMoti,
+    renderDashboardWeekLabel,
+    renderDashboardGoalCard,
+    renderStats,
+    renderMeasurementChart,
+    renderWeightSummary,
+    renderWeightList,
+    renderNotes,
+    renderDailyViewControls,
+    renderSleepSummary,
+    renderSleepList,
+    renderWorkoutSummary,
+    renderWorkoutList,
+    renderProgressSummary,
+    renderProgressCharts,
+    renderProgressList,
+    renderSettings,
+    syncMeasureFormDate,
+    applyTheme,
+    clearInitialLoadingStatus,
+  ].forEach(renderFn => {
+    try {
+      renderFn();
+    } catch (error) {
+      console.error('Render hatası:', renderFn.name, error);
+    }
+  });
+}
+
+// â”€â”€ SUPABASE DATA â”€â”€
+async function loadMeasurementsFromSupabase() {
+  const localMeasurements = [...(state.measurements || [])];
+  const { data, error } = await db
+    .from('measurements')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Supabase load hatası:', error);
+    setStatus('Cloud veri yüklenemedi', 'error');
+    return;
+  }
+
+  const cloudMeasurements = (data || []).map(item => ({
+    date: item.date,
+    weight: parseFloat(item.weight),
+    waist: parseOptionalNumber(item.waist),
+  })).filter(item => !isRecordDeleted('measurements', item));
+
+  if (!cloudMeasurements.length && localMeasurements.length) {
+    console.warn('Cloud ölçüm boş döndü; yerel başlangıç ölçümü korunuyor.');
+    setStatus('Hazır', 'ok');
+    return;
+  }
+
+  const localOnlyMeasurements = localMeasurements.filter(local =>
+    !isRecordDeleted('measurements', local) &&
+    !cloudMeasurements.some(cloud => cloud.date === local.date)
+  );
+
+  state.measurements = [...cloudMeasurements, ...localOnlyMeasurements]
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  stateSave();
+  renderAll();
+  console.log('Supabase verileri yüklendi:', data);
+}
+
+async function loadSleepFromSupabase() {
+  const localSleep = Array.isArray(state.sleep) ? [...state.sleep] : [];
+
+  const { data, error } = await db
+    .from('sleep_logs')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Sleep load hatası:', error);
+    setStatus('Uyku verileri yüklenemedi', 'error');
+    return;
+  }
+
+  if (!(data || []).length && localSleep.length) {
+    console.warn('Cloud uyku boş döndü; yerel uyku kayıtları korunuyor.');
+    setStatus('Hazır', 'ok');
+    return;
+  }
+
+  const cloudSleep = (data || []).map(item => ({
+    id: item.id,
+    date: item.date,
+    hours: parseFloat(item.hours),
+  })).filter(item => !isRecordDeleted('sleep', item));
+
+  const localOnlySleep = localSleep.filter(local =>
+    !isRecordDeleted('sleep', local) &&
+    !cloudSleep.some(cloud => cloud.date === local.date)
+  );
+
+  state.sleep = [...cloudSleep, ...localOnlySleep]
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  stateSave();
+  renderAll();
+}
+
+async function loadWorkoutsFromSupabase() {
+  const localWorkouts = Array.isArray(state.workouts) ? [...state.workouts] : [];
+
+  const { data, error } = await db
+    .from('workout_logs')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Workout load hatası:', error);
+    setStatus('Antrenman verileri yüklenemedi', 'error');
+    return;
+  }
+
+  const cloudWorkouts = (data || []).map(item => ({
+    id: item.id,
+    date: item.date,
+    type: item.type,
+    duration: Number(item.duration),
+    note: item.note || '',
+  })).filter(item => !isRecordDeleted('workouts', item));
+
+  const localOnlyWorkouts = localWorkouts.filter(local =>
+    !isRecordDeleted('workouts', local) &&
+    !isCloudRecordId(local.id) &&
+    !cloudWorkouts.some(cloud => cloud.id === local.id)
+  );
+
+  state.workouts = [...cloudWorkouts, ...localOnlyWorkouts]
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  stateSave();
+  renderAll();
+}
+
+async function loadNotesFromSupabase() {
+  const localNotes = Array.isArray(state.notes) ? [...state.notes] : [];
+
+  const { data, error } = await db
+    .from('notes')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Notes load hatası:', error);
+    setStatus('Notlar yüklenemedi', 'error');
+    return;
+  }
+
+  const cloudNotes = (data || []).map(item => ({
+    id: item.id,
+    date: item.date,
+    text: item.text,
+  })).filter(item => !isRecordDeleted('notes', item));
+
+  const localOnlyNotes = localNotes.filter(local =>
+    !isRecordDeleted('notes', local) &&
+    !isCloudRecordId(local.id) &&
+    !cloudNotes.some(cloud => cloud.id === local.id)
+  );
+
+  state.notes = [...cloudNotes, ...localOnlyNotes]
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  stateSave();
+  renderAll();
+}
+
+async function loadAllCloudData({ force = false } = {}) {
+  if (!force && !state.onboarded) return [];
+
+  const results = await Promise.allSettled([
+    loadMeasurementsFromSupabase(),
+    loadSleepFromSupabase(),
+    loadWorkoutsFromSupabase(),
+    loadNotesFromSupabase(),
+  ]);
+
+  recoverOnboardingFromData();
+  normalizeProfileState();
+  stateSave();
+  renderAll();
+
+  return results;
+}
+
+async function saveMeasurementToSupabase(payload) {
+  const { data: existingRows, error: lookupError } = await db
+    .from('measurements')
+    .select('id')
+    .eq('user_id', payload.user_id)
+    .eq('date', payload.date)
+    .limit(1);
+
+  if (lookupError) return { error: lookupError };
+
+  if (existingRows && existingRows.length) {
+    return db
+      .from('measurements')
+      .update({
+        weight: payload.weight,
+        waist: payload.waist,
+      })
+      .eq('id', existingRows[0].id);
+  }
+
+  return db
+    .from('measurements')
+    .insert([payload]);
+}
+
+function saveMeasurementLocally(payload) {
+  if (!Array.isArray(state.measurements)) state.measurements = [];
+  unmarkRecordDeleted('measurements', payload);
+
+  const nextMeasurement = {
+    date: payload.date,
+    weight: payload.weight,
+    waist: payload.waist,
+  };
+
+  const existingIndex = state.measurements.findIndex(item => item.date === payload.date);
+
+  if (existingIndex >= 0) {
+    state.measurements[existingIndex] = {
+      ...state.measurements[existingIndex],
+      ...nextMeasurement,
+    };
+  } else {
+    state.measurements.push(nextMeasurement);
+  }
+
+  state.measurements = getSortedMeasurements();
+  stateSave();
+  renderAll();
+}
+
+async function saveSleepToSupabase(payload) {
+  const { data: existingRows, error: lookupError } = await db
+    .from('sleep_logs')
+    .select('id')
+    .eq('user_id', payload.user_id)
+    .eq('date', payload.date)
+    .limit(1);
+
+  if (lookupError) return { error: lookupError };
+
+  if (existingRows && existingRows.length) {
+    return db
+      .from('sleep_logs')
+      .update({ hours: payload.hours })
+      .eq('id', existingRows[0].id);
+  }
+
+  return db
+    .from('sleep_logs')
+    .insert([payload]);
+}
+
+function saveSleepLocally(payload) {
+  if (!Array.isArray(state.sleep)) state.sleep = [];
+  unmarkRecordDeleted('sleep', payload);
+
+  const nextSleep = {
+    id: payload.id || `local-sleep-${payload.date}`,
+    date: payload.date,
+    hours: payload.hours,
+  };
+
+  const existingIndex = state.sleep.findIndex(item => item.date === payload.date);
+
+  if (existingIndex >= 0) {
+    state.sleep[existingIndex] = {
+      ...state.sleep[existingIndex],
+      ...nextSleep,
+    };
+  } else {
+    state.sleep.push(nextSleep);
+  }
+
+  state.sleep = [...state.sleep].sort((a, b) => b.date.localeCompare(a.date));
+  stateSave();
+  renderAll();
+}
+
+function saveWorkoutLocally(payload) {
+  if (!Array.isArray(state.workouts)) state.workouts = [];
+  unmarkRecordDeleted('workouts', payload);
+
+  state.workouts.push({
+    id: payload.id || `local-workout-${Date.now()}`,
+    date: payload.date,
+    type: payload.type,
+    duration: payload.duration,
+    note: payload.note || '',
+  });
+
+  state.workouts = [...state.workouts].sort((a, b) => b.date.localeCompare(a.date));
+  stateSave();
+  renderAll();
+}
+
+function saveNoteLocally(payload) {
+  if (!Array.isArray(state.notes)) state.notes = [];
+  unmarkRecordDeleted('notes', payload);
+
+  state.notes.push({
+    id: payload.id || `local-note-${Date.now()}`,
+    date: payload.date,
+    text: payload.text,
+  });
+
+  state.notes = [...state.notes].sort((a, b) => b.date.localeCompare(a.date));
+  stateSave();
+  renderAll();
+}
+
+// â”€â”€ ACTIONS â”€â”€
+async function saveMeasurementFromForm() {
+  const dateInput = document.getElementById('measureDateInput');
+  const weightInput = document.getElementById('measureWeightInput');
+  const waistInput = document.getElementById('measureWaistInput');
+
+  if (!dateInput || !weightInput || !waistInput) return;
+
+  const date = dateInput.value || getSuggestedMeasureDate();
+  const weight = parseLocaleNumber(weightInput.value);
+  const waistRaw = waistInput.value.trim();
+  const isWaistWeek = shouldTrackWaist(date);
+  const waist = isWaistWeek && waistRaw ? parseLocaleNumber(waistRaw) : null;
+
+  if (!date || Number.isNaN(weight) || weight <= 0) {
+    alert('Geçerli bir kilo gir.');
+    return;
+  }
+
+  if (date < START_DATE) {
+    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
+    return;
+  }
+
+  if (waist !== null && (Number.isNaN(waist) || waist <= 0)) {
+    alert('Geçerli bir bel ölçümü gir.');
+    return;
+  }
+
+  if (isWaistWeek && waist === null) {
+    alert(getMeasurementSequenceNumber(date) === 1
+      ? 'Başlangıç tartısında bel ölçümünü de ekle.'
+      : 'Bu 4. tartı günü. Lütfen bel ölçümünü de ekle.');
+    return;
+  }
+
+  if (new Date(date).getDay() !== WEEKLY_MEASURE_DAY) {
+    const ok = confirm('Ölçümler pazar günü alınacak şekilde planlandı. Yine de bu tarihe kayıt eklemek ister misin?');
+    if (!ok) return;
+  }
+
+  const payload = {
+    user_id: getUserId(),
+    date,
+    weight: parseFloat(weight.toFixed(1)),
+    waist: waist === null ? null : parseFloat(waist.toFixed(1)),
+  };
+
+  saveMeasurementLocally(payload);
+  setStatus('Ölçüm kaydedildi ✓', 'ok');
+
+  weightInput.value = '';
+  waistInput.value = '';
+  dateInput.value = getSuggestedMeasureDate();
+  updateWaistHint();
+
+  const { error } = await saveMeasurementToSupabase(payload);
+
+  if (error) {
+    console.error('Measurement save error:', error);
+    setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+  } else {
+    await loadMeasurementsFromSupabase();
+  }
+}
+
+async function addMeasurement() {
+  if (document.getElementById('measureDateInput')) {
+    await saveMeasurementFromForm();
+    return;
+  }
+
+  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
+  if (!dateInput) return;
+
+  const date = parseDisplayDate(dateInput);
+  if (!date) {
+    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
+    return;
+  }
+
+  if (date < START_DATE) {
+    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
+    return;
+  }
+
+  if (!Array.isArray(state.measurements)) state.measurements = [];
+
+  const alreadyExists = state.measurements.some(item => item.date === date);
+
+  if (alreadyExists) {
+    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
+    return;
+  }
+
+  const weightInput = prompt('Kilonu gir (kg):');
+  const weight = parseLocaleNumber(weightInput);
+  if (!weightInput || Number.isNaN(weight)) return;
+
+  const waistInput = prompt(
+    shouldTrackWaist(date)
+      ? 'Bu 4. tartı günü. Bel ölçünü gir (cm):'
+      : 'Bel ölçünü gir (cm, opsiyonel):'
+  );
+  const waist = waistInput ? parseLocaleNumber(waistInput) : null;
+  if (shouldTrackWaist(date) && (!waistInput || Number.isNaN(waist))) return;
+  if (waistInput && Number.isNaN(waist)) return;
+
+  const measurement = {
+    date,
+    weight: parseFloat(weight.toFixed(1)),
+    waist: waistInput ? parseFloat(waist.toFixed(1)) : null,
+    user_id: getUserId(),
+  };
+
+  saveMeasurementLocally(measurement);
+  setStatus('Ölçüm eklendi ✓', 'ok');
+
+  const { error } = await saveMeasurementToSupabase(measurement);
+
+  if (error) {
+    console.error('Supabase insert hatası:', error);
+    setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+  } else {
+    await loadMeasurementsFromSupabase();
+  }
+}
+
+async function deleteWeight(sortedIdx) {
+  if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
+
+  const sorted = [...(state.measurements || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const target = sorted[sortedIdx];
+
+  if (!target) return;
+
+  markRecordDeleted('measurements', target);
+  state.measurements = (state.measurements || []).filter((_, index) => index !== target.originalIndex);
+  stateSave();
+  renderAll();
+  setStatus('Ölçüm silindi ✓', 'ok');
+
+  const { error } = await db
+    .from('measurements')
+    .delete()
+    .eq('user_id', getUserId())
+    .eq('date', target.date);
+
+  if (error) {
+    console.error('Supabase delete hatası:', error);
+    setStatus('Ölçüm cihazdan silindi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+}
+
+async function deleteNote(index) {
+  if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
+
+  const target = state.notes[index];
+  if (!target) return;
+
+  markRecordDeleted('notes', target);
+  state.notes = (state.notes || []).filter((_, itemIndex) => itemIndex !== index);
+  stateSave();
+  renderAll();
+  setStatus('Not silindi ✓', 'ok');
+
+  if (!isCloudRecordId(target.id)) return;
+
+  const { error } = await db
+    .from('notes')
+    .delete()
+    .eq('id', target.id);
+
+  if (error) {
+    console.error('Note silme hatası:', error);
+    setStatus('Not cihazdan silindi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+}
+
+async function deleteSleep(sortedIdx) {
+  if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
+
+  const sorted = [...(state.sleep || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const target = sorted[sortedIdx];
+  if (!target) return;
+
+  markRecordDeleted('sleep', target);
+  state.sleep = (state.sleep || []).filter((_, index) => index !== target.originalIndex);
+  stateSave();
+  renderAll();
+  setStatus('Uyku kaydı silindi ✓', 'ok');
+
+  if (!isCloudRecordId(target.id)) return;
+
+  const { error } = await db
+    .from('sleep_logs')
+    .delete()
+    .eq('id', target.id);
+
+  if (error) {
+    console.error('Sleep silme hatası:', error);
+    setStatus('Uyku cihazdan silindi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+}
+
+async function addNote() {
+  const noteInput = document.getElementById('noteInput');
+  const text = noteInput ? noteInput.value : prompt('Not gir:');
+  if (!text || !text.trim()) return;
+
+  const payload = {
+    user_id: getUserId(),
+    date: today(),
+    text: text.trim(),
+  };
+
+  saveNoteLocally(payload);
+  setStatus('Not eklendi ✓', 'ok');
+  if (noteInput) noteInput.value = '';
+
+  const { error } = await db
+    .from('notes')
+    .insert([payload]);
+
+  if (error) {
+    console.error('Note kayıt hatası:', error);
+    setStatus('Not yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+
+  await loadNotesFromSupabase();
+}
+
+async function saveSleep() {
+  const dateInput = document.getElementById('sleepDateInput');
+  const hourInput = document.getElementById('sleepInput');
+
+  if (!dateInput || !hourInput) return;
+
+  const date = dateInput.value || today();
+  const hours = parseLocaleNumber(hourInput.value);
+
+  if (!hours || hours <= 0) {
+    alert('Geçerli bir uyku saati gir');
+    return;
+  }
+
+  const payload = {
+    user_id: getUserId(),
+    date,
+    hours: parseFloat(hours.toFixed(1)),
+  };
+
+  saveSleepLocally(payload);
+  setStatus('Uyku kaydedildi ✓', 'ok');
+  hourInput.value = '';
+  dateInput.value = today();
+
+  const { error } = await saveSleepToSupabase(payload);
+
+  if (error) {
+    console.error('Sleep kayıt hatası:', error);
+    setStatus('Uyku yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+
+  await loadSleepFromSupabase();
+}
+
+async function saveWorkout() {
+  const dateInput = document.getElementById('workoutDateInput');
+  const categoryInput = document.getElementById('workoutCategoryInput');
+  const typeInput = document.getElementById('workoutTypeInput');
+  const durationInput = document.getElementById('workoutDurationInput');
+  const intensityInput = document.getElementById('workoutIntensityInput');
+  const noteInput = document.getElementById('workoutNoteInput');
+
+  if (!dateInput || !typeInput || !durationInput) return;
+
+  const date = dateInput.value || today();
+  const type = typeInput.value;
+  const category = categoryInput ? categoryInput.value : getWorkoutCategory(type);
+  const intensity = intensityInput ? intensityInput.value : 'Orta';
+  const duration = parseInt(durationInput.value, 10);
+  const freeNote = noteInput ? noteInput.value.trim() : '';
+  const note = [`Kategori: ${category}`, `Zorluk: ${intensity}`, freeNote]
+    .filter(Boolean)
+    .join(' · ');
+
+  if (!duration || duration <= 0) {
+    alert('Geçerli bir antrenman süresi gir');
+    return;
+  }
+
+  const payload = {
+    user_id: getUserId(),
+    date,
+    type,
+    duration,
+    note,
+  };
+
+  saveWorkoutLocally(payload);
+  setStatus('Antrenman kaydedildi ✓', 'ok');
+  durationInput.value = '';
+  if (noteInput) noteInput.value = '';
+  dateInput.value = today();
+
+  const { error } = await db
+    .from('workout_logs')
+    .insert([payload]);
+
+  if (error) {
+    console.error('Workout kayıt hatası:', error);
+    setStatus('Antrenman yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+
+  await loadWorkoutsFromSupabase();
+}
+
+async function deleteWorkout(sortedIdx) {
+  if (!confirm('Bu antrenman kaydını silmek istediğinden emin misin?')) return;
+
+  const sorted = [...(state.workouts || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const target = sorted[sortedIdx];
+  if (!target) return;
+
+  markRecordDeleted('workouts', target);
+  state.workouts = (state.workouts || []).filter((_, index) => index !== target.originalIndex);
+  stateSave();
+  renderAll();
+  setStatus('Antrenman kaydı silindi ✓', 'ok');
+
+  if (!isCloudRecordId(target.id)) return;
+
+  const { error } = await db
+    .from('workout_logs')
+    .delete()
+    .eq('id', target.id);
+
+  if (error) {
+    console.error('Workout silme hatası:', error);
+    setStatus('Antrenman cihazdan silindi - cloud izni kontrol edilecek', 'ok');
+    return;
+  }
+}
+
+function editName() {
+  const newName = prompt('İsmini gir:', state.name || '');
+  if (!newName) return;
+
+  state.name = newName.trim();
+  stateSave();
+  renderAll();
+  setStatus('İsim güncellendi ✓', 'ok');
+}
+
+function editGoals() {
+  const firstGoalCurrent = (state.milestones || [])[0] || '';
+  const finalGoalCurrent = state.goalWeight || '';
+  const firstMeasurement = getSortedMeasurements()[0];
+  const startWeightCurrent = state.startWeight ?? firstMeasurement?.weight ?? '';
+  const startWaistCurrent = state.startWaist ?? firstMeasurement?.waist ?? '';
+
+  const startWeightInput = prompt('Başlangıç kilonu gir (kg):', startWeightCurrent);
+  if (startWeightInput === null) return;
+
+  const startWaistInput = prompt('Başlangıç bel ölçünü gir (cm):', startWaistCurrent);
+  if (startWaistInput === null) return;
+
+  const firstGoalInput = prompt('İlk hedef kilonu gir (kg):', firstGoalCurrent);
+  if (firstGoalInput === null) return;
+
+  const finalGoalInput = prompt('Final hedef kilonu gir (kg):', finalGoalCurrent);
+  if (finalGoalInput === null) return;
+
+  const startWeight = parseLocaleNumber(startWeightInput);
+  const startWaist = parseLocaleNumber(startWaistInput);
+  const firstGoal = parseLocaleNumber(firstGoalInput);
+  const finalGoal = parseLocaleNumber(finalGoalInput);
+
+  if ([startWeight, startWaist, firstGoal, finalGoal].some(value => Number.isNaN(value))) {
+    alert('Lütfen tüm hedef alanlarına geçerli sayı gir.');
+    return;
+  }
+
+  state.startWeight = parseFloat(startWeight.toFixed(1));
+  state.startWaist = parseFloat(startWaist.toFixed(1));
+  state.goalWeight = parseFloat(finalGoal.toFixed(1));
+  state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
+
+  if (!state.measurements?.length) {
+    state.measurements = [{
+      date: state.startDate || START_DATE,
+      weight: state.startWeight,
+      waist: state.startWaist,
+    }];
+  } else {
+    const sorted = [...state.measurements].sort((a, b) => a.date.localeCompare(b.date));
+    sorted[0] = {
+      ...sorted[0],
+      weight: state.startWeight,
+      waist: state.startWaist,
+    };
+    state.measurements = sorted;
+  }
+
+  stateSave();
+  renderAll();
+  setStatus('Hedefler güncellendi ✓', 'ok');
+}
+
+function updatePreference(key, value) {
+  state.preferences = {
+    measureReminder: true,
+    dailyReminder: false,
+    ...(state.preferences || {}),
+    [key]: Boolean(value),
+  };
+  stateSave();
+  renderSettings();
+}
+
+function showAuth() {
+  if (document.getElementById('authModal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'authModal';
+  modal.className = 'onboarding-modal';
+  modal.innerHTML = `
+    <div class="onboarding-card auth-card">
+      <div class="onboarding-kicker">FitTracker hesabı</div>
+      <h2 id="authTitle">Giriş yap</h2>
+      <p id="authCopy">Web ve iPhone PWA aynı hesapla senkron çalışır.</p>
+
+      <div class="auth-tabs">
+        <button class="active" id="authSignInTab" type="button">Giriş</button>
+        <button id="authSignUpTab" type="button">Kayıt</button>
+      </div>
+
+      <div class="onboarding-grid single">
+        <label>
+          E-posta
+          <input id="authEmail" type="email" autocomplete="email" placeholder="ornek@mail.com" />
+        </label>
+        <label>
+          Şifre
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="En az 6 karakter" />
+        </label>
+      </div>
+
+      <button class="btn onboarding-submit" id="authSubmit">Giriş yap</button>
+      <button class="auth-secondary" id="authResetPassword" type="button">Şifremi unuttum</button>
+      <div class="auth-message" id="authMessage"></div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  document.getElementById('authSignInTab')?.addEventListener('click', () => setAuthMode('signIn'));
+  document.getElementById('authSignUpTab')?.addEventListener('click', () => setAuthMode('signUp'));
+  document.getElementById('authSubmit')?.addEventListener('click', submitAuth);
+  document.getElementById('authResetPassword')?.addEventListener('click', resetPassword);
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const signInTab = document.getElementById('authSignInTab');
+  const signUpTab = document.getElementById('authSignUpTab');
+  const title = document.getElementById('authTitle');
+  const copy = document.getElementById('authCopy');
+  const submit = document.getElementById('authSubmit');
+
+  signInTab?.classList.toggle('active', mode === 'signIn');
+  signUpTab?.classList.toggle('active', mode === 'signUp');
+
+  if (title) title.textContent = mode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur';
+  if (copy) copy.textContent = mode === 'signIn'
+    ? 'Web ve iPhone PWA aynı hesapla senkron çalışır.'
+    : 'Bir hesap oluştur, sonra iPhone’da aynı hesapla giriş yap.';
+  if (submit) submit.textContent = mode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur';
+}
+
+function setAuthMessage(message, isError = false) {
+  const el = document.getElementById('authMessage');
+  if (!el) return;
+  el.textContent = getFriendlyAuthMessage(message);
+  el.classList.toggle('error', isError);
+}
+
+function getFriendlyAuthMessage(message = '') {
+  const text = String(message);
+
+  if (/invalid login credentials/i.test(text)) {
+    return 'E-posta veya şifre hatalı. Daha önce kayıt olduysan tekrar kayıt olma; aynı bilgilerle giriş yapmayı dene veya şifre sıfırla.';
+  }
+
+  if (/email not confirmed/i.test(text)) {
+    return 'E-posta henüz onaylanmamış görünüyor. Gelen kutundaki doğrulama linkine tıkla, sonra giriş yap.';
+  }
+
+  if (/user already registered|already registered/i.test(text)) {
+    return 'Bu e-posta ile hesap zaten var. Kayıt yerine Giriş sekmesini kullan.';
+  }
+
+  if (/password/i.test(text) && /6|six|short/i.test(text)) {
+    return 'Şifre en az 6 karakter olmalı.';
+  }
+
+  return text;
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail')?.value.trim();
+  const password = document.getElementById('authPassword')?.value || '';
+
+  if (!email || password.length < 6) {
+    setAuthMessage('E-posta ve en az 6 karakterli şifre gir.', true);
+    return;
+  }
+
+  setAuthMessage('İşleniyor...');
+
+  const result = authMode === 'signIn'
+    ? await db.auth.signInWithPassword({ email, password })
+    : await db.auth.signUp({ email, password });
+
+  if (result.error) {
+    setAuthMessage(result.error.message, true);
+    return;
+  }
+
+  if (!result.data.session) {
+    setAuthMessage('Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutunu kontrol et.');
+    return;
+  }
+
+  await continueWithSession(result.data.session);
+}
+
+async function resetPassword() {
+  const email = document.getElementById('authEmail')?.value.trim();
+  if (!email) {
+    setAuthMessage('Şifre sıfırlamak için e-posta gir.', true);
+    return;
+  }
+
+  const { error } = await db.auth.resetPasswordForEmail(email);
+  setAuthMessage(error ? error.message : 'Şifre sıfırlama bağlantısı gönderildi.', Boolean(error));
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  state = {
+    ...state,
+    userId: '',
+    onboarded: false,
+    name: '',
+    measurements: [],
+    workouts: [],
+    notes: [],
+    sleep: [],
+    deletedRecords: {
+      measurements: [],
+      sleep: [],
+      workouts: [],
+      notes: [],
+    },
+  };
+  document.getElementById('authModal')?.remove();
+  document.getElementById('onboardingModal')?.remove();
+  renderAll();
+  showAuth();
+}
+
+async function continueWithSession(session) {
+  if (!session?.user?.id) {
+    showAuth();
+    return;
+  }
+
+  state.userId = session.user.id;
+  state.userEmail = session.user.email || state.userEmail || '';
+  stateLoad();
+  state.userId = session.user.id;
+  state.userEmail = session.user.email || state.userEmail || '';
+  state.name = getSessionDisplayName(session);
+  stateSave();
+  document.getElementById('authModal')?.remove();
+
+  renderAll();
+  updateOnlineStatus();
+
+  setStatus('Veriler yükleniyor...', '');
+  await loadAllCloudData({ force: true });
+
+  if (!state.onboarded && !hasTrackedData()) {
+    setStatus('Başlangıç kurulumu bekleniyor', '');
+    showOnboarding();
+    return;
+  }
+
+  setStatus('Senkron aktif', 'ok');
+}
+
+function showOnboarding() {
+  if (document.getElementById('onboardingModal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'onboardingModal';
+  modal.className = 'onboarding-modal';
+  modal.innerHTML = `
+    <div class="onboarding-card">
+      <div class="onboarding-kicker">FitTracker kurulumu</div>
+      <h2>Başlangıç bilgilerini ekle</h2>
+      <p>Bu bilgiler hedef kartlarını, haftalık ölçüm akışını ve ilerleme grafiklerini kişiselleştirir.</p>
+
+      <div class="onboarding-grid">
+        <label>
+          İsim
+          <input id="onboardName" type="text" placeholder="Adın" />
+        </label>
+        <label>
+          Başlangıç tarihi
+          <input id="onboardStartDate" type="date" min="${START_DATE}" value="${START_DATE}" />
+        </label>
+        <label>
+          Başlangıç kilosu
+          <input id="onboardStartWeight" type="number" step="0.1" placeholder="kg" />
+        </label>
+        <label>
+          Başlangıç bel ölçümü
+          <input id="onboardStartWaist" type="number" step="0.1" placeholder="cm" />
+        </label>
+        <label>
+          İlk hedef kilo
+          <input id="onboardFirstGoal" type="number" step="0.1" placeholder="örn: 95" />
+        </label>
+        <label>
+          Ana hedef kilo
+          <input id="onboardGoalWeight" type="number" step="0.1" placeholder="örn: 85" />
+        </label>
+      </div>
+
+      <button class="btn onboarding-submit" id="onboardSubmit">Başla</button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  document.getElementById('onboardSubmit')?.addEventListener('click', completeOnboarding);
+}
+
+async function completeOnboarding() {
+  const name = document.getElementById('onboardName')?.value.trim();
+  const startDate = document.getElementById('onboardStartDate')?.value || START_DATE;
+  const startWeight = parseLocaleNumber(document.getElementById('onboardStartWeight')?.value || '');
+  const startWaist = parseLocaleNumber(document.getElementById('onboardStartWaist')?.value || '');
+  const firstGoal = parseLocaleNumber(document.getElementById('onboardFirstGoal')?.value || '');
+  const goalWeight = parseLocaleNumber(document.getElementById('onboardGoalWeight')?.value || '');
+
+  if (!name || Number.isNaN(startWeight) || Number.isNaN(startWaist) || Number.isNaN(firstGoal) || Number.isNaN(goalWeight)) {
+    alert('Lütfen tüm başlangıç bilgilerini doldur.');
+    return;
+  }
+
+  if (startDate < START_DATE) {
+    alert('Başlangıç tarihi 31 Mayıs 2026’dan önce olamaz.');
+    return;
+  }
+
+  state.onboarded = true;
+  state.name = name;
+  state.startDate = startDate;
+  state.startWeight = parseFloat(startWeight.toFixed(1));
+  state.startWaist = parseFloat(startWaist.toFixed(1));
+  state.goalWeight = parseFloat(goalWeight.toFixed(1));
+  state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
+  state.measurements = [{
+    date: startDate,
+    weight: state.startWeight,
+    waist: state.startWaist,
+  }];
+  state.sleep = [];
+  state.workouts = [];
+  state.notes = [];
+  state.weights = [];
+  state.nutrition = [];
+  state.deletedRecords = {
+    measurements: [],
+    sleep: [],
+    workouts: [],
+    notes: [],
+  };
+
+  stateSave();
+
+  const { error } = await db
+    .from('measurements')
+    .insert([{
+      user_id: getUserId(),
+      date: startDate,
+      weight: state.startWeight,
+      waist: state.startWaist,
+    }]);
+
+  if (error) {
+    console.warn('İlk ölçüm cloud kaydı yapılamadı:', error);
+    setStatus('Kurulum kaydedildi, cloud ölçüm daha sonra senkronlanacak', 'ok');
+  } else {
+    setStatus('Kurulum tamamlandı ✓', 'ok');
+  }
+
+  document.getElementById('onboardingModal')?.remove();
+  renderAll();
+  if (!error) {
+    await loadAllCloudData();
+  }
+}
+
+// â”€â”€ ONLINE STATUS â”€â”€
+function updateOnlineStatus() {
+  const notice = document.getElementById('offlineNotice');
+
+  if (navigator.onLine) {
+    if (notice) notice.classList.remove('visible');
+    setStatus('Çevrimiçi - cloud senkron aktif', 'ok');
+    setSyncDot('ok');
+  } else {
+    if (notice) notice.classList.add('visible');
+    setStatus('Çevrimdışı - veriler yerel olarak saklanır', 'error');
+    setSyncDot('err');
+  }
+}
+
+// â”€â”€ PWA INSTALL â”€â”€
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.classList.add('visible');
+});
+
+function installApp() {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(({ outcome }) => {
+    deferredPrompt = null;
+
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.classList.remove('visible');
+
+    if (outcome === 'accepted') {
+      setStatus('Uygulama yüklendi ✓', 'ok');
+    }
+  });
+}
+
+// â”€â”€ INIT â”€â”€
+function bindUiEvents() {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.onboarded) loadAllCloudData();
+  });
+
+  const sleepBtn = document.getElementById('saveSleepBtn');
+  if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
+
+  const sleepDateInput = document.getElementById('sleepDateInput');
+  if (sleepDateInput) sleepDateInput.value = today();
+
+  const workoutDateInput = document.getElementById('workoutDateInput');
+  if (workoutDateInput) workoutDateInput.value = today();
+
+  const measureDateInput = document.getElementById('measureDateInput');
+  if (measureDateInput) {
+    syncMeasureFormDate(true);
+    measureDateInput.addEventListener('change', updateWaistHint);
+  }
+
+  const workoutBtn = document.getElementById('saveWorkoutBtn');
+  if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
+
+  const measurementBtn = document.getElementById('saveMeasurementBtn');
+  if (measurementBtn) measurementBtn.addEventListener('click', saveMeasurementFromForm);
+
+  const workoutCategoryInput = document.getElementById('workoutCategoryInput');
+  if (workoutCategoryInput) {
+    workoutCategoryInput.addEventListener('change', updateWorkoutTypes);
+    updateWorkoutTypes();
+  }
+
+  document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('sleepInput');
+      if (input) input.value = btn.dataset.sleepHours;
+    });
+  });
+
+  document.querySelectorAll('[data-workout-minutes]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('workoutDurationInput');
+      if (input) input.value = btn.dataset.workoutMinutes;
+    });
+  });
+
+  document.querySelectorAll('[data-daily-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dailyView = btn.dataset.dailyView || 'week';
+      renderDailyViewControls();
+      renderSleepSummary();
+      renderSleepList();
+      renderWorkoutSummary();
+      renderWorkoutList();
+    });
+  });
+
+  const signOutBtn = document.getElementById('signOutBtn');
+  if (signOutBtn) signOutBtn.addEventListener('click', signOut);
+
+  window.addEventListener('focus', () => {
+    if (state.onboarded) loadAllCloudData();
+  });
+
+  const weightBtn = document.getElementById('openAddWeightBtn');
+  if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
+
+  const themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+  const profileThemeToggle = document.getElementById('profileThemeToggle');
+  if (profileThemeToggle) {
+    profileThemeToggle.addEventListener('change', event => {
+      state.theme = event.target.checked ? 'dark' : 'light';
+      applyTheme();
+      stateSave();
+      renderSettings();
+    });
+  }
+
+  const measureReminderToggle = document.getElementById('measureReminderToggle');
+  if (measureReminderToggle) {
+    measureReminderToggle.addEventListener('change', event => {
+      updatePreference('measureReminder', event.target.checked);
+    });
+  }
+
+  const dailyReminderToggle = document.getElementById('dailyReminderToggle');
+  if (dailyReminderToggle) {
+    dailyReminderToggle.addEventListener('change', event => {
+      updatePreference('dailyReminder', event.target.checked);
+    });
+  }
+
+  const editNameBtn = document.getElementById('editNameBtn');
+  if (editNameBtn) editNameBtn.addEventListener('click', editName);
+
+  const editGoalsBtn = document.getElementById('editGoalsBtn');
+  if (editGoalsBtn) editGoalsBtn.addEventListener('click', editGoals);
+
+  const addNoteBtn = document.getElementById('addNoteBtn');
+  if (addNoteBtn) addNoteBtn.addEventListener('click', addNote);
+
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) installBtn.addEventListener('click', installApp);
+
+  const dismissInstall = document.getElementById('dismissInstall');
+  if (dismissInstall) {
+    dismissInstall.addEventListener('click', () => {
+      const banner = document.getElementById('installBanner');
+      if (banner) banner.classList.remove('visible');
+    });
+  }
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/service-worker.js', { scope: '/' })
+        .then(reg => {
+          console.log('[SW] Kayıtlı:', reg.scope);
+          reg.update();
+
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const worker = reg.installing;
+            if (!worker) return;
+
+            worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+        })
+        .catch(err => console.warn('[SW] Kayıt hatası:', err));
+    });
+  }
+}
+
+async function checkAuthSession() {
+  setStatus('Oturum kontrol ediliyor...', '');
+
+  const fallback = window.setTimeout(() => {
+    setStatus('Hazır', 'ok');
+  }, 3500);
+
+  try {
+    const { data } = await db.auth.getSession();
+    window.clearTimeout(fallback);
+
+    if (!data.session) {
+      updateOnlineStatus();
+      setStatus('Giriş bekleniyor', '');
+      showAuth();
+      return;
+    }
+
+    await continueWithSession(data.session);
+  } catch (error) {
+    window.clearTimeout(fallback);
+    console.warn('Oturum kontrolü yapılamadı:', error);
+    setStatus('Hazır', 'ok');
+  }
+}
+
+function setupAuthListener() {
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user?.id && session.user.id !== state.userId) {
+      continueWithSession(session);
+    }
+  });
+}
+
+function init() {
+  renderAll();
+  bindUiEvents();
+  updateOnlineStatus();
+  setupAuthListener();
+  checkAuthSession();
+}
+
+// Expose for inline HTML handlers
+window.goPanel = goPanel;
+window.deleteWeight = deleteWeight;
+window.deleteNote = deleteNote;
+window.deleteSleep = deleteSleep;
+window.deleteWorkout = deleteWorkout;
+
+init();
