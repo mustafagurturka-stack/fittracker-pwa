@@ -107,6 +107,17 @@ function today() {
 }
 
 function getSuggestedMeasureDate() {
+  const latest = getSortedMeasurements().at(-1);
+
+  if (latest?.date) {
+    const parts = parseIsoDateParts(latest.date);
+    if (parts) {
+      const next = new Date(parts.year, parts.month - 1, parts.day);
+      next.setDate(next.getDate() + 7);
+      return toLocalIsoDate(next);
+    }
+  }
+
   const date = new Date();
   const diff = (date.getDay() - WEEKLY_MEASURE_DAY + 7) % 7;
   date.setDate(date.getDate() - diff);
@@ -591,6 +602,7 @@ function updateWaistHint() {
   if (!hint) return;
 
   const date = dateInput?.value || getSuggestedMeasureDate();
+  const existing = getSortedMeasurements().find(item => item.date === date);
   const sequence = getMeasurementSequenceNumber(date);
   const required = shouldTrackWaist(date);
 
@@ -605,7 +617,26 @@ function updateWaistHint() {
       ? 'Başlangıç tartısı: bel ölçümünü de ekle.'
       : `${sequence}. tartı: bu hafta bel ölçümünü de ekle.`
     : `${sequence}. tartı: sadece kilo gir. Bel ölçümü 4. tartıda takip edilir.`;
+
+  if (existing) {
+    hint.textContent = `${formatDate(date)} tarihinde kayıt var. Kaydedersen bu ölçüm güncellenir.`;
+  }
+
   hint.classList.toggle('important', required);
+}
+
+function syncMeasureFormDate(force = false) {
+  const dateInput = document.getElementById('measureDateInput');
+  if (!dateInput) return;
+
+  const suggested = getSuggestedMeasureDate();
+  const currentExists = getSortedMeasurements().some(item => item.date === dateInput.value);
+
+  if (force || !dateInput.value || currentExists) {
+    dateInput.value = suggested;
+  }
+
+  updateWaistHint();
 }
 
 function normalizeProfileState() {
@@ -804,7 +835,7 @@ function renderDashboardWeekLabel() {
   el.innerHTML = `
     <div class="week-card-head">
       <div>
-        <div class="week-card-title">Bu Hafta</div>
+        <div class="week-card-title">${getDashboardWeekTitle()}</div>
         <div class="week-card-date">${formatDate(range.start)} - ${formatDate(range.end)}</div>
       </div>
 
@@ -1319,6 +1350,12 @@ function getDashboardWeekRange() {
   return getWeekRange(latestDate);
 }
 
+function getDashboardWeekTitle() {
+  const range = getDashboardWeekRange();
+  const current = getWeekRange(today());
+  return range.start === current.start ? 'Bu Hafta' : 'Son Aktif Hafta';
+}
+
 function getCurrentWeekSleepTotal() {
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
   const range = getDashboardWeekRange();
@@ -1344,7 +1381,7 @@ function renderSleepSummary() {
       <strong>${todayTotal.toFixed(1)} saat</strong>
     </div>
     <div class="daily-stat-line muted">
-      <span>Bu hafta</span>
+      <span>${getDashboardWeekTitle()}</span>
       <strong>${weekTotal.toFixed(1)} / 49 saat</strong>
     </div>
   `;
@@ -1360,7 +1397,7 @@ function renderSleepList() {
     .filter(item => item.date >= range.start && item.date <= range.end);
 
   if (!sleep.length) {
-    list.innerHTML = '<div class="empty-state compact">Bu hafta uyku kaydı yok.</div>';
+    list.innerHTML = `<div class="empty-state compact">${getDashboardWeekTitle()} için uyku kaydı yok.</div>`;
     return;
   }
 
@@ -1399,7 +1436,7 @@ function renderWorkoutSummary() {
       <strong>${todayTotal} dk</strong>
     </div>
     <div class="daily-stat-line muted">
-      <span>Bu hafta</span>
+      <span>${getDashboardWeekTitle()}</span>
       <strong>${weekTotal} / 180 dk</strong>
     </div>
   `;
@@ -1415,7 +1452,7 @@ function renderWorkoutList() {
     .filter(item => item.date >= range.start && item.date <= range.end);
 
   if (!workouts.length) {
-    list.innerHTML = '<div class="empty-state compact">Bu hafta antrenman kaydı yok.</div>';
+    list.innerHTML = `<div class="empty-state compact">${getDashboardWeekTitle()} için antrenman kaydı yok.</div>`;
     return;
   }
 
@@ -1654,25 +1691,46 @@ function renderProgressList() {
     .sort((a, b) => b.start.localeCompare(a.start));
 
   if (!data.length) {
-    el.innerHTML = '';
+    setEmptyState(
+      el,
+      'Haftalık rapor henüz yok',
+      'Uyku ve antrenman kayıtları geldikçe haftalık özetler burada görünür.'
+    );
     return;
   }
 
-  el.innerHTML = data.map(item => `
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-      <div style="font-weight:700">
-        ${formatDate(item.start)} - ${formatDate(item.end)}
-      </div>
+  el.innerHTML = `
+    <div class="weekly-report-list">
+      ${data.map(item => {
+        const sleepPct = Math.min(100, Math.round((item.sleep / SLEEP_TARGET) * 100));
+        const workoutPct = Math.min(100, Math.round((item.workouts / WORKOUT_TARGET) * 100));
+        const isStrong = sleepPct >= 90 && workoutPct >= 90;
+        const isLight = sleepPct < 65 || workoutPct < 65;
+        const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
 
-      <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-        Uyku: ${item.sleep.toFixed(1)} saat
-      </div>
-
-      <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-        Antrenman: ${item.workouts} dk
-      </div>
+        return `
+          <div class="weekly-report-row">
+            <div>
+              <strong>${formatDate(item.start)} - ${formatDate(item.end)}</strong>
+              <span>${status}</span>
+            </div>
+            <div class="weekly-report-metrics">
+              <div>
+                <span>Uyku</span>
+                <strong>${item.sleep.toFixed(1)} saat</strong>
+                <i><b style="width:${sleepPct}%"></b></i>
+              </div>
+              <div>
+                <span>Antrenman</span>
+                <strong>${item.workouts} dk</strong>
+                <i><b style="width:${workoutPct}%"></b></i>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
-  `).join('');
+  `;
 }
 
 function renderSettings() {
@@ -1745,6 +1803,7 @@ function renderAll() {
     renderProgressCharts,
     renderProgressList,
     renderSettings,
+    syncMeasureFormDate,
     applyTheme,
     clearInitialLoadingStatus,
   ].forEach(renderFn => {
@@ -2831,9 +2890,8 @@ function bindUiEvents() {
 
   const measureDateInput = document.getElementById('measureDateInput');
   if (measureDateInput) {
-    measureDateInput.value = getSuggestedMeasureDate();
+    syncMeasureFormDate(true);
     measureDateInput.addEventListener('change', updateWaistHint);
-    updateWaistHint();
   }
 
   const workoutBtn = document.getElementById('saveWorkoutBtn');
