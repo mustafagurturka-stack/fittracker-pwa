@@ -28,7 +28,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles/main.css?v=104" />
+  <link rel="stylesheet" href="styles/main.css?v=105" />
 </head>
 <body>
 
@@ -278,7 +278,13 @@
   </div>
 
   <div class="section">
-    <div class="daily-grid">
+    <div class="daily-filter-bar" aria-label="Kayıt görünümü">
+      <button type="button" data-daily-view="today">Bugün</button>
+      <button type="button" data-daily-view="week">Son Aktif Hafta</button>
+      <button type="button" data-daily-view="all">Tüm Geçmiş</button>
+    </div>
+
+    <div class="daily-grid" id="dailyGrid">
       <div class="card list-card">
         <div class="list-title">Uyku Kayıtları</div>
         <div id="sleepSummary"></div>
@@ -496,6 +502,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=204" defer></script>
+  <script src="scripts/app.js?v=205" defer></script>
 </body>
 </html>
