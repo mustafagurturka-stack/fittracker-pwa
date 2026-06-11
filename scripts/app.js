@@ -109,6 +109,22 @@ let sleepChart = null;
 let workoutChart = null;
 let authMode = 'signIn';
 let dailyView = 'week';
+
+function withTimeout(promise, ms = 10000, label = 'İşlem') {
+  let timer;
+  const timeout = new Promise(resolve => {
+    timer = window.setTimeout(() => {
+      resolve({ timedOut: true, error: new Error(`${label} zaman aşımına uğradı`) });
+    }, ms);
+  });
+
+  return Promise.race([
+    Promise.resolve(promise).then(value => ({ timedOut: false, value })).catch(error => ({ timedOut: false, error })),
+    timeout,
+  ]).finally(() => window.clearTimeout(timer));
+}
+let activeSessionLoad = null;
+let cloudSyncInProgress = false;
 // â”€â”€ HELPERS â”€â”€
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -134,6 +150,14 @@ function getSuggestedMeasureDate() {
 
 function getUserId() {
   return state.userId;
+}
+
+function hasActiveUser() {
+  return Boolean(getUserId());
+}
+
+function canUseCloud() {
+  return Boolean(navigator.onLine && hasActiveUser());
 }
 
 function getStateStorageKey() {
@@ -2295,7 +2319,89 @@ async function loadNotesFromSupabase() {
   renderAll();
 }
 
+
+async function pushLocalPendingToSupabase() {
+  if (!canUseCloud() || cloudSyncInProgress) return;
+
+  cloudSyncInProgress = true;
+  setSyncDot('busy');
+
+  try {
+    const measurements = getSortedMeasurements();
+    for (const item of measurements) {
+      if (isRecordDeleted('measurements', item)) continue;
+      await saveMeasurementToSupabase({
+        user_id: getUserId(),
+        date: item.date,
+        weight: Number(item.weight),
+        waist: parseOptionalNumber(item.waist),
+      });
+    }
+
+    const sleepItems = Array.isArray(state.sleep) ? state.sleep : [];
+    for (const item of sleepItems) {
+      if (isRecordDeleted('sleep', item)) continue;
+      await saveSleepToSupabase({
+        user_id: getUserId(),
+        date: item.date,
+        hours: Number(item.hours || 0),
+      });
+    }
+
+    const localWorkouts = (Array.isArray(state.workouts) ? state.workouts : [])
+      .filter(item => item?.id && String(item.id).startsWith('local-workout-') && !isRecordDeleted('workouts', item));
+
+    for (const item of localWorkouts) {
+      const { data, error } = await db
+        .from('workout_logs')
+        .insert([{
+          user_id: getUserId(),
+          date: item.date,
+          type: item.type,
+          duration: Number(item.duration || 0),
+          note: item.note || '',
+        }])
+        .select()
+        .single();
+
+      if (!error && data?.id) {
+        item.id = data.id;
+      }
+    }
+
+    const localNotes = (Array.isArray(state.notes) ? state.notes : [])
+      .filter(item => item?.id && String(item.id).startsWith('local-note-') && !isRecordDeleted('notes', item));
+
+    for (const item of localNotes) {
+      const { data, error } = await db
+        .from('notes')
+        .insert([{
+          user_id: getUserId(),
+          date: item.date,
+          text: item.text,
+        }])
+        .select()
+        .single();
+
+      if (!error && data?.id) {
+        item.id = data.id;
+      }
+    }
+
+    stateSave();
+    setStatus('Senkron aktif', 'ok');
+    setSyncDot('ok');
+  } catch (error) {
+    console.warn('Pending cloud sync failed:', error);
+    setStatus('Yerel kayıtlar korunuyor - cloud daha sonra denenecek', 'ok');
+    setSyncDot('err');
+  } finally {
+    cloudSyncInProgress = false;
+  }
+}
+
 async function loadAllCloudData({ force = false } = {}) {
+  if (!hasActiveUser()) return [];
   if (!force && !state.onboarded) return [];
 
   const results = await Promise.allSettled([
@@ -2308,6 +2414,7 @@ async function loadAllCloudData({ force = false } = {}) {
   recoverOnboardingFromData();
   normalizeProfileState();
   stateSave();
+  await pushLocalPendingToSupabase();
   renderAll();
 
   return results;
@@ -2500,6 +2607,8 @@ async function saveMeasurementFromForm() {
   dateInput.value = getSuggestedMeasureDate();
   updateWaistHint();
 
+  if (!canUseCloud()) return;
+
   const { error } = await saveMeasurementToSupabase(payload);
 
   if (error) {
@@ -2672,6 +2781,8 @@ async function addNote() {
   setStatus('Not eklendi ✓', 'ok');
   if (noteInput) noteInput.value = '';
 
+  if (!canUseCloud()) return;
+
   const { error } = await db
     .from('notes')
     .insert([payload]);
@@ -2759,6 +2870,8 @@ async function saveWorkout() {
   durationInput.value = '';
   if (noteInput) noteInput.value = '';
   dateInput.value = today();
+
+  if (!canUseCloud()) return;
 
   const { error } = await db
     .from('workout_logs')
@@ -2969,29 +3082,77 @@ function getFriendlyAuthMessage(message = '') {
 async function submitAuth() {
   const email = document.getElementById('authEmail')?.value.trim();
   const password = document.getElementById('authPassword')?.value || '';
+  const submitBtn = document.getElementById('authSubmit');
 
   if (!email || password.length < 6) {
     setAuthMessage('E-posta ve en az 6 karakterli şifre gir.', true);
     return;
   }
 
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.originalText = submitBtn.textContent;
+    submitBtn.textContent = 'İşleniyor...';
+  }
+
   setAuthMessage('İşleniyor...');
 
-  const result = authMode === 'signIn'
-    ? await db.auth.signInWithPassword({ email, password })
-    : await db.auth.signUp({ email, password });
+  try {
+    const authPromise = authMode === 'signIn'
+      ? db.auth.signInWithPassword({ email, password })
+      : db.auth.signUp({ email, password });
 
-  if (result.error) {
-    setAuthMessage(result.error.message, true);
-    return;
+    const authResult = await withTimeout(authPromise, 12000, 'Giriş');
+
+    if (authResult.timedOut) {
+      const { data } = await db.auth.getSession();
+      if (data?.session) {
+        await continueWithSession(data.session, { skipCloudWait: true });
+        return;
+      }
+      setAuthMessage('Giriş isteği uzun sürdü. İnternet bağlantını kontrol edip tekrar dene.', true);
+      return;
+    }
+
+    if (authResult.error) {
+      setAuthMessage(authResult.error.message || 'Giriş sırasında hata oluştu.', true);
+      return;
+    }
+
+    const result = authResult.value;
+
+    if (result?.error) {
+      setAuthMessage(result.error.message, true);
+      return;
+    }
+
+    let session = result?.data?.session;
+
+    if (!session) {
+      const sessionResult = await withTimeout(db.auth.getSession(), 3500, 'Oturum alma');
+      session = sessionResult?.value?.data?.session;
+    }
+
+    if (!session) {
+      setAuthMessage(
+        authMode === 'signUp'
+          ? 'Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutunu kontrol et.'
+          : 'Giriş tamamlandıysa birkaç saniye içinde açılmazsa sayfayı yenile.',
+        false
+      );
+      return;
+    }
+
+    await continueWithSession(session, { skipCloudWait: true });
+  } catch (error) {
+    console.error('Auth işlem hatası:', error);
+    setAuthMessage(error?.message || 'Giriş sırasında beklenmeyen hata oluştu.', true);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.originalText || (authMode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur');
+    }
   }
-
-  if (!result.data.session) {
-    setAuthMessage('Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutunu kontrol et.');
-    return;
-  }
-
-  await continueWithSession(result.data.session);
 }
 
 async function resetPassword() {
@@ -3006,6 +3167,7 @@ async function resetPassword() {
 }
 
 async function signOut() {
+  activeSessionLoad = null;
   await db.auth.signOut();
   state = {
     ...state,
@@ -3029,7 +3191,7 @@ async function signOut() {
   showAuth();
 }
 
-async function continueWithSession(session) {
+async function continueWithSession(session, options = {}) {
   if (!session?.user?.id) {
     showAuth();
     return;
@@ -3048,7 +3210,17 @@ async function continueWithSession(session) {
   updateOnlineStatus();
 
   setStatus('Veriler yükleniyor...', '');
-  await loadAllCloudData({ force: true });
+  const cloudLoad = withTimeout(loadAllCloudData({ force: true }), options.skipCloudWait ? 4500 : 12000, 'Bulut veri yükleme');
+  if (options.skipCloudWait) {
+    cloudLoad.then(result => {
+      if (result?.error) console.warn('Bulut veri yükleme hatası:', result.error);
+      renderAll();
+      setStatus('Senkron aktif', 'ok');
+    });
+  } else {
+    const cloudResult = await cloudLoad;
+    if (cloudResult?.error) console.warn('Bulut veri yükleme hatası:', cloudResult.error);
+  }
 
   if (!state.onboarded && !hasTrackedData()) {
     setStatus('Başlangıç kurulumu bekleniyor', '');
@@ -3148,9 +3320,14 @@ async function completeOnboarding() {
   notes: [],
 };
 
-let activeSessionLoad = null;
-
   stateSave();
+
+  if (!canUseCloud()) {
+    setStatus('Kurulum yerel kaydedildi - giriş sonrası cloud senkronlanacak', 'ok');
+    document.getElementById('onboardingModal')?.remove();
+    renderAll();
+    return;
+  }
 
   const { error } = await db
     .from('measurements')
@@ -3348,6 +3525,13 @@ function bindUiEvents() {
           console.log('[SW] Kayıtlı:', reg.scope);
           reg.update();
 
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+
           if (reg.waiting) {
             reg.waiting.postMessage({ type: 'SKIP_WAITING' });
           }
@@ -3395,19 +3579,18 @@ async function checkAuthSession() {
 }
 
 function setupAuthListener() {
-  db.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') return;
+  db.auth.onAuthStateChange((_event, session) => {
     if (!session?.user?.id) return;
 
     const shouldLoad =
       session.user.id !== state.userId ||
-      event === 'SIGNED_IN' ||
-      event === 'INITIAL_SESSION' ||
-      !state.measurements.length && !state.sleep.length && !state.workouts.length;
+      _event === 'SIGNED_IN' ||
+      _event === 'INITIAL_SESSION' ||
+      (!state.measurements.length && !state.sleep.length && !state.workouts.length);
 
     if (!shouldLoad || activeSessionLoad) return;
 
-    activeSessionLoad = continueWithSession(session)
+    activeSessionLoad = continueWithSession(session, { skipCloudWait: true })
       .finally(() => {
         activeSessionLoad = null;
       });
