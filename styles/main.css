@@ -188,6 +188,94 @@ body {
   }
 }
 
+/* v225: bright, energizing light theme */
+html[data-theme="light"] body .moti-card,
+html[data-theme="light"] #pHome .moti-card {
+  color: #1d3557 !important;
+  background-color: #e9f8f2 !important;
+  background-image:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, .9), transparent 30%),
+    radial-gradient(circle at 4% 110%, rgba(112, 210, 180, .22), transparent 38%),
+    linear-gradient(125deg, #dcf8ec 0%, #e5f1ff 55%, #fff1bd 100%) !important;
+  border: 1px solid rgba(72, 126, 145, .14) !important;
+  box-shadow: 0 15px 34px rgba(60, 102, 125, .12) !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-text {
+  color: #1d3557 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-emoji,
+html[data-theme="light"] body .moti-card .moti-icon {
+  color: #348b78 !important;
+  background: rgba(255, 255, 255, .7) !important;
+  border: 1px solid rgba(52, 139, 120, .12) !important;
+  box-shadow: 0 8px 20px rgba(52, 139, 120, .1) !important;
+}
+
+html[data-theme="light"] .hero-title span {
+  background: linear-gradient(90deg, #4f67e8, #27a786);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent !important;
+}
+
+html[data-theme="light"] .week-chip {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(241, 246, 255, .9)) !important;
+  border-color: rgba(82, 110, 245, .11) !important;
+}
+
+html[data-theme="light"] .quick-actions-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(82, 110, 245, .06), transparent 42%),
+    rgba(255, 255, 255, .88) !important;
+}
+
+html[data-theme="light"] .quick-btn.sleep {
+  color: #245f9f !important;
+  background: #e7f2ff !important;
+  border-color: #cfe4fb !important;
+}
+
+html[data-theme="light"] .quick-btn.workout {
+  color: #23755e !important;
+  background: #e3f7ef !important;
+  border-color: #c9ebdf !important;
+}
+
+html[data-theme="light"] .quick-btn.note {
+  color: #8a641a !important;
+  background: #fff4cf !important;
+  border-color: #f1dfaa !important;
+}
+
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, #4e68ea, #6380fa) !important;
+  box-shadow: 0 9px 20px rgba(78, 104, 234, .2) !important;
+}
+
+html[data-theme="light"] .week-fill.sleep,
+html[data-theme="light"] .prog-fill.sleep {
+  background: linear-gradient(90deg, #46b8d8, #5f7df2) !important;
+}
+
+html[data-theme="light"] .week-fill.workout,
+html[data-theme="light"] .prog-fill.workout {
+  background: linear-gradient(90deg, #45c49d, #24a777) !important;
+}
+
+html[data-theme="light"] .sec-title {
+  color: #66738b;
+}
+
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  background: linear-gradient(145deg, #4e67e6, #6985fb) !important;
+  box-shadow: 0 8px 18px rgba(78, 103, 230, .28) !important;
+}
+
 /* ── LAYOUT ── */
 .app-shell {
   width: 100%;
@@ -5968,10 +6056,11 @@ body {
 
 .moti-card {
   background:
-    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .18), transparent 28%),
-    linear-gradient(135deg, #172554 0%, #3f56d9 58%, #667cf4 100%) !important;
-  border: 1px solid rgba(255, 255, 255, .13) !important;
-  box-shadow: 0 20px 45px rgba(49, 65, 161, .2) !important;
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .86), transparent 30%),
+    linear-gradient(135deg, #dff7ed 0%, #e8f2ff 52%, #fff2c9 100%) !important;
+  color: #1f3152 !important;
+  border: 1px solid rgba(72, 126, 145, .14) !important;
+  box-shadow: 0 16px 36px rgba(49, 87, 111, .12) !important;
 }
 
 .btn:not(.ghost) {
@@ -6125,4 +6214,86 @@ html[data-theme="light"] .bottom-nav {
       radial-gradient(circle at 10% 0%, rgba(112, 136, 224, .1), transparent 18rem),
       linear-gradient(180deg, #eef2f8 0%, #e8edf6 100%) !important;
   }
+}
+
+/* v225 final palette override */
+html[data-theme="light"] body .moti-card,
+html[data-theme="light"] #pHome .moti-card {
+  color: #1d3557 !important;
+  background-color: #e9f8f2 !important;
+  background-image:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, .9), transparent 30%),
+    radial-gradient(circle at 4% 110%, rgba(112, 210, 180, .22), transparent 38%),
+    linear-gradient(125deg, #dcf8ec 0%, #e5f1ff 55%, #fff1bd 100%) !important;
+  border: 1px solid rgba(72, 126, 145, .14) !important;
+  box-shadow: 0 15px 34px rgba(60, 102, 125, .12) !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-text {
+  color: #1d3557 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-emoji,
+html[data-theme="light"] body .moti-card .moti-icon {
+  color: #348b78 !important;
+  background: rgba(255, 255, 255, .7) !important;
+  border: 1px solid rgba(52, 139, 120, .12) !important;
+  box-shadow: 0 8px 20px rgba(52, 139, 120, .1) !important;
+}
+
+html[data-theme="light"] .hero-title span {
+  background: linear-gradient(90deg, #4f67e8, #27a786) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+html[data-theme="light"] .week-chip {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(238, 245, 255, .92)) !important;
+  border-color: rgba(82, 110, 245, .12) !important;
+}
+
+html[data-theme="light"] .quick-actions-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(82, 110, 245, .07), transparent 42%),
+    rgba(255, 255, 255, .9) !important;
+}
+
+html[data-theme="light"] .quick-btn.sleep {
+  color: #245f9f !important;
+  background: #e7f2ff !important;
+  border-color: #cfe4fb !important;
+}
+
+html[data-theme="light"] .quick-btn.workout {
+  color: #23755e !important;
+  background: #e3f7ef !important;
+  border-color: #c9ebdf !important;
+}
+
+html[data-theme="light"] .quick-btn.note {
+  color: #8a641a !important;
+  background: #fff4cf !important;
+  border-color: #f1dfaa !important;
+}
+
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, #4e68ea, #6380fa) !important;
+  box-shadow: 0 9px 20px rgba(78, 104, 234, .2) !important;
+}
+
+html[data-theme="light"] .week-fill.sleep {
+  background: linear-gradient(90deg, #46b8d8, #5f7df2) !important;
+}
+
+html[data-theme="light"] .week-fill.workout {
+  background: linear-gradient(90deg, #45c49d, #24a777) !important;
+}
+
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  background: linear-gradient(145deg, #4e67e6, #6985fb) !important;
+  box-shadow: 0 8px 18px rgba(78, 103, 230, .28) !important;
 }
