@@ -884,7 +884,9 @@ function applyTheme() {
   const themeMeta = document.getElementById('themeColorMeta');
 
   if (themeBtn) {
-    themeBtn.innerHTML = state.theme === 'dark' ? '&#9728;' : '&#9790;';
+    themeBtn.innerHTML = state.theme === 'dark'
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>';
   }
 
   if (themeMeta) {
@@ -907,7 +909,12 @@ function goPanel(idx) {
 
   BN_IDS.forEach((id, i) => {
     const btn = document.getElementById(id);
-    if (btn) btn.classList.toggle('active', i === idx);
+    if (btn) {
+      const isActive = i === idx;
+      btn.classList.toggle('active', isActive);
+      if (isActive) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
+    }
   });
 
   if (idx === 4) {
@@ -959,7 +966,9 @@ function renderMoti() {
   const el = document.getElementById('motiText');
   if (!el) return;
 
-  const idx = Math.floor(Date.now() / 86400000) % MOTIVATIONS.length;
+  const now = new Date();
+  const localDay = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  const idx = localDay % MOTIVATIONS.length;
   el.textContent = MOTIVATIONS[idx];
 }
 
