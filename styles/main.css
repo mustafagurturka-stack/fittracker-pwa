@@ -373,10 +373,6 @@ body {
   flex: 0 0 auto;
 }
 
-.bn-item .bn-icon svg {
-  display: none !important;
-}
-
 .bn-icon::before,
 .bn-icon::after {
   content: "";
@@ -5174,10 +5170,6 @@ body {
   line-height: 0 !important;
   color: currentColor !important;
   transform-origin: center;
-}
-
-.bottom-nav .bn-item .bn-icon svg {
-  display: none !important;
 }
 
 .bottom-nav .bn-icon::before,
