@@ -233,8 +233,11 @@ body {
 }
 
 .nav-logout-btn {
-  min-height: 34px;
-  padding: 0 13px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
@@ -242,6 +245,16 @@ body {
   font: 700 12px var(--font-main);
   cursor: pointer;
   transition: border-color .2s, background .2s, color .2s;
+}
+
+.nav-logout-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .nav-logout-btn:hover {
@@ -4845,8 +4858,8 @@ body {
 
 @media (max-width: 560px) {
   .nav-logout-btn {
-    min-width: 58px;
-    padding-inline: 10px !important;
+    min-width: 34px;
+    padding: 0 !important;
   }
 
   .empty-state {
@@ -5644,10 +5657,14 @@ body {
   height: 23px !important;
   fill: none !important;
   stroke: currentColor !important;
-  stroke-width: 2.25 !important;
+  stroke-width: 2 !important;
   stroke-linecap: round !important;
   stroke-linejoin: round !important;
   opacity: 1 !important;
+}
+
+.bottom-nav .bn-icon svg * {
+  vector-effect: non-scaling-stroke;
 }
 
 .bottom-nav .bn-item.active .bn-icon {
