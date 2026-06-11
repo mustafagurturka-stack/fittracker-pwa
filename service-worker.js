@@ -1,26 +1,40 @@
-const CACHE_NAME = 'fittracker-pro-v214';
+const CACHE_NAME = 'fittracker-pro-v215';
+
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/styles/main.css?v=114',
-  '/scripts/app.js?v=214',
+  '/styles/main.css?v=115',
+  '/scripts/app.js?v=215',
   '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then(async cache => {
+      await Promise.allSettled(
+        APP_SHELL.map(url =>
+          fetch(url, { cache: 'reload' })
+            .then(response => response.ok ? cache.put(url, response) : null)
+            .catch(() => null)
+        )
+      );
+    })
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', event => {
@@ -39,17 +53,31 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        }
         return response;
       })
       .catch(() =>
-        caches.match(event.request).then(cached =>
-          cached || caches.match('/index.html')
-        )
+        caches.match(event.request, { ignoreSearch: false })
+          .then(cached => cached || caches.match(requestUrl.pathname))
       )
   );
 });
