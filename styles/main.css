@@ -5698,3 +5698,183 @@ body {
     padding-bottom: 102px !important;
   }
 }
+
+/* v222: canonical PWA layout, navigation and interaction polish */
+:root {
+  --mobile-nav-content-height: 64px;
+}
+
+html {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+  scroll-padding-top: calc(58px + env(safe-area-inset-top));
+}
+
+body,
+.app-shell {
+  min-height: 100dvh !important;
+  padding-bottom: 0 !important;
+}
+
+#panels {
+  min-height: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#panels > .panel {
+  padding-bottom: 0 !important;
+}
+
+#panels > .panel.active {
+  padding-bottom: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom) + 14px) !important;
+}
+
+.dashboard-wrap,
+.dashboard-wrap > :last-child,
+.panel.active > :last-child,
+.section:last-child {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.topnav {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .03);
+}
+
+.nav-actions {
+  gap: 6px;
+}
+
+.nav-logout-btn,
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border-color: transparent;
+  background: rgba(148, 163, 184, .09);
+  color: var(--text2);
+}
+
+.nav-logout-btn svg,
+.icon-btn svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-logout-btn:hover,
+.nav-logout-btn:focus-visible {
+  color: var(--red);
+  border-color: rgba(239, 68, 68, .18);
+  background: rgba(239, 68, 68, .08);
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  color: var(--blue);
+  border-color: rgba(59, 130, 246, .18);
+  background: rgba(59, 130, 246, .08);
+}
+
+.bottom-nav {
+  height: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom)) !important;
+  min-height: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom)) !important;
+  padding: 5px 8px calc(5px + env(safe-area-inset-bottom)) !important;
+  gap: 3px !important;
+  overflow: visible !important;
+  background: rgba(255, 255, 255, .94) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.bottom-nav .bn-item {
+  position: relative;
+  min-height: 54px !important;
+  padding: 6px 2px 5px !important;
+  gap: 3px !important;
+  border-radius: 13px !important;
+  color: #748198 !important;
+  transition: color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.bottom-nav .bn-item::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateX(-50%);
+  transition: width .18s ease, background .18s ease;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--blue) !important;
+  background: rgba(59, 130, 246, .075) !important;
+}
+
+.bottom-nav .bn-item.active::before {
+  width: 24px;
+  background: currentColor;
+}
+
+.bottom-nav .bn-icon,
+.bottom-nav .bn-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+}
+
+.bottom-nav .bn-icon svg {
+  stroke-width: 1.8 !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon {
+  transform: translateY(-1px) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, .2);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: rgba(21, 27, 38, .94) !important;
+}
+
+@media (min-width: 701px) {
+  #panels > .panel.active {
+    padding-bottom: 108px !important;
+  }
+
+  .bottom-nav {
+    height: 72px !important;
+    min-height: 72px !important;
+    padding: 7px 18px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
