@@ -5321,3 +5321,74 @@ body {
   border-radius: 3px 8px 0 0;
   transform: rotate(44deg);
 }
+
+
+/* v115 — sync, icon and PWA safe-area final fixes */
+.nav-logout-btn {
+  font-family: var(--font-body) !important;
+}
+
+html,
+body,
+.app-shell,
+#panels {
+  min-height: 100%;
+}
+
+body {
+  padding-bottom: 0 !important;
+}
+
+#panels {
+  padding-bottom: 0 !important;
+  min-height: auto !important;
+}
+
+.panel.active {
+  min-height: auto !important;
+}
+
+.dashboard-wrap {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+}
+
+.quick-actions-card {
+  margin-bottom: 0 !important;
+}
+
+.bottom-nav {
+  min-height: calc(68px + env(safe-area-inset-bottom));
+}
+
+.bn-item .bn-icon {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+}
+
+.icon-dashboard,
+.icon-scale,
+.icon-log,
+.icon-progress,
+.icon-profile {
+  opacity: .92;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: rgba(21,27,38,.98) !important;
+  backdrop-filter: blur(18px);
+}
+
+@media (max-width:700px) {
+  .dashboard-wrap {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+
+  .section:last-child {
+    margin-bottom: 0 !important;
+  }
+}
