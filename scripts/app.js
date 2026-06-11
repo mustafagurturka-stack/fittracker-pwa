@@ -890,7 +890,7 @@ function applyTheme() {
   }
 
   if (themeMeta) {
-    themeMeta.content = state.theme === 'dark' ? '#0f1117' : '#3b82f6';
+    themeMeta.content = state.theme === 'dark' ? '#0d111b' : '#e9eef7';
   }
 }
 
