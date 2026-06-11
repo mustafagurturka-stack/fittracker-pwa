@@ -2016,7 +2016,8 @@ function renderProgressCharts() {
               <div class="bar-label">
                 ${getShortWeekday(item.date)}
               </div>
-              <div class="bar-value">${getWorkoutDayLabel(item)}</div>
+              <div class="bar-value">${Object.entries(item.categories)
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman'}</div>
             </div>
           `;
         }).join('')}
@@ -2523,8 +2524,9 @@ function saveWorkoutLocally(payload) {
   if (!Array.isArray(state.workouts)) state.workouts = [];
   unmarkRecordDeleted('workouts', payload);
 
+  const id = payload.id || `local-workout-${Date.now()}`;
   state.workouts.push({
-    id: payload.id || `local-workout-${Date.now()}`,
+    id,
     date: payload.date,
     type: payload.type,
     duration: payload.duration,
@@ -2534,14 +2536,16 @@ function saveWorkoutLocally(payload) {
   state.workouts = [...state.workouts].sort((a, b) => b.date.localeCompare(a.date));
   stateSave();
   renderAll();
+  return id;
 }
 
 function saveNoteLocally(payload) {
   if (!Array.isArray(state.notes)) state.notes = [];
   unmarkRecordDeleted('notes', payload);
 
+  const id = payload.id || `local-note-${Date.now()}`;
   state.notes.push({
-    id: payload.id || `local-note-${Date.now()}`,
+    id,
     date: payload.date,
     text: payload.text,
   });
@@ -2549,6 +2553,7 @@ function saveNoteLocally(payload) {
   state.notes = [...state.notes].sort((a, b) => b.date.localeCompare(a.date));
   stateSave();
   renderAll();
+  return id;
 }
 
 // â”€â”€ ACTIONS â”€â”€
@@ -2777,21 +2782,27 @@ async function addNote() {
     text: text.trim(),
   };
 
-  saveNoteLocally(payload);
+  const localId = saveNoteLocally(payload);
   setStatus('Not eklendi ✓', 'ok');
   if (noteInput) noteInput.value = '';
 
   if (!canUseCloud()) return;
 
-  const { error } = await db
+  const { data, error } = await db
     .from('notes')
-    .insert([payload]);
+    .insert([payload])
+    .select()
+    .single();
 
   if (error) {
     console.error('Note kayıt hatası:', error);
     setStatus('Not yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
+
+  const localNote = state.notes.find(item => item.id === localId);
+  if (localNote && data?.id) localNote.id = data.id;
+  stateSave();
 
   await loadNotesFromSupabase();
 }
@@ -2820,6 +2831,8 @@ async function saveSleep() {
   setStatus('Uyku kaydedildi ✓', 'ok');
   hourInput.value = '';
   dateInput.value = today();
+
+  if (!canUseCloud()) return;
 
   const { error } = await saveSleepToSupabase(payload);
 
@@ -2865,7 +2878,7 @@ async function saveWorkout() {
     note,
   };
 
-  saveWorkoutLocally(payload);
+  const localId = saveWorkoutLocally(payload);
   setStatus('Antrenman kaydedildi ✓', 'ok');
   durationInput.value = '';
   if (noteInput) noteInput.value = '';
@@ -2873,15 +2886,21 @@ async function saveWorkout() {
 
   if (!canUseCloud()) return;
 
-  const { error } = await db
+  const { data, error } = await db
     .from('workout_logs')
-    .insert([payload]);
+    .insert([payload])
+    .select()
+    .single();
 
   if (error) {
     console.error('Workout kayıt hatası:', error);
     setStatus('Antrenman yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
+
+  const localWorkout = state.workouts.find(item => item.id === localId);
+  if (localWorkout && data?.id) localWorkout.id = data.id;
+  stateSave();
 
   await loadWorkoutsFromSupabase();
 }
@@ -3392,6 +3411,11 @@ function updateOnlineStatus() {
   }
 }
 
+function handleOnline() {
+  updateOnlineStatus();
+  if (state.onboarded && hasActiveUser()) loadAllCloudData({ force: true });
+}
+
 // â”€â”€ PWA INSTALL â”€â”€
 let deferredPrompt = null;
 
@@ -3539,7 +3563,7 @@ function bindUiEvents() {
     });
   }
 
-  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('online', handleOnline);
   window.addEventListener('offline', updateOnlineStatus);
 
   if ('serviceWorker' in navigator) {
