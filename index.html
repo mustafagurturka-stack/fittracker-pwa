@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles/main.css?v=115" />
+  <link rel="stylesheet" href="styles/main.css?v=117" />
 </head>
 <body>
 
@@ -487,26 +487,25 @@
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav" role="navigation" aria-label="Alt navigasyon">
     <button class="bn-item active" id="bn0" onclick="goPanel(0)" aria-label="Ana sayfa">
-      <span class="bn-icon icon-dashboard" aria-hidden="true"></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/></svg></span>
       <span>Dashboard</span>
     </button>
     <button class="bn-item" id="bn1" onclick="goPanel(1)" aria-label="Kilo">
-      <span class="bn-icon icon-scale" aria-hidden="true"></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l1.5 12h-15L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/><path d="M12 11v2"/></svg></span>
       <span>Kilo</span>
     </button>
-    <button class="bn-item" id="bn2" onclick="goPanel(2)" aria-label="Günlük">
-      <span class="bn-icon icon-log" aria-hidden="true"></span>
+    <button class="bn-item" id="bn2" onclick="goPanel(2)" aria-label="Günlük kayıt">
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14H5V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
       <span>Kayıt</span>
     </button>
     <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="İlerleme">
-  <span class="bn-icon icon-progress" aria-hidden="true"></span>
-  <span>İlerleme</span>
-</button>
-
-<button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Profil">
-  <span class="bn-icon icon-profile" aria-hidden="true"></span>
-  <span>Profil</span>
-</button>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16"/><path d="M6 15l4-4 3 3 5-7"/><path d="M15 7h3v3"/></svg></span>
+      <span>İlerleme</span>
+    </button>
+    <button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Profil">
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span>
+      <span>Profil</span>
+    </button>
   </nav>
 
 </div><!-- /.app-shell -->
@@ -515,6 +514,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="scripts/app.js?v=215" defer></script>
+  <script src="scripts/app.js?v=217" defer></script>
 </body>
 </html>
