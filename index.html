@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=220" />
+  <link rel="manifest" href="/manifest.json?v=221" />
 
   <!-- Icons (Apple) -->
-  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=220" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=220" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=220" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=221" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=221" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=221" />
 
   <title>FitTracker Pro</title>
 
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=120" />
+  <link rel="stylesheet" href="/styles/main.css?v=121" />
 </head>
 <body>
 
@@ -41,8 +41,8 @@
     <div class="nav-logo">Fit<span>Tracker</span></div>
     <div class="nav-actions">
       <span class="sync-dot" id="syncDot" title="Senkronizasyon durumu" aria-label="Senkronizasyon"></span>
-      <button class="nav-logout-btn" id="signOutBtn" type="button" title="Çıkış yap">
-        <span>Çıkış</span>
+      <button class="nav-logout-btn" id="signOutBtn" type="button" aria-label="Çıkış yap" title="Çıkış yap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/><path d="m15 8 4 4-4 4"/><path d="M9 12h10"/></svg>
       </button>
       <button class="icon-btn" id="themeBtn" aria-label="Tema değiştir" title="Tema değiştir">&#9790;</button>
     </div>
@@ -487,23 +487,23 @@
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav" role="navigation" aria-label="Alt navigasyon">
     <button class="bn-item active" id="bn0" onclick="goPanel(0)" aria-label="Ana sayfa">
-      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/></svg></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span>
       <span>Dashboard</span>
     </button>
     <button class="bn-item" id="bn1" onclick="goPanel(1)" aria-label="Kilo">
-      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l1.5 12h-15L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/><path d="M12 11v2"/></svg></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8h14l1 12H4L5 8Z"/><path d="M9 8a3 3 0 0 1 6 0"/><path d="m12 12 2-1"/></svg></span>
       <span>Kilo</span>
     </button>
     <button class="bn-item" id="bn2" onclick="goPanel(2)" aria-label="Günlük kayıt">
-      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14H5V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8"/><path d="M9 3v3M15 3v3"/><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M8 10h8M8 14h8M8 18h5"/></svg></span>
       <span>Kayıt</span>
     </button>
     <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="İlerleme">
-      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16"/><path d="M6 15l4-4 3 3 5-7"/><path d="M15 7h3v3"/></svg></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 4-4 3 3 5-7"/><path d="M16 7h3v3"/></svg></span>
       <span>İlerleme</span>
     </button>
     <button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Profil">
-      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span>
+      <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
       <span>Profil</span>
     </button>
   </nav>
@@ -514,6 +514,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=220" defer></script>
+  <script src="/scripts/app.js?v=221" defer></script>
 </body>
 </html>
