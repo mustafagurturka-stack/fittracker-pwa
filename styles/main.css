@@ -5552,3 +5552,140 @@ body{
   }
   .bn-item{font-size:11px !important;}
 }
+
+
+/* v218 — FINAL: panel, scroll, bottom nav icon stabilization */
+
+/* Sekme üst üste binmesini kesin olarak engelle */
+#panels > .panel {
+  display: none !important;
+}
+
+#panels > .panel.active {
+  display: block !important;
+}
+
+/* Fixed bottom nav için gereğinden fazla scroll boşluğunu azalt */
+html,
+body,
+.app-shell,
+#panels {
+  min-height: auto !important;
+}
+
+body {
+  padding-bottom: 0 !important;
+  overflow-x: hidden !important;
+}
+
+#panels {
+  padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+}
+
+.dashboard-wrap {
+  padding-bottom: 18px !important;
+}
+
+.quick-actions-card {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 700px) {
+  #panels {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .dashboard-wrap {
+    padding-bottom: 8px !important;
+  }
+}
+
+/* Bottom nav: SVG ikonları kullan, eski pseudo ikonları kapat */
+.bottom-nav {
+  min-height: calc(64px + env(safe-area-inset-bottom)) !important;
+  padding: 6px 12px calc(6px + env(safe-area-inset-bottom)) !important;
+  gap: 6px !important;
+}
+
+.bottom-nav .bn-item {
+  min-height: 54px !important;
+  border-radius: 16px !important;
+  gap: 4px !important;
+  padding: 7px 0 6px !important;
+  color: var(--muted) !important;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--blue) !important;
+  background: rgba(59,130,246,.10) !important;
+}
+
+[data-theme="dark"] .bottom-nav .bn-item.active {
+  background: rgba(59,130,246,.16) !important;
+}
+
+.bottom-nav .bn-icon {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+  position: relative !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+  margin: 0 auto 1px !important;
+  transform-origin: center !important;
+}
+
+.bottom-nav .bn-icon::before,
+.bottom-nav .bn-icon::after {
+  display: none !important;
+  content: none !important;
+}
+
+.bottom-nav .bn-icon svg {
+  display: block !important;
+  width: 23px !important;
+  height: 23px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.25 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  opacity: 1 !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon {
+  transform: scale(1.07) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+  font-weight: 700 !important;
+  letter-spacing: .2px !important;
+}
+
+/* Desktop/PWA pencere görünümünde nav genişliği kontrollü kalsın */
+@media (min-width: 900px) {
+  .bottom-nav {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: min(1120px, calc(100% - 48px)) !important;
+    bottom: 12px !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 18px 45px rgba(15,23,42,.10) !important;
+  }
+
+  [data-theme="dark"] .bottom-nav {
+    box-shadow: 0 18px 45px rgba(0,0,0,.25) !important;
+  }
+
+  #panels {
+    padding-bottom: 102px !important;
+  }
+}
