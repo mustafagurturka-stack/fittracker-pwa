@@ -6052,3 +6052,77 @@ body {
 [data-theme="dark"] .input-card {
   background: rgba(21, 27, 40, .9) !important;
 }
+
+/* v224: visible light-theme correction */
+html[data-theme="light"],
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-color: #e9eef7 !important;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-image:
+    radial-gradient(circle at 8% 2%, rgba(112, 136, 224, .12), transparent 24rem),
+    radial-gradient(circle at 96% 22%, rgba(84, 190, 165, .08), transparent 22rem),
+    linear-gradient(180deg, #eef2f8 0%, #e9eef7 48%, #edf1f7 100%) !important;
+  background-attachment: fixed !important;
+}
+
+html[data-theme="light"] #panels > .panel,
+html[data-theme="light"] #panels > .panel.active,
+html[data-theme="light"] .dashboard-wrap {
+  background: transparent !important;
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .settings-card,
+html[data-theme="light"] .quick-actions-card,
+html[data-theme="light"] .week-chip,
+html[data-theme="light"] .input-card,
+html[data-theme="light"] #dashboardGoalCard > *,
+html[data-theme="light"] #dashboardProgressCard > * {
+  background: rgba(255, 255, 255, .82) !important;
+  border: 1px solid rgba(92, 108, 139, .12) !important;
+  box-shadow:
+    0 1px 2px rgba(17, 24, 39, .025),
+    0 12px 34px rgba(44, 58, 86, .075) !important;
+}
+
+html[data-theme="light"] .moti-card {
+  color: #24314f !important;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .8), transparent 32%),
+    linear-gradient(135deg, #dfe8ff 0%, #e9edff 52%, #e2f5ef 100%) !important;
+  border: 1px solid rgba(86, 106, 175, .14) !important;
+  box-shadow: 0 14px 32px rgba(73, 91, 145, .11) !important;
+}
+
+html[data-theme="light"] .moti-card .moti-emoji {
+  color: #526ef5 !important;
+  background: rgba(255, 255, 255, .62) !important;
+  border: 1px solid rgba(82, 110, 245, .1);
+}
+
+html[data-theme="light"] .moti-card .moti-text {
+  color: #24314f !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .topnav,
+html[data-theme="light"] .bottom-nav {
+  background: rgba(247, 249, 253, .86) !important;
+}
+
+@media (max-width: 700px) {
+  html[data-theme="light"] body,
+  html[data-theme="light"] .app-shell,
+  html[data-theme="light"] #panels {
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(112, 136, 224, .1), transparent 18rem),
+      linear-gradient(180deg, #eef2f8 0%, #e8edf6 100%) !important;
+  }
+}
