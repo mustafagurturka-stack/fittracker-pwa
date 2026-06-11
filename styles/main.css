@@ -5878,3 +5878,177 @@ textarea:focus-visible {
     transition-duration: .01ms !important;
   }
 }
+
+/* v223: premium color system and optical icon treatment */
+:root {
+  --bg: #f3f5fa;
+  --surface: #fdfdff;
+  --surface2: #edf1f7;
+  --border: rgba(91, 108, 139, .13);
+  --text: #111827;
+  --text2: #4b5870;
+  --muted: #7d899f;
+  --dim: #c7cfdd;
+  --blue: #526ef5;
+  --green: #16a87a;
+  --shadow: 0 1px 2px rgba(17, 24, 39, .025), 0 12px 32px rgba(38, 51, 77, .065);
+  --radius: 18px;
+}
+
+[data-theme="dark"] {
+  --bg: #0d111b;
+  --surface: #151b28;
+  --surface2: #1b2333;
+  --border: rgba(158, 174, 205, .12);
+  --text: #f4f6fb;
+  --text2: #c2cad9;
+  --muted: #7f8ca5;
+  --dim: #39445a;
+  --blue: #7890ff;
+}
+
+html,
+body,
+.app-shell {
+  background-color: var(--bg) !important;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 12% -8%, rgba(82, 110, 245, .09), transparent 31rem),
+    radial-gradient(circle at 102% 18%, rgba(94, 211, 180, .065), transparent 27rem);
+  background-attachment: fixed;
+}
+
+.app-shell {
+  background: transparent !important;
+}
+
+.topnav {
+  background: rgba(249, 250, 253, .82) !important;
+  border-bottom-color: rgba(91, 108, 139, .1) !important;
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+}
+
+.nav-logo {
+  color: #172033;
+  letter-spacing: -.55px;
+}
+
+.nav-logo span {
+  color: var(--blue);
+}
+
+.nav-logout-btn,
+.icon-btn {
+  background: rgba(255, 255, 255, .64);
+  border: 1px solid rgba(91, 108, 139, .1);
+  box-shadow: 0 5px 16px rgba(38, 51, 77, .055);
+}
+
+.card,
+.stat-card,
+.settings-card,
+.quick-actions-card,
+.week-chip,
+.input-card {
+  background: rgba(253, 253, 255, .9) !important;
+  border-color: rgba(91, 108, 139, .11) !important;
+  box-shadow: var(--shadow) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.card,
+.settings-card,
+.quick-actions-card {
+  border-radius: 22px !important;
+}
+
+.moti-card {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .18), transparent 28%),
+    linear-gradient(135deg, #172554 0%, #3f56d9 58%, #667cf4 100%) !important;
+  border: 1px solid rgba(255, 255, 255, .13) !important;
+  box-shadow: 0 20px 45px rgba(49, 65, 161, .2) !important;
+}
+
+.btn:not(.ghost) {
+  background: linear-gradient(135deg, #4c65e8, #607cff);
+  box-shadow: 0 8px 18px rgba(82, 110, 245, .18);
+}
+
+.bottom-nav {
+  background: rgba(249, 250, 253, .9) !important;
+  border-top-color: rgba(91, 108, 139, .1) !important;
+  box-shadow: 0 -10px 32px rgba(38, 51, 77, .075) !important;
+}
+
+.bottom-nav .bn-item {
+  color: #7c879b !important;
+  background: transparent !important;
+}
+
+.bottom-nav .bn-item::before {
+  display: none;
+}
+
+.bottom-nav .bn-icon {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  border-radius: 10px !important;
+  transition: color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.bottom-nav .bn-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  stroke-width: 1.7 !important;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--blue) !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon {
+  color: #fff !important;
+  background: linear-gradient(145deg, #4962df, #6e86ff) !important;
+  box-shadow: 0 7px 16px rgba(82, 110, 245, .3), inset 0 1px 0 rgba(255, 255, 255, .24);
+  transform: translateY(-2px) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-weight: 600 !important;
+  color: inherit;
+}
+
+[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 12% -8%, rgba(120, 144, 255, .12), transparent 30rem),
+    radial-gradient(circle at 102% 18%, rgba(52, 211, 153, .06), transparent 27rem);
+}
+
+[data-theme="dark"] .topnav,
+[data-theme="dark"] .bottom-nav {
+  background: rgba(15, 20, 31, .88) !important;
+}
+
+[data-theme="dark"] .nav-logo {
+  color: var(--text);
+}
+
+[data-theme="dark"] .nav-logout-btn,
+[data-theme="dark"] .icon-btn,
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .settings-card,
+[data-theme="dark"] .quick-actions-card,
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .input-card {
+  background: rgba(21, 27, 40, .9) !important;
+}
