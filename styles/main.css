@@ -276,6 +276,66 @@ html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
   box-shadow: 0 8px 18px rgba(78, 103, 230, .28) !important;
 }
 
+/* v226: synchronization center */
+.sync-now-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+}
+
+.sync-now-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sync-now-btn.is-syncing svg {
+  animation: syncRotate .8s linear infinite;
+}
+
+.sync-now-btn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  transform: none !important;
+}
+
+.sync-error-copy {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #b42318;
+  background: rgba(239, 68, 68, .08);
+  border: 1px solid rgba(239, 68, 68, .13);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.sync-error-copy[hidden] {
+  display: none !important;
+}
+
+#settingsPendingSync {
+  color: var(--blue);
+}
+
+@keyframes syncRotate {
+  to { transform: rotate(360deg); }
+}
+
+[data-theme="dark"] .sync-error-copy {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, .1);
+  border-color: rgba(239, 68, 68, .16);
+}
+
 /* ── LAYOUT ── */
 .app-shell {
   width: 100%;
