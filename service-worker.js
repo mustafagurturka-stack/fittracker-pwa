@@ -1,15 +1,15 @@
 'use strict';
 
-const CACHE_NAME = 'fittracker-pro-v226';
+const CACHE_NAME = 'fittracker-pro-v228';
 
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/styles/main.css?v=126',
-  '/scripts/app.js?v=226',
-  '/manifest.json?v=226',
-  '/icons/icon-192.png?v=226',
-  '/icons/icon-512.png?v=226',
+  '/styles/main.css?v=128',
+  '/scripts/app.js?v=228',
+  '/manifest.json?v=228',
+  '/icons/icon-192.png?v=228',
+  '/icons/icon-512.png?v=228',
 ];
 
 self.addEventListener('install', event => {
