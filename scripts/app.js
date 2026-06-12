@@ -101,7 +101,14 @@ let state = {
   preferences: {
     measureReminder: true,
     dailyReminder: false,
-  }
+  },
+  syncMeta: {
+    lastSuccess: '',
+    lastAttempt: '',
+    lastError: '',
+    pendingMeasurements: [],
+    pendingSleep: [],
+  },
 };
 
 let measurementChart = null;
@@ -125,6 +132,70 @@ function withTimeout(promise, ms = 10000, label = 'İşlem') {
 }
 let activeSessionLoad = null;
 let cloudSyncInProgress = false;
+
+function ensureSyncMeta() {
+  if (!state.syncMeta || typeof state.syncMeta !== 'object') state.syncMeta = {};
+  state.syncMeta = {
+    lastSuccess: state.syncMeta.lastSuccess || '',
+    lastAttempt: state.syncMeta.lastAttempt || '',
+    lastError: state.syncMeta.lastError || '',
+    pendingMeasurements: Array.isArray(state.syncMeta.pendingMeasurements) ? state.syncMeta.pendingMeasurements : [],
+    pendingSleep: Array.isArray(state.syncMeta.pendingSleep) ? state.syncMeta.pendingSleep : [],
+  };
+  return state.syncMeta;
+}
+
+function markPendingSync(type, key) {
+  if (!key) return;
+  const syncMeta = ensureSyncMeta();
+  const bucket = type === 'measurements' ? syncMeta.pendingMeasurements : syncMeta.pendingSleep;
+  if (!bucket.includes(key)) bucket.push(key);
+}
+
+function clearPendingSync(type, key) {
+  const syncMeta = ensureSyncMeta();
+  const bucketName = type === 'measurements' ? 'pendingMeasurements' : 'pendingSleep';
+  syncMeta[bucketName] = syncMeta[bucketName].filter(item => item !== key);
+}
+
+function getPendingSyncCount() {
+  const syncMeta = ensureSyncMeta();
+  const localWorkouts = (state.workouts || []).filter(item => String(item?.id || '').startsWith('local-workout-')).length;
+  const localNotes = (state.notes || []).filter(item => String(item?.id || '').startsWith('local-note-')).length;
+  const deletionBuckets = Object.values(state.deletedRecords || {})
+    .reduce((total, bucket) => total + (Array.isArray(bucket) && bucket.length ? 1 : 0), 0);
+
+  return syncMeta.pendingMeasurements.length + syncMeta.pendingSleep.length + localWorkouts + localNotes + deletionBuckets;
+}
+
+function formatSyncTimestamp(value) {
+  if (!value) return 'Henüz yok';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Henüz yok';
+  return date.toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function getSyncErrorMessage(error) {
+  return String(error?.message || error?.details || error || 'Bilinmeyen senkron hatası');
+}
+
+function recordSyncSuccess(type = '', key = '') {
+  const syncMeta = ensureSyncMeta();
+  if (type && key) clearPendingSync(type, key);
+  syncMeta.lastSuccess = new Date().toISOString();
+  syncMeta.lastError = '';
+  stateSave();
+  setSyncDot('ok');
+  renderSettings();
+}
+
+function recordSyncError(error) {
+  const syncMeta = ensureSyncMeta();
+  syncMeta.lastError = getSyncErrorMessage(error);
+  stateSave();
+  setSyncDot('err');
+  renderSettings();
+}
 // â”€â”€ HELPERS â”€â”€
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -826,7 +897,6 @@ function recoverOnboardingFromData() {
 function stateSave() {
   try {
     localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
-    setSyncDot('ok');
   } catch (e) {
     console.error('State kaydedilemedi:', e);
     setSyncDot('err');
@@ -857,6 +927,13 @@ function stateLoad() {
         measureReminder: savedState.preferences?.measureReminder ?? true,
         dailyReminder: savedState.preferences?.dailyReminder ?? false,
       },
+      syncMeta: {
+        lastSuccess: savedState.syncMeta?.lastSuccess || '',
+        lastAttempt: savedState.syncMeta?.lastAttempt || '',
+        lastError: savedState.syncMeta?.lastError || '',
+        pendingMeasurements: Array.isArray(savedState.syncMeta?.pendingMeasurements) ? savedState.syncMeta.pendingMeasurements : [],
+        pendingSleep: Array.isArray(savedState.syncMeta?.pendingSleep) ? savedState.syncMeta.pendingSleep : [],
+      },
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
@@ -870,6 +947,7 @@ function stateLoad() {
         notes: Array.isArray(savedState.deletedRecords?.notes) ? savedState.deletedRecords.notes : [],
       },
     };
+    ensureSyncMeta();
     normalizeProfileState();
   } catch (e) {
     console.warn('State yüklenemedi:', e);
@@ -2108,6 +2186,10 @@ function renderSettings() {
   const firstGoalEl = document.getElementById('settingsFirstGoal');
   const finalGoalEl = document.getElementById('settingsFinalGoal');
   const syncEl = document.getElementById('settingsSyncState');
+  const lastSyncEl = document.getElementById('settingsLastSync');
+  const pendingSyncEl = document.getElementById('settingsPendingSync');
+  const syncErrorEl = document.getElementById('settingsSyncError');
+  const syncNowBtn = document.getElementById('syncNowBtn');
   const profileThemeToggle = document.getElementById('profileThemeToggle');
   const measureReminderToggle = document.getElementById('measureReminderToggle');
   const dailyReminderToggle = document.getElementById('dailyReminderToggle');
@@ -2139,7 +2221,29 @@ function renderSettings() {
   }
   if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
   if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
-  if (syncEl) syncEl.textContent = navigator.onLine ? 'Cloud senkron aktif' : 'Çevrimdışı kayıt';
+  const syncMeta = ensureSyncMeta();
+  const pendingCount = getPendingSyncCount();
+  if (syncEl) {
+    syncEl.textContent = cloudSyncInProgress
+      ? 'Senkronize ediliyor'
+      : !navigator.onLine
+        ? 'Çevrimdışı kayıt'
+        : syncMeta.lastError
+          ? 'Kontrol gerekli'
+          : 'Cloud hazır';
+  }
+  if (lastSyncEl) lastSyncEl.textContent = formatSyncTimestamp(syncMeta.lastSuccess);
+  if (pendingSyncEl) pendingSyncEl.textContent = `${pendingCount} değişiklik`;
+  if (syncErrorEl) {
+    syncErrorEl.hidden = !syncMeta.lastError;
+    syncErrorEl.textContent = syncMeta.lastError ? `Son hata: ${syncMeta.lastError}` : '';
+  }
+  if (syncNowBtn) {
+    syncNowBtn.disabled = cloudSyncInProgress || !navigator.onLine || !hasActiveUser();
+    syncNowBtn.classList.toggle('is-syncing', cloudSyncInProgress);
+    const label = syncNowBtn.querySelector('span');
+    if (label) label.textContent = cloudSyncInProgress ? 'Senkronize Ediliyor' : 'Şimdi Senkronize Et';
+  }
   if (profileThemeToggle) profileThemeToggle.checked = state.theme === 'dark';
   if (measureReminderToggle) measureReminderToggle.checked = Boolean(state.preferences?.measureReminder);
   if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
@@ -2192,7 +2296,7 @@ async function loadMeasurementsFromSupabase() {
   if (error) {
     console.error('Supabase load hatası:', error);
     setStatus('Cloud veri yüklenemedi', 'error');
-    return;
+    throw error;
   }
 
   const cloudMeasurements = (data || []).map(item => ({
@@ -2232,7 +2336,7 @@ async function loadSleepFromSupabase() {
   if (error) {
     console.error('Sleep load hatası:', error);
     setStatus('Uyku verileri yüklenemedi', 'error');
-    return;
+    throw error;
   }
 
   if (!(data || []).length && localSleep.length) {
@@ -2271,7 +2375,7 @@ async function loadWorkoutsFromSupabase() {
   if (error) {
     console.error('Workout load hatası:', error);
     setStatus('Antrenman verileri yüklenemedi', 'error');
-    return;
+    throw error;
   }
 
   const cloudWorkouts = (data || []).map(item => ({
@@ -2307,7 +2411,7 @@ async function loadNotesFromSupabase() {
   if (error) {
     console.error('Notes load hatası:', error);
     setStatus('Notlar yüklenemedi', 'error');
-    return;
+    throw error;
   }
 
   const cloudNotes = (data || []).map(item => ({
@@ -2330,104 +2434,164 @@ async function loadNotesFromSupabase() {
 }
 
 
-async function pushLocalPendingToSupabase() {
-  if (!canUseCloud() || cloudSyncInProgress) return;
+async function flushPendingDeletes() {
+  const userId = getUserId();
+  const buckets = state.deletedRecords || {};
 
-  cloudSyncInProgress = true;
-  setSyncDot('busy');
+  const runDelete = async query => {
+    const { error } = await query;
+    if (error) throw error;
+  };
 
-  try {
-    const measurements = getSortedMeasurements();
-    for (const item of measurements) {
-      if (isRecordDeleted('measurements', item)) continue;
-      await saveMeasurementToSupabase({
-        user_id: getUserId(),
-        date: item.date,
-        weight: Number(item.weight),
-        waist: parseOptionalNumber(item.waist),
-      });
-    }
-
-    const sleepItems = Array.isArray(state.sleep) ? state.sleep : [];
-    for (const item of sleepItems) {
-      if (isRecordDeleted('sleep', item)) continue;
-      await saveSleepToSupabase({
-        user_id: getUserId(),
-        date: item.date,
-        hours: Number(item.hours || 0),
-      });
-    }
-
-    const localWorkouts = (Array.isArray(state.workouts) ? state.workouts : [])
-      .filter(item => item?.id && String(item.id).startsWith('local-workout-') && !isRecordDeleted('workouts', item));
-
-    for (const item of localWorkouts) {
-      const { data, error } = await db
-        .from('workout_logs')
-        .insert([{
-          user_id: getUserId(),
-          date: item.date,
-          type: item.type,
-          duration: Number(item.duration || 0),
-          note: item.note || '',
-        }])
-        .select()
-        .single();
-
-      if (!error && data?.id) {
-        item.id = data.id;
-      }
-    }
-
-    const localNotes = (Array.isArray(state.notes) ? state.notes : [])
-      .filter(item => item?.id && String(item.id).startsWith('local-note-') && !isRecordDeleted('notes', item));
-
-    for (const item of localNotes) {
-      const { data, error } = await db
-        .from('notes')
-        .insert([{
-          user_id: getUserId(),
-          date: item.date,
-          text: item.text,
-        }])
-        .select()
-        .single();
-
-      if (!error && data?.id) {
-        item.id = data.id;
-      }
-    }
-
-    stateSave();
-    setStatus('Senkron aktif', 'ok');
-    setSyncDot('ok');
-  } catch (error) {
-    console.warn('Pending cloud sync failed:', error);
-    setStatus('Yerel kayıtlar korunuyor - cloud daha sonra denenecek', 'ok');
-    setSyncDot('err');
-  } finally {
-    cloudSyncInProgress = false;
+  for (const key of buckets.measurements || []) {
+    if (!key.startsWith('date:')) continue;
+    const date = key.slice(5);
+    await runDelete(db.from('measurements').delete().eq('user_id', userId).eq('date', date));
+    clearPendingSync('measurements', date);
   }
+
+  for (const key of buckets.sleep || []) {
+    if (isCloudRecordId(key)) {
+      await runDelete(db.from('sleep_logs').delete().eq('user_id', userId).eq('id', key));
+    } else if (key.startsWith('date:')) {
+      const date = key.slice(5);
+      await runDelete(db.from('sleep_logs').delete().eq('user_id', userId).eq('date', date));
+      clearPendingSync('sleep', date);
+    }
+  }
+
+  for (const key of buckets.workouts || []) {
+    if (isCloudRecordId(key)) {
+      await runDelete(db.from('workout_logs').delete().eq('user_id', userId).eq('id', key));
+    }
+  }
+
+  for (const key of buckets.notes || []) {
+    if (isCloudRecordId(key)) {
+      await runDelete(db.from('notes').delete().eq('user_id', userId).eq('id', key));
+    }
+  }
+
+  state.deletedRecords = { measurements: [], sleep: [], workouts: [], notes: [] };
+}
+
+async function pushLocalPendingToSupabase() {
+  if (!canUseCloud()) return { ok: false, error: new Error('Çevrimdışı') };
+
+  const measurements = getSortedMeasurements();
+  for (const item of measurements) {
+    if (isRecordDeleted('measurements', item)) continue;
+    const { error } = await saveMeasurementToSupabase({
+      user_id: getUserId(),
+      date: item.date,
+      weight: Number(item.weight),
+      waist: parseOptionalNumber(item.waist),
+    });
+    if (error) throw error;
+    clearPendingSync('measurements', item.date);
+  }
+
+  const sleepItems = Array.isArray(state.sleep) ? state.sleep : [];
+  for (const item of sleepItems) {
+    if (isRecordDeleted('sleep', item)) continue;
+    const { error } = await saveSleepToSupabase({
+      user_id: getUserId(),
+      date: item.date,
+      hours: Number(item.hours || 0),
+    });
+    if (error) throw error;
+    clearPendingSync('sleep', item.date);
+  }
+
+  const localWorkouts = (Array.isArray(state.workouts) ? state.workouts : [])
+    .filter(item => item?.id && String(item.id).startsWith('local-workout-') && !isRecordDeleted('workouts', item));
+
+  for (const item of localWorkouts) {
+    const { data, error } = await db
+      .from('workout_logs')
+      .insert([{
+        user_id: getUserId(),
+        date: item.date,
+        type: item.type,
+        duration: Number(item.duration || 0),
+        note: item.note || '',
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (data?.id) item.id = data.id;
+  }
+
+  const localNotes = (Array.isArray(state.notes) ? state.notes : [])
+    .filter(item => item?.id && String(item.id).startsWith('local-note-') && !isRecordDeleted('notes', item));
+
+  for (const item of localNotes) {
+    const { data, error } = await db
+      .from('notes')
+      .insert([{
+        user_id: getUserId(),
+        date: item.date,
+        text: item.text,
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (data?.id) item.id = data.id;
+  }
+
+  await flushPendingDeletes();
+  stateSave();
+  return { ok: true };
 }
 
 async function loadAllCloudData({ force = false } = {}) {
-  if (!hasActiveUser()) return [];
-  if (!force && !state.onboarded) return [];
+  if (!hasActiveUser() || !navigator.onLine) return { ok: false, results: [] };
+  if (!force && !state.onboarded) return { ok: false, results: [] };
+  if (cloudSyncInProgress) return { ok: false, busy: true, results: [] };
 
-  const results = await Promise.allSettled([
-    loadMeasurementsFromSupabase(),
-    loadSleepFromSupabase(),
-    loadWorkoutsFromSupabase(),
-    loadNotesFromSupabase(),
-  ]);
+  cloudSyncInProgress = true;
+  const syncMeta = ensureSyncMeta();
+  syncMeta.lastAttempt = new Date().toISOString();
+  syncMeta.lastError = '';
+  setSyncDot('busy');
+  renderSettings();
 
-  recoverOnboardingFromData();
-  normalizeProfileState();
-  stateSave();
-  await pushLocalPendingToSupabase();
-  renderAll();
+  try {
+    const results = await Promise.allSettled([
+      loadMeasurementsFromSupabase(),
+      loadSleepFromSupabase(),
+      loadWorkoutsFromSupabase(),
+      loadNotesFromSupabase(),
+    ]);
 
-  return results;
+    const rejected = results.find(result => result.status === 'rejected');
+    if (rejected) throw rejected.reason;
+
+    recoverOnboardingFromData();
+    normalizeProfileState();
+    await pushLocalPendingToSupabase();
+
+    syncMeta.lastSuccess = new Date().toISOString();
+    syncMeta.lastError = '';
+    stateSave();
+    setStatus('Senkron tamamlandı', 'ok');
+    setSyncDot('ok');
+    renderAll();
+    return { ok: true, results };
+  } catch (error) {
+    syncMeta.lastError = getSyncErrorMessage(error);
+    stateSave();
+    setStatus('Senkron tamamlanamadı - yerel kayıtlar korunuyor', 'error');
+    setSyncDot('err');
+    renderSettings();
+    console.warn('Cloud sync failed:', error);
+    return { ok: false, error, results: [] };
+  } finally {
+    cloudSyncInProgress = false;
+    renderSettings();
+  }
 }
 
 async function saveMeasurementToSupabase(payload) {
@@ -2458,6 +2622,7 @@ async function saveMeasurementToSupabase(payload) {
 function saveMeasurementLocally(payload) {
   if (!Array.isArray(state.measurements)) state.measurements = [];
   unmarkRecordDeleted('measurements', payload);
+  markPendingSync('measurements', payload.date);
 
   const nextMeasurement = {
     date: payload.date,
@@ -2506,6 +2671,7 @@ async function saveSleepToSupabase(payload) {
 function saveSleepLocally(payload) {
   if (!Array.isArray(state.sleep)) state.sleep = [];
   unmarkRecordDeleted('sleep', payload);
+  markPendingSync('sleep', payload.date);
 
   const nextSleep = {
     id: payload.id || `local-sleep-${payload.date}`,
@@ -2627,8 +2793,10 @@ async function saveMeasurementFromForm() {
 
   if (error) {
     console.error('Measurement save error:', error);
+    recordSyncError(error);
     setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
   } else {
+    recordSyncSuccess('measurements', payload.date);
     await loadMeasurementsFromSupabase();
   }
 }
@@ -2685,12 +2853,16 @@ async function addMeasurement() {
   saveMeasurementLocally(measurement);
   setStatus('Ölçüm eklendi ✓', 'ok');
 
+  if (!canUseCloud()) return;
+
   const { error } = await saveMeasurementToSupabase(measurement);
 
   if (error) {
     console.error('Supabase insert hatası:', error);
+    recordSyncError(error);
     setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
   } else {
+    recordSyncSuccess('measurements', measurement.date);
     await loadMeasurementsFromSupabase();
   }
 }
@@ -2712,6 +2884,8 @@ async function deleteWeight(sortedIdx) {
   renderAll();
   setStatus('Ölçüm silindi ✓', 'ok');
 
+  if (!canUseCloud()) return;
+
   const { error } = await db
     .from('measurements')
     .delete()
@@ -2720,9 +2894,12 @@ async function deleteWeight(sortedIdx) {
 
   if (error) {
     console.error('Supabase delete hatası:', error);
+    recordSyncError(error);
     setStatus('Ölçüm cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
+  unmarkRecordDeleted('measurements', target);
+  recordSyncSuccess();
 }
 
 async function deleteNote(index) {
@@ -2738,6 +2915,7 @@ async function deleteNote(index) {
   setStatus('Not silindi ✓', 'ok');
 
   if (!isCloudRecordId(target.id)) return;
+  if (!canUseCloud()) return;
 
   const { error } = await db
     .from('notes')
@@ -2746,9 +2924,12 @@ async function deleteNote(index) {
 
   if (error) {
     console.error('Note silme hatası:', error);
+    recordSyncError(error);
     setStatus('Not cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
+  unmarkRecordDeleted('notes', target);
+  recordSyncSuccess();
 }
 
 async function deleteSleep(sortedIdx) {
@@ -2767,6 +2948,7 @@ async function deleteSleep(sortedIdx) {
   setStatus('Uyku kaydı silindi ✓', 'ok');
 
   if (!isCloudRecordId(target.id)) return;
+  if (!canUseCloud()) return;
 
   const { error } = await db
     .from('sleep_logs')
@@ -2775,9 +2957,12 @@ async function deleteSleep(sortedIdx) {
 
   if (error) {
     console.error('Sleep silme hatası:', error);
+    recordSyncError(error);
     setStatus('Uyku cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
+  unmarkRecordDeleted('sleep', target);
+  recordSyncSuccess();
 }
 
 async function addNote() {
@@ -2805,13 +2990,14 @@ async function addNote() {
 
   if (error) {
     console.error('Note kayıt hatası:', error);
+    recordSyncError(error);
     setStatus('Not yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
 
   const localNote = state.notes.find(item => item.id === localId);
   if (localNote && data?.id) localNote.id = data.id;
-  stateSave();
+  recordSyncSuccess();
 
   await loadNotesFromSupabase();
 }
@@ -2847,10 +3033,12 @@ async function saveSleep() {
 
   if (error) {
     console.error('Sleep kayıt hatası:', error);
+    recordSyncError(error);
     setStatus('Uyku yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
 
+  recordSyncSuccess('sleep', payload.date);
   await loadSleepFromSupabase();
 }
 
@@ -2903,13 +3091,14 @@ async function saveWorkout() {
 
   if (error) {
     console.error('Workout kayıt hatası:', error);
+    recordSyncError(error);
     setStatus('Antrenman yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
     return;
   }
 
   const localWorkout = state.workouts.find(item => item.id === localId);
   if (localWorkout && data?.id) localWorkout.id = data.id;
-  stateSave();
+  recordSyncSuccess();
 
   await loadWorkoutsFromSupabase();
 }
@@ -2930,6 +3119,7 @@ async function deleteWorkout(sortedIdx) {
   setStatus('Antrenman kaydı silindi ✓', 'ok');
 
   if (!isCloudRecordId(target.id)) return;
+  if (!canUseCloud()) return;
 
   const { error } = await db
     .from('workout_logs')
@@ -2938,9 +3128,12 @@ async function deleteWorkout(sortedIdx) {
 
   if (error) {
     console.error('Workout silme hatası:', error);
+    recordSyncError(error);
     setStatus('Antrenman cihazdan silindi - cloud izni kontrol edilecek', 'ok');
     return;
   }
+  unmarkRecordDeleted('workouts', target);
+  recordSyncSuccess();
 }
 
 function editName() {
@@ -3227,6 +3420,13 @@ async function signOut() {
       workouts: [],
       notes: [],
     },
+    syncMeta: {
+      lastSuccess: '',
+      lastAttempt: '',
+      lastError: '',
+      pendingMeasurements: [],
+      pendingSleep: [],
+    },
   };
   document.getElementById('authModal')?.remove();
   document.getElementById('onboardingModal')?.remove();
@@ -3273,7 +3473,13 @@ async function continueWithSession(session, options = {}) {
       return;
     }
 
-    setStatus('Senkron aktif', 'ok');
+    if (result?.timedOut) {
+      setStatus('Cloud yanıtı gecikti - yerel veriler hazır', 'error');
+    } else if (result?.error || result?.value?.ok === false) {
+      setStatus('Yerel veriler hazır - senkron kontrol edilmeli', 'error');
+    } else {
+      setStatus('Senkron aktif', 'ok');
+    }
   };
 
   if (options.skipCloudWait) {
@@ -3411,18 +3617,30 @@ function updateOnlineStatus() {
 
   if (navigator.onLine) {
     if (notice) notice.classList.remove('visible');
-    setStatus('Çevrimiçi - cloud senkron aktif', 'ok');
-    setSyncDot('ok');
+    const pendingCount = getPendingSyncCount();
+    setStatus(pendingCount ? `${pendingCount} değişiklik senkron bekliyor` : 'Çevrimiçi', 'ok');
+    setSyncDot(pendingCount ? 'busy' : ensureSyncMeta().lastError ? 'err' : 'ok');
   } else {
     if (notice) notice.classList.add('visible');
     setStatus('Çevrimdışı - veriler yerel olarak saklanır', 'error');
     setSyncDot('err');
   }
+  renderSettings();
 }
 
 function handleOnline() {
   updateOnlineStatus();
   if (state.onboarded && hasActiveUser()) loadAllCloudData({ force: true });
+}
+
+async function syncNow() {
+  if (!navigator.onLine) {
+    setStatus('Senkron için internet bağlantısı gerekiyor', 'error');
+    return;
+  }
+
+  const result = await loadAllCloudData({ force: true });
+  if (result?.ok) setStatus('Web ve PWA verileri senkronize edildi', 'ok');
 }
 
 // â”€â”€ PWA INSTALL â”€â”€
@@ -3517,6 +3735,9 @@ function bindUiEvents() {
 
   const signOutBtn = document.getElementById('signOutBtn');
   if (signOutBtn) signOutBtn.addEventListener('click', signOut);
+
+  const syncNowBtn = document.getElementById('syncNowBtn');
+  if (syncNowBtn) syncNowBtn.addEventListener('click', syncNow);
 
   window.addEventListener('focus', () => {
     if (state.onboarded) loadAllCloudData();
