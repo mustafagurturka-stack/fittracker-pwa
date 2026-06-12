@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=225" />
+  <link rel="manifest" href="/manifest.json?v=226" />
 
   <!-- Icons (Apple) -->
-  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=225" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=225" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=225" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=226" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=226" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=226" />
 
   <title>FitTracker Pro</title>
 
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=125" />
+  <link rel="stylesheet" href="/styles/main.css?v=126" />
 </head>
 <body>
 
@@ -440,6 +440,19 @@
               <span>Durum</span>
               <strong id="settingsSyncState">Hazır</strong>
             </div>
+            <div class="settings-row">
+              <span>Son senkron</span>
+              <strong id="settingsLastSync">Henüz yok</strong>
+            </div>
+            <div class="settings-row">
+              <span>Bekleyen</span>
+              <strong id="settingsPendingSync">0 değişiklik</strong>
+            </div>
+            <p class="sync-error-copy" id="settingsSyncError" hidden></p>
+            <button class="btn ghost settings-action sync-now-btn" id="syncNowBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.5-2L20 9"/><path d="m4 15 2.4 2A7 7 0 0 0 18 15"/></svg>
+              <span>Şimdi Senkronize Et</span>
+            </button>
           </div>
 
           <div class="settings-card">
@@ -514,6 +527,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=225" defer></script>
+  <script src="/scripts/app.js?v=226" defer></script>
 </body>
 </html>
