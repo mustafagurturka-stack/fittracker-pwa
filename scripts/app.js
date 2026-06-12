@@ -2305,16 +2305,12 @@ async function loadMeasurementsFromSupabase() {
     waist: parseOptionalNumber(item.waist),
   })).filter(item => !isRecordDeleted('measurements', item));
 
-  if (!cloudMeasurements.length && localMeasurements.length) {
-    console.warn('Cloud ölçüm boş döndü; yerel başlangıç ölçümü korunuyor.');
-    setStatus('Hazır', 'ok');
-    return;
-  }
-
   const localOnlyMeasurements = localMeasurements.filter(local =>
     !isRecordDeleted('measurements', local) &&
     !cloudMeasurements.some(cloud => cloud.date === local.date)
   );
+
+  localOnlyMeasurements.forEach(item => markPendingSync('measurements', item.date));
 
   state.measurements = [...cloudMeasurements, ...localOnlyMeasurements]
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -2339,12 +2335,6 @@ async function loadSleepFromSupabase() {
     throw error;
   }
 
-  if (!(data || []).length && localSleep.length) {
-    console.warn('Cloud uyku boş döndü; yerel uyku kayıtları korunuyor.');
-    setStatus('Hazır', 'ok');
-    return;
-  }
-
   const cloudSleep = (data || []).map(item => ({
     id: item.id,
     date: item.date,
@@ -2355,6 +2345,8 @@ async function loadSleepFromSupabase() {
     !isRecordDeleted('sleep', local) &&
     !cloudSleep.some(cloud => cloud.date === local.date)
   );
+
+  localOnlySleep.forEach(item => markPendingSync('sleep', item.date));
 
   state.sleep = [...cloudSleep, ...localOnlySleep]
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -2478,7 +2470,10 @@ async function flushPendingDeletes() {
 async function pushLocalPendingToSupabase() {
   if (!canUseCloud()) return { ok: false, error: new Error('Çevrimdışı') };
 
-  const measurements = getSortedMeasurements();
+  const syncMeta = ensureSyncMeta();
+  const pendingMeasurementDates = new Set(syncMeta.pendingMeasurements);
+  const measurements = getSortedMeasurements()
+    .filter(item => pendingMeasurementDates.has(item.date));
   for (const item of measurements) {
     if (isRecordDeleted('measurements', item)) continue;
     const { error } = await saveMeasurementToSupabase({
@@ -2491,7 +2486,9 @@ async function pushLocalPendingToSupabase() {
     clearPendingSync('measurements', item.date);
   }
 
-  const sleepItems = Array.isArray(state.sleep) ? state.sleep : [];
+  const pendingSleepDates = new Set(syncMeta.pendingSleep);
+  const sleepItems = (Array.isArray(state.sleep) ? state.sleep : [])
+    .filter(item => pendingSleepDates.has(item.date));
   for (const item of sleepItems) {
     if (isRecordDeleted('sleep', item)) continue;
     const { error } = await saveSleepToSupabase({
@@ -3475,6 +3472,8 @@ async function continueWithSession(session, options = {}) {
 
     if (result?.timedOut) {
       setStatus('Cloud yanıtı gecikti - yerel veriler hazır', 'error');
+    } else if (result?.value?.busy) {
+      setStatus('Senkronizasyon devam ediyor', 'ok');
     } else if (result?.error || result?.value?.ok === false) {
       setStatus('Yerel veriler hazır - senkron kontrol edilmeli', 'error');
     } else {
@@ -3850,7 +3849,16 @@ async function checkAuthSession() {
       return;
     }
 
-    await continueWithSession(data.session);
+    if (activeSessionLoad) {
+      await activeSessionLoad;
+      return;
+    }
+
+    activeSessionLoad = continueWithSession(data.session)
+      .finally(() => {
+        activeSessionLoad = null;
+      });
+    await activeSessionLoad;
   } catch (error) {
     window.clearTimeout(fallback);
     console.warn('Oturum kontrolü yapılamadı:', error);
