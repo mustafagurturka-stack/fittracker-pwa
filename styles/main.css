@@ -6942,3 +6942,331 @@ html[data-theme="light"] #panels {
     border-radius: 20px 20px 0 0 !important;
   }
 }
+
+/* v239: high-impact premium direction */
+:root {
+  --lux-ink: #111a36;
+  --lux-indigo: #5a5ff2;
+  --lux-indigo-deep: #3f46cf;
+  --lux-mint: #10b981;
+  --lux-coral: #f26b5f;
+  --lux-gold: #f4b740;
+  --lux-line: rgba(44, 57, 96, .11);
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-image:
+    radial-gradient(circle at 4% 0%, rgba(90, 95, 242, .15), transparent 30rem),
+    radial-gradient(circle at 100% 16%, rgba(16, 185, 129, .10), transparent 28rem),
+    linear-gradient(180deg, #f7f8fc 0%, #edf1f8 55%, #e9eef6 100%) !important;
+}
+
+.card,
+.settings-card,
+.week-chip,
+.input-card,
+.goal-hero-card,
+.progress-summary-card {
+  border-color: var(--lux-line) !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 18px 44px rgba(35, 44, 76, .075) !important;
+}
+
+.sec-title,
+.list-title,
+.progress-summary-label {
+  color: #677493 !important;
+  letter-spacing: .11em !important;
+}
+
+.hero-title,
+.page-intro h2,
+.chart-mini-head strong,
+.settings-card-title {
+  color: var(--lux-ink) !important;
+}
+
+.moti-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 84px !important;
+  background:
+    radial-gradient(circle at 94% 18%, rgba(255,255,255,.48), transparent 24%),
+    linear-gradient(110deg, #545af0 0%, #7477f7 50%, #20b99a 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 20px 42px rgba(70, 75, 210, .24) !important;
+}
+
+.moti-card::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -42px;
+  top: -85px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 50%;
+}
+
+html[data-theme="light"] body .moti-card .moti-text {
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 750 !important;
+  letter-spacing: -.01em;
+}
+
+html[data-theme="light"] body .moti-card .moti-icon {
+  color: #fff !important;
+  background: rgba(255,255,255,.17) !important;
+  border-color: rgba(255,255,255,.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.btn:not(.ghost),
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, var(--lux-indigo-deep), #6970ff) !important;
+  box-shadow: 0 10px 22px rgba(79, 84, 220, .25) !important;
+}
+
+.daily-filter-bar {
+  border: 0 !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 10px 26px rgba(35,44,76,.09) !important;
+}
+
+.daily-filter-bar button.active {
+  background: linear-gradient(135deg, #4e54df, #6d73ff) !important;
+  box-shadow: 0 8px 18px rgba(78,84,223,.28) !important;
+}
+
+.daily-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+}
+
+.daily-grid .list-card {
+  height: 540px !important;
+  min-height: 540px !important;
+  max-height: 540px !important;
+  overflow: hidden !important;
+}
+
+#sleepList,
+#workoutList,
+.daily-grid[data-view="week"] #sleepList,
+.daily-grid[data-view="week"] #workoutList,
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90,95,242,.3) transparent;
+  flex: 1 1 auto !important;
+}
+
+#sleepList::-webkit-scrollbar,
+#workoutList::-webkit-scrollbar {
+  width: 6px;
+}
+
+#sleepList::-webkit-scrollbar-thumb,
+#workoutList::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(90,95,242,.28);
+}
+
+.list-title {
+  padding-top: 18px !important;
+}
+
+#sleepSummary,
+#workoutSummary {
+  min-height: 82px;
+  padding-top: 10px !important;
+  border-bottom: 1px solid var(--lux-line);
+}
+
+.daily-row {
+  min-height: 74px !important;
+  flex: 0 0 74px;
+  border-top: 0 !important;
+  border-bottom: 1px solid rgba(44,57,96,.09) !important;
+}
+
+.daily-row-title {
+  color: var(--lux-ink) !important;
+  font-size: 15px;
+}
+
+.daily-row-meta {
+  color: #7b88a4 !important;
+}
+
+.row-edit {
+  color: #586582 !important;
+  background: #f1f3f8 !important;
+}
+
+.row-delete {
+  color: #8190ad !important;
+  background: #f5f7fb !important;
+}
+
+.row-edit:hover {
+  color: var(--lux-indigo) !important;
+  border-color: rgba(90,95,242,.28) !important;
+}
+
+.chart-card {
+  min-height: 0 !important;
+}
+
+.bar-chart.enhanced {
+  min-height: 202px !important;
+  padding-top: 24px !important;
+  padding-bottom: 14px !important;
+}
+
+.bar-chart.enhanced .bar-item {
+  height: 156px !important;
+  grid-template-rows: 94px 22px 30px !important;
+}
+
+.bar-chart.enhanced .bar-fill {
+  max-height: 86px !important;
+  width: 40px !important;
+}
+
+.bar-fill.sleep {
+  background: linear-gradient(180deg, #48d8f1 0%, #5c62f1 100%) !important;
+  box-shadow: 0 12px 22px rgba(73, 105, 230, .2) !important;
+}
+
+.bar-fill.workout {
+  background: linear-gradient(180deg, var(--lux-gold) 0%, var(--lux-coral) 100%) !important;
+  box-shadow: 0 12px 22px rgba(242, 107, 95, .18) !important;
+}
+
+.sleep-chart.enhanced::before {
+  bottom: 112px !important;
+}
+
+.chart-stat-row div {
+  background: #f5f7fb !important;
+  border: 0 !important;
+}
+
+.chart-mini-head em {
+  color: #4c52df !important;
+  background: rgba(90,95,242,.10) !important;
+}
+
+.weekly-report-row {
+  grid-template-columns: minmax(270px, .95fr) minmax(0, 1.55fr) !important;
+  align-items: stretch !important;
+  background: #fff !important;
+}
+
+.weekly-report-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  border-left: 1px solid var(--lux-line);
+}
+
+.weekly-report-metrics > div {
+  grid-template-rows: 16px 24px 18px 8px;
+  align-content: center;
+  padding: 0 18px !important;
+}
+
+.weekly-report-metrics > div + div {
+  border-left: 1px solid var(--lux-line);
+}
+
+.weekly-report-metrics span,
+.weekly-report-metrics strong,
+.weekly-report-metrics small {
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.weekly-report-metrics span { grid-row: 1; }
+.weekly-report-metrics strong { grid-row: 2; }
+.weekly-report-metrics small { grid-row: 3; }
+
+.weekly-report-metrics i {
+  grid-row: 4;
+  align-self: end;
+  width: 100%;
+}
+
+.weekly-report-metrics > div:first-child b {
+  background: linear-gradient(90deg, #24b6b1, #5d62f1) !important;
+}
+
+.weekly-report-metrics > div:last-child b {
+  background: linear-gradient(90deg, var(--lux-mint), #4d5ee9) !important;
+}
+
+.progress-metric-card:first-child,
+.progress-insight-card:first-child {
+  border-top: 3px solid #31bdb1 !important;
+}
+
+.progress-metric-card:nth-child(2),
+.progress-insight-card:nth-child(3) {
+  border-top: 3px solid var(--lux-coral) !important;
+}
+
+.progress-metric-card:nth-child(3) {
+  border-top: 3px solid var(--lux-indigo) !important;
+}
+
+.goal-hero-card {
+  box-shadow: 0 24px 54px rgba(47, 55, 104, .11) !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon,
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  background: linear-gradient(145deg, #4e54df, #7378ff) !important;
+  box-shadow: 0 9px 20px rgba(78,84,223,.32) !important;
+}
+
+@media (max-width: 760px) {
+  .daily-grid .list-card {
+    height: 460px !important;
+    min-height: 460px !important;
+    max-height: 460px !important;
+  }
+
+  .weekly-report-metrics {
+    border-left: 0;
+    border-top: 1px solid var(--lux-line);
+  }
+
+  .weekly-report-metrics > div {
+    padding: 14px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .daily-grid .list-card {
+    height: 430px !important;
+    min-height: 430px !important;
+    max-height: 430px !important;
+  }
+
+  .weekly-report-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  .weekly-report-metrics > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--lux-line);
+  }
+}
