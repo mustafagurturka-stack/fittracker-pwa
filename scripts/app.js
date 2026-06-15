@@ -22,6 +22,10 @@ const START_DATE = '2026-05-31';
 const WEEKLY_MEASURE_DAY = 0;
 const SLEEP_TARGET = 49;
 const WORKOUT_TARGET = 180;
+const VERIFIED_WEEK_TOTALS = {
+  '2026-05-31': { sleep: 53.5, workouts: 265, sleepNights: 7 },
+  '2026-06-07': { sleep: 55, workouts: 202.5, sleepNights: 7 },
+};
 
 const WORKOUT_CATALOG = {
   Kuvvet: [
@@ -1077,7 +1081,7 @@ function renderDashboardWeekLabel() {
   const workoutTotal = getCurrentWeekWorkoutTotal();
   const workoutPct = Math.min(100, Math.round((workoutTotal / WORKOUT_TARGET) * 100));
   const dailyTotals = getWeekDailyTotals(range);
-  const sleepDays = dailyTotals.sleep.length;
+  const sleepDays = VERIFIED_WEEK_TOTALS[range.start]?.sleepNights || dailyTotals.sleep.length;
   const workoutDays = dailyTotals.workouts.length;
   const sleepAverage = sleepDays ? sleepTotal / sleepDays : 0;
   const weekStatus = sleepPct >= 100 && workoutPct >= 100
@@ -1696,6 +1700,8 @@ function getCurrentWeekSleepTotal() {
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
   const range = getDashboardWeekRange();
   const sleepRange = getSleepRangeForReportWeek(range);
+  const verified = VERIFIED_WEEK_TOTALS[range.start];
+  if (verified) return verified.sleep;
 
   return sleep
     .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
@@ -1757,6 +1763,8 @@ function renderSleepList() {
 function getCurrentWeekWorkoutTotal() {
   const workouts = Array.isArray(state.workouts) ? state.workouts : [];
   const range = getDashboardWeekRange();
+  const verified = VERIFIED_WEEK_TOTALS[range.start];
+  if (verified) return verified.workouts;
 
   return workouts
     .filter(item => item.date >= range.start && item.date <= range.end)
@@ -1853,6 +1861,18 @@ function getWeeklyProgressData() {
     weeks[key].workouts += Number(item.duration || 0);
   });
 
+  Object.values(weeks).forEach(week => {
+    const verified = VERIFIED_WEEK_TOTALS[week.start];
+    week.recordedSleep = week.sleep;
+    week.recordedWorkouts = week.workouts;
+    week.verified = Boolean(verified);
+    if (verified) {
+      week.sleep = verified.sleep;
+      week.workouts = verified.workouts;
+      week.sleepNights = verified.sleepNights;
+    }
+  });
+
   return Object.values(weeks)
     .sort((a, b) => a.start.localeCompare(b.start));
 }
@@ -1873,6 +1893,12 @@ function getWorkoutCategoriesForRange(range) {
 
 function getCurrentWeekWorkoutCategories() {
   return getWorkoutCategoriesForRange(getDashboardWeekRange());
+}
+
+function getVerifiedAdjustment(week, field) {
+  if (!week?.verified) return 0;
+  const recordedField = field === 'sleep' ? 'recordedSleep' : 'recordedWorkouts';
+  return Number((Number(week[field] || 0) - Number(week[recordedField] || 0)).toFixed(1));
 }
 
 function getWeekDailyTotals(range) {
@@ -1913,7 +1939,7 @@ function getWeekDailyTotals(range) {
 
 function getWeekInsights(current, range) {
   const totals = getWeekDailyTotals(range);
-  const sleepDays = totals.sleep.length;
+  const sleepDays = current.sleepNights || totals.sleep.length;
   const sleepAvg = sleepDays ? current.sleep / sleepDays : 0;
   const bestSleep = totals.sleep.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
   const bestWorkout = totals.workouts.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
@@ -1963,6 +1989,10 @@ function renderProgressSummary() {
   const categoryText = categories.length
     ? categories.map(([category, minutes]) => `${category}: ${formatMinutes(minutes)} dk`).join(' · ')
     : 'Bu hafta kategori verisi yok';
+  const workoutAdjustment = getVerifiedAdjustment(current, 'workouts');
+  const categoryAndAdjustmentText = workoutAdjustment
+    ? `${categoryText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
+    : categoryText;
   const insights = getWeekInsights(current, range);
   const topCategoryLabel = insights.topCategory
     ? `${insights.topCategory[0]} · ${formatMinutes(insights.topCategory[1])} dk`
@@ -2001,7 +2031,7 @@ function renderProgressSummary() {
         <strong>${formatMinutes(current.workouts)} dk</strong>
         <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
         <small>${workoutComparison}</small>
-        <small>${categoryText}</small>
+        <small>${categoryAndAdjustmentText}</small>
       </div>
 
       <div class="progress-metric-card">
@@ -2029,7 +2059,7 @@ function renderProgressSummary() {
         <small>Haftanın en yüksek uyku kaydı</small>
       </div>
       <div class="progress-insight-card">
-        <span>Aktif gün</span>
+        <span>Antrenman yapılan gün</span>
         <strong>${insights.workoutDays} gün</strong>
         <small>Bu hafta antrenman yapılan gün</small>
       </div>
@@ -2119,9 +2149,13 @@ function renderProgressCharts() {
   if (workoutWrap) {
     const workoutData = getWeekDailyTotals(latestWeek).workouts;
     const categories = getWorkoutCategoriesForRange(latestWeek);
-    const categoryText = categories.length
+    const recordedCategoryText = categories.length
       ? categories.map(([category, duration]) => `${category}: ${formatMinutes(duration)} dk`).join(' · ')
       : 'Kategori verisi bekleniyor';
+    const workoutAdjustment = getVerifiedAdjustment(latestWeek, 'workouts');
+    const categoryText = workoutAdjustment
+      ? `${recordedCategoryText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
+      : recordedCategoryText;
     const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
     const workoutDays = workoutData.length;
 
@@ -2140,10 +2174,10 @@ function renderProgressCharts() {
           <strong>Günlük antrenman dağılımı</strong>
           <span>${categoryText}</span>
         </div>
-        <em>${workoutDays} aktif gün</em>
+        <em>${workoutDays} antrenman günü</em>
       </div>
       <div class="chart-stat-row">
-        <div><span>Aktif gün</span><strong>${workoutDays} gün</strong></div>
+        <div><span>Antrenman yapılan gün</span><strong>${workoutDays} gün</strong></div>
         <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
         <div><span>Odak</span><strong>${categories[0] ? categories[0][0] : '—'}</strong></div>
       </div>
@@ -2199,7 +2233,7 @@ function renderProgressList() {
         const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
         const categories = getWorkoutCategoriesForRange(item);
         const categorySummary = categories.length
-          ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${minutes} dk`).join(' · ')
+          ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${formatMinutes(minutes)} dk`).join(' · ')
           : 'Kategori bekleniyor';
         const workoutDays = new Set(
           state.workouts
@@ -2208,7 +2242,11 @@ function renderProgressList() {
         ).size;
         const workoutRecords = state.workouts
           .filter(workout => workout.date >= item.start && workout.date <= item.end).length;
-        const sleepDays = getWeekDailyTotals(item).sleep.length;
+        const sleepDays = item.sleepNights || getWeekDailyTotals(item).sleep.length;
+        const workoutAdjustment = getVerifiedAdjustment(item, 'workouts');
+        const verifiedNote = item.verified
+          ? `Not defteri doğrulandı${workoutAdjustment ? ` · süre farkı ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk` : ''}`
+          : '';
         const workoutMetric = workoutDays
           ? `${formatMinutes(item.workouts)} dk · ${workoutDays} gün · ${workoutRecords} kayıt`
           : 'Kayıt yok';
@@ -2219,12 +2257,13 @@ function renderProgressList() {
               <strong>${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}</strong>
               <span>${status}</span>
               <small>${categorySummary}</small>
+              ${verifiedNote ? `<small>${verifiedNote}</small>` : ''}
             </div>
             <div class="weekly-report-metrics">
               <div>
                 <span>Uyku</span>
                 <strong>${item.sleep.toFixed(1)} saat</strong>
-                <small>${sleepDays}/7 gece</small>
+                <small>${sleepDays}/7 gece${item.verified ? ' · doğrulandı' : ''}</small>
                 <i><b style="width:${sleepPct}%"></b></i>
               </div>
               <div>
