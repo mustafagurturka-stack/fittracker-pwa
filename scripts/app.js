@@ -108,6 +108,7 @@ let state = {
     lastError: '',
     pendingMeasurements: [],
     pendingSleep: [],
+    pendingProfile: false,
   },
 };
 
@@ -141,6 +142,7 @@ function ensureSyncMeta() {
     lastError: state.syncMeta.lastError || '',
     pendingMeasurements: Array.isArray(state.syncMeta.pendingMeasurements) ? state.syncMeta.pendingMeasurements : [],
     pendingSleep: Array.isArray(state.syncMeta.pendingSleep) ? state.syncMeta.pendingSleep : [],
+    pendingProfile: Boolean(state.syncMeta.pendingProfile),
   };
   return state.syncMeta;
 }
@@ -165,7 +167,7 @@ function getPendingSyncCount() {
   const deletionBuckets = Object.values(state.deletedRecords || {})
     .reduce((total, bucket) => total + (Array.isArray(bucket) && bucket.length ? 1 : 0), 0);
 
-  return syncMeta.pendingMeasurements.length + syncMeta.pendingSleep.length + localWorkouts + localNotes + deletionBuckets;
+  return syncMeta.pendingMeasurements.length + syncMeta.pendingSleep.length + Number(syncMeta.pendingProfile) + localWorkouts + localNotes + deletionBuckets;
 }
 
 function formatSyncTimestamp(value) {
@@ -941,6 +943,7 @@ function stateLoad() {
         lastError: savedState.syncMeta?.lastError || '',
         pendingMeasurements: Array.isArray(savedState.syncMeta?.pendingMeasurements) ? savedState.syncMeta.pendingMeasurements : [],
         pendingSleep: Array.isArray(savedState.syncMeta?.pendingSleep) ? savedState.syncMeta.pendingSleep : [],
+        pendingProfile: Boolean(savedState.syncMeta?.pendingProfile),
       },
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
@@ -2293,6 +2296,72 @@ function renderAll() {
 }
 
 // â”€â”€ SUPABASE DATA â”€â”€
+function getProfileCloudPayload() {
+  return {
+    user_id: getUserId(),
+    name: String(state.name || '').trim(),
+    start_date: state.startDate || START_DATE,
+    start_weight: parseOptionalNumber(state.startWeight),
+    start_waist: parseOptionalNumber(state.startWaist),
+    first_goal: parseOptionalNumber((state.milestones || [])[0]),
+    goal_weight: parseOptionalNumber(state.goalWeight),
+    preferences: {
+      measureReminder: state.preferences?.measureReminder ?? true,
+      dailyReminder: state.preferences?.dailyReminder ?? false,
+    },
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function saveProfileToSupabase() {
+  const { error } = await db
+    .from('app_profiles')
+    .upsert(getProfileCloudPayload(), { onConflict: 'user_id' });
+
+  if (error) throw error;
+  ensureSyncMeta().pendingProfile = false;
+  stateSave();
+}
+
+async function loadProfileFromSupabase() {
+  const { data, error } = await db
+    .from('app_profiles')
+    .select('*')
+    .eq('user_id', getUserId())
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!data) {
+    ensureSyncMeta().pendingProfile = true;
+    stateSave();
+    return;
+  }
+
+  state.name = data.name || state.name;
+  state.startDate = data.start_date || state.startDate || START_DATE;
+  state.startWeight = parseOptionalNumber(data.start_weight);
+  state.startWaist = parseOptionalNumber(data.start_waist);
+
+  const firstGoal = parseOptionalNumber(data.first_goal);
+  const finalGoal = parseOptionalNumber(data.goal_weight);
+  if (firstGoal !== null && finalGoal !== null) {
+    state.goalWeight = finalGoal;
+    state.milestones = [firstGoal, finalGoal];
+  }
+
+  if (data.preferences && typeof data.preferences === 'object') {
+    state.preferences = {
+      measureReminder: data.preferences.measureReminder ?? true,
+      dailyReminder: data.preferences.dailyReminder ?? false,
+    };
+  }
+
+  ensureSyncMeta().pendingProfile = false;
+  stateSave();
+  renderAll();
+}
+
 async function loadMeasurementsFromSupabase() {
   const localMeasurements = [...(state.measurements || [])];
   const { data, error } = await db
@@ -2479,6 +2548,9 @@ async function pushLocalPendingToSupabase() {
   if (!canUseCloud()) return { ok: false, error: new Error('Çevrimdışı') };
 
   const syncMeta = ensureSyncMeta();
+  if (syncMeta.pendingProfile) {
+    await runSyncStage('Profil ve hedefleri gonderme', saveProfileToSupabase);
+  }
   const pendingMeasurementDates = new Set(syncMeta.pendingMeasurements);
   const measurements = getSortedMeasurements()
     .filter(item => pendingMeasurementDates.has(item.date));
@@ -2565,6 +2637,7 @@ async function loadAllCloudData({ force = false } = {}) {
 
   try {
     const results = await Promise.allSettled([
+      runSyncStage('Profil ve hedefleri okuma', loadProfileFromSupabase),
       runSyncStage('Ölçümleri okuma', loadMeasurementsFromSupabase),
       runSyncStage('Uyku kayıtlarını okuma', loadSleepFromSupabase),
       runSyncStage('Antrenmanları okuma', loadWorkoutsFromSupabase),
@@ -3146,8 +3219,12 @@ function editName() {
   if (!newName) return;
 
   state.name = newName.trim();
+  ensureSyncMeta().pendingProfile = true;
   stateSave();
   renderAll();
+  if (canUseCloud()) {
+    saveProfileToSupabase().catch(recordSyncError);
+  }
   setStatus('İsim güncellendi ✓', 'ok');
 }
 
@@ -3184,6 +3261,7 @@ function editGoals() {
   state.startWaist = parseFloat(startWaist.toFixed(1));
   state.goalWeight = parseFloat(finalGoal.toFixed(1));
   state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
+  ensureSyncMeta().pendingProfile = true;
 
   if (!state.measurements?.length) {
     state.measurements = [{
@@ -3201,8 +3279,14 @@ function editGoals() {
     state.measurements = sorted;
   }
 
+  const firstDate = getSortedMeasurements()[0]?.date;
+  if (firstDate) markPendingSync('measurements', firstDate);
+
   stateSave();
   renderAll();
+  if (canUseCloud()) {
+    saveProfileToSupabase().catch(recordSyncError);
+  }
   setStatus('Hedefler güncellendi ✓', 'ok');
 }
 
@@ -3213,8 +3297,12 @@ function updatePreference(key, value) {
     ...(state.preferences || {}),
     [key]: Boolean(value),
   };
+  ensureSyncMeta().pendingProfile = true;
   stateSave();
   renderSettings();
+  if (canUseCloud()) {
+    saveProfileToSupabase().catch(recordSyncError);
+  }
 }
 
 function showAuth() {
@@ -3569,6 +3657,7 @@ async function completeOnboarding() {
   state.startWaist = parseFloat(startWaist.toFixed(1));
   state.goalWeight = parseFloat(goalWeight.toFixed(1));
   state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
+  ensureSyncMeta().pendingProfile = true;
   state.measurements = [{
     date: startDate,
     weight: state.startWeight,
@@ -3594,6 +3683,8 @@ async function completeOnboarding() {
     renderAll();
     return;
   }
+
+  await saveProfileToSupabase();
 
   const { error } = await db
     .from('measurements')
