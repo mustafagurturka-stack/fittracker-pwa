@@ -179,6 +179,14 @@ function getSyncErrorMessage(error) {
   return String(error?.message || error?.details || error || 'Bilinmeyen senkron hatası');
 }
 
+async function runSyncStage(label, task) {
+  try {
+    return await task();
+  } catch (error) {
+    throw new Error(`${label}: ${getSyncErrorMessage(error)}`);
+  }
+}
+
 function recordSyncSuccess(type = '', key = '') {
   const syncMeta = ensureSyncMeta();
   if (type && key) clearPendingSync(type, key);
@@ -2432,7 +2440,7 @@ async function flushPendingDeletes() {
 
   const runDelete = async query => {
     const { error } = await query;
-    if (error) throw error;
+    if (error) throw new Error(`Silme işlemi: ${getSyncErrorMessage(error)}`);
   };
 
   for (const key of buckets.measurements || []) {
@@ -2476,13 +2484,13 @@ async function pushLocalPendingToSupabase() {
     .filter(item => pendingMeasurementDates.has(item.date));
   for (const item of measurements) {
     if (isRecordDeleted('measurements', item)) continue;
-    const { error } = await saveMeasurementToSupabase({
+    const { error } = await runSyncStage('Ölçüm gönderme', () => saveMeasurementToSupabase({
       user_id: getUserId(),
       date: item.date,
       weight: Number(item.weight),
       waist: parseOptionalNumber(item.waist),
-    });
-    if (error) throw error;
+    }));
+    if (error) throw new Error(`Ölçüm gönderme: ${getSyncErrorMessage(error)}`);
     clearPendingSync('measurements', item.date);
   }
 
@@ -2491,12 +2499,12 @@ async function pushLocalPendingToSupabase() {
     .filter(item => pendingSleepDates.has(item.date));
   for (const item of sleepItems) {
     if (isRecordDeleted('sleep', item)) continue;
-    const { error } = await saveSleepToSupabase({
+    const { error } = await runSyncStage('Uyku kaydı gönderme', () => saveSleepToSupabase({
       user_id: getUserId(),
       date: item.date,
       hours: Number(item.hours || 0),
-    });
-    if (error) throw error;
+    }));
+    if (error) throw new Error(`Uyku kaydı gönderme: ${getSyncErrorMessage(error)}`);
     clearPendingSync('sleep', item.date);
   }
 
@@ -2557,10 +2565,10 @@ async function loadAllCloudData({ force = false } = {}) {
 
   try {
     const results = await Promise.allSettled([
-      loadMeasurementsFromSupabase(),
-      loadSleepFromSupabase(),
-      loadWorkoutsFromSupabase(),
-      loadNotesFromSupabase(),
+      runSyncStage('Ölçümleri okuma', loadMeasurementsFromSupabase),
+      runSyncStage('Uyku kayıtlarını okuma', loadSleepFromSupabase),
+      runSyncStage('Antrenmanları okuma', loadWorkoutsFromSupabase),
+      runSyncStage('Notları okuma', loadNotesFromSupabase),
     ]);
 
     const rejected = results.find(result => result.status === 'rejected');
@@ -2568,7 +2576,7 @@ async function loadAllCloudData({ force = false } = {}) {
 
     recoverOnboardingFromData();
     normalizeProfileState();
-    await pushLocalPendingToSupabase();
+    await runSyncStage('Bekleyen kayıtları gönderme', pushLocalPendingToSupabase);
 
     syncMeta.lastSuccess = new Date().toISOString();
     syncMeta.lastError = '';
