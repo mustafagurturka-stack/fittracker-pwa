@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=237" />
+  <link rel="manifest" href="/manifest.json?v=238" />
 
   <!-- Icons (Apple) -->
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=229" />
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=136" />
+  <link rel="stylesheet" href="/styles/main.css?v=138" />
 </head>
 <body>
 
@@ -172,8 +172,8 @@
       <span class="sec-title">Uyku</span>
     </div>
 
-    <div class="card" style="padding:16px">
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="card entry-card sleep-entry-card">
+  <div class="entry-form sleep-entry-form">
     <input
       type="date"
       id="sleepDateInput"
@@ -207,8 +207,8 @@
     <span class="sec-title">Antrenman</span>
   </div>
 
-  <div class="card" style="padding:16px">
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <div class="card entry-card workout-entry-card">
+    <div class="entry-form workout-entry-form">
       <input
         type="date"
         id="workoutDateInput"
@@ -527,6 +527,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=237" defer></script>
+  <script src="/scripts/app.js?v=238" defer></script>
 </body>
 </html>
