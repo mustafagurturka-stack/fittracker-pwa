@@ -3898,6 +3898,25 @@ body {
   padding: 14px;
 }
 
+.progress-period {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-period strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
 .progress-metric-card {
   min-height: 142px;
   padding: 16px;
