@@ -4034,6 +4034,28 @@ body {
   font-size: 18px;
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-edit {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--muted);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.row-edit:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
 .weekly-report-list {
   display: grid;
   gap: 10px;
