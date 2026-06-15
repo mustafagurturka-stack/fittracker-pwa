@@ -1905,7 +1905,11 @@ function renderProgressSummary() {
   const weekly = getWeeklyProgressData();
   const current = weekly[weekly.length - 1] || { sleep: 0, workouts: 0 };
   const range = current.start ? current : getDashboardWeekRange();
-  const prev = weekly[weekly.length - 2];
+  const rangeStart = parseIsoDateParts(range.start);
+  const dayBeforeRange = new Date(rangeStart.year, rangeStart.month - 1, rangeStart.day - 1);
+  const previousRange = getWeekRange(toLocalIsoDate(dayBeforeRange));
+  const prev = weekly.find(item => item.start === previousRange.start);
+  const previousDailyTotals = getWeekDailyTotals(previousRange);
   const measurements = getSortedMeasurements();
   const first = measurements[0];
   const last = measurements[measurements.length - 1];
@@ -1921,7 +1925,7 @@ function renderProgressSummary() {
   const workoutDiff = prev ? current.workouts - prev.workouts : 0;
   const weightDiff = first && last ? last.weight - first.weight : 0;
   const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
-  const waistDiff = firstWaist && lastWaist ? lastWaist.waist - firstWaist.waist : null;
+  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
   const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
   const categories = getWorkoutCategoriesForRange(range);
   const categoryText = categories.length
@@ -1938,20 +1942,33 @@ function renderProgressSummary() {
     ? `${formatDate(insights.bestWorkout.date)} · ${insights.bestWorkout.duration} dk`
     : 'Veri bekleniyor';
 
+  const periodTitle = `${formatDate(range.start)} - ${formatDate(range.end)}`;
+  const periodLabel = range.start === getWeekRange(today()).start ? 'Bu hafta' : 'Son aktif hafta';
+  const sleepComparison = prev && previousDailyTotals.sleep.length
+    ? `${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / önceki hafta`
+    : 'Önceki hafta kaydı yok';
+  const workoutComparison = prev && previousDailyTotals.workouts.length
+    ? `${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk / önceki hafta`
+    : 'Önceki hafta kaydı yok';
+
   el.innerHTML = `
+    <div class="progress-period">
+      <span>${periodLabel}</span>
+      <strong>${periodTitle}</strong>
+    </div>
     <div class="progress-grid">
       <div class="progress-metric-card">
         <span>Uyku</span>
         <strong>${current.sleep.toFixed(1)} saat</strong>
         <div class="metric-track"><i style="width:${sleepPct}%"></i></div>
-        <small>${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / geçen hafta</small>
+        <small>${sleepComparison}</small>
       </div>
 
       <div class="progress-metric-card">
           <span>Antrenman</span>
         <strong>${current.workouts} dk</strong>
         <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
-        <small>${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk / geçen hafta</small>
+        <small>${workoutComparison}</small>
         <small>${categoryText}</small>
       </div>
 
