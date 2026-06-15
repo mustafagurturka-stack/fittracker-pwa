@@ -338,6 +338,10 @@ function formatDecimal(value, digits = 1) {
   return Number.isInteger(number) ? String(number) : number.toFixed(digits);
 }
 
+function formatMinutes(value) {
+  return formatDecimal(Number(value || 0), 1);
+}
+
 function getShortWeekday(date) {
   return new Date(`${date}T12:00:00`)
     .toLocaleDateString('tr-TR', { weekday: 'short' });
@@ -1615,14 +1619,14 @@ function shiftIsoDate(dateValue, days) {
 
 function getSleepRangeForReportWeek(range) {
   return {
-    start: shiftIsoDate(range.start, 1),
-    end: shiftIsoDate(range.end, 1),
+    start: range.start,
+    end: range.end,
   };
 }
 
 function getDashboardWeekRange() {
   const dates = [
-    ...(state.sleep || []).map(item => shiftIsoDate(item.date, -1)),
+    ...(state.sleep || []).map(item => item.date),
     ...(state.workouts || []).map(item => item.date),
   ].filter(Boolean);
 
@@ -1804,10 +1808,13 @@ function renderWorkoutList() {
   list.innerHTML = workouts.map(item => `
     <div class="daily-row">
       <div>
-        <div class="daily-row-title">${item.type} · ${Number(item.duration)} dk</div>
+        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk</div>
         <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
-      <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
+      <div class="row-actions">
+        <button onclick="editWorkout(${item.sortedIndex})" class="row-edit" aria-label="Düzenle">Düzenle</button>
+        <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
+      </div>
     </div>
   `).join('');
 }
@@ -1815,7 +1822,7 @@ function getWeeklyProgressData() {
   const weeks = {};
 
   (state.sleep || []).forEach(item => {
-    const range = getWeekRange(shiftIsoDate(item.date, -1));
+    const range = getWeekRange(item.date);
     const key = `${range.start}_${range.end}`;
 
     if (!weeks[key]) {
@@ -1954,17 +1961,17 @@ function renderProgressSummary() {
   const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
   const categories = getWorkoutCategoriesForRange(range);
   const categoryText = categories.length
-    ? categories.map(([category, minutes]) => `${category}: ${minutes} dk`).join(' · ')
+    ? categories.map(([category, minutes]) => `${category}: ${formatMinutes(minutes)} dk`).join(' · ')
     : 'Bu hafta kategori verisi yok';
   const insights = getWeekInsights(current, range);
   const topCategoryLabel = insights.topCategory
-    ? `${insights.topCategory[0]} · ${insights.topCategory[1]} dk`
+    ? `${insights.topCategory[0]} · ${formatMinutes(insights.topCategory[1])} dk`
     : 'Veri bekleniyor';
   const bestSleepLabel = insights.bestSleep
     ? `${formatDate(insights.bestSleep.date)} · ${insights.bestSleep.hours} saat`
     : 'Veri bekleniyor';
   const bestWorkoutLabel = insights.bestWorkout
-    ? `${formatDate(insights.bestWorkout.date)} · ${insights.bestWorkout.duration} dk`
+    ? `${formatDate(insights.bestWorkout.date)} · ${formatMinutes(insights.bestWorkout.duration)} dk`
     : 'Veri bekleniyor';
 
   const periodTitle = `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`;
@@ -1973,7 +1980,7 @@ function renderProgressSummary() {
     ? `${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / önceki hafta`
     : 'Önceki hafta kaydı yok';
   const workoutComparison = prev && previousDailyTotals.workouts.length
-    ? `${workoutDiff >= 0 ? '+' : ''}${workoutDiff} dk / önceki hafta`
+    ? `${workoutDiff >= 0 ? '+' : ''}${formatMinutes(workoutDiff)} dk / önceki hafta`
     : 'Önceki hafta kaydı yok';
 
   el.innerHTML = `
@@ -1991,7 +1998,7 @@ function renderProgressSummary() {
 
       <div class="progress-metric-card">
           <span>Antrenman</span>
-        <strong>${current.workouts} dk</strong>
+        <strong>${formatMinutes(current.workouts)} dk</strong>
         <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
         <small>${workoutComparison}</small>
         <small>${categoryText}</small>
@@ -2113,7 +2120,7 @@ function renderProgressCharts() {
     const workoutData = getWeekDailyTotals(latestWeek).workouts;
     const categories = getWorkoutCategoriesForRange(latestWeek);
     const categoryText = categories.length
-      ? categories.map(([category, duration]) => `${category}: ${duration} dk`).join(' · ')
+      ? categories.map(([category, duration]) => `${category}: ${formatMinutes(duration)} dk`).join(' · ')
       : 'Kategori verisi bekleniyor';
     const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
     const workoutDays = workoutData.length;
@@ -2137,7 +2144,7 @@ function renderProgressCharts() {
       </div>
       <div class="chart-stat-row">
         <div><span>Aktif gün</span><strong>${workoutDays} gün</strong></div>
-        <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${bestWorkout.duration} dk` : '—'}</strong></div>
+        <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
         <div><span>Odak</span><strong>${categories[0] ? categories[0][0] : '—'}</strong></div>
       </div>
       <div class="bar-chart workout-chart enhanced">
@@ -2145,13 +2152,13 @@ function renderProgressCharts() {
           const h = Math.min(140, Math.max(18, item.duration * 1.35));
           const category = Object.entries(item.categories)
             .sort((a, b) => b[1] - a[1])
-            .map(([name, duration]) => `${name}: ${duration} dk`)
+            .map(([name, duration]) => `${name}: ${formatMinutes(duration)} dk`)
             .join(' · ');
 
           return `
             <div class="bar-item">
               <div class="bar-fill workout" style="height:${h}px" title="${category}">
-                <span>${item.duration} dk</span>
+                <span>${formatMinutes(item.duration)} dk</span>
               </div>
               <div class="bar-label">
                 ${getShortWeekday(item.date)}
@@ -2199,7 +2206,12 @@ function renderProgressList() {
             .filter(workout => workout.date >= item.start && workout.date <= item.end)
             .map(workout => workout.date)
         ).size;
-        const workoutMetric = workoutDays ? `${workoutDays} aktif gün` : 'Kayıt yok';
+        const workoutRecords = state.workouts
+          .filter(workout => workout.date >= item.start && workout.date <= item.end).length;
+        const sleepDays = getWeekDailyTotals(item).sleep.length;
+        const workoutMetric = workoutDays
+          ? `${formatMinutes(item.workouts)} dk · ${workoutDays} gün · ${workoutRecords} kayıt`
+          : 'Kayıt yok';
 
         return `
           <div class="weekly-report-row">
@@ -2212,6 +2224,7 @@ function renderProgressList() {
               <div>
                 <span>Uyku</span>
                 <strong>${item.sleep.toFixed(1)} saat</strong>
+                <small>${sleepDays}/7 gece</small>
                 <i><b style="width:${sleepPct}%"></b></i>
               </div>
               <div>
@@ -3221,6 +3234,51 @@ async function saveWorkout() {
   recordSyncSuccess();
 
   await loadWorkoutsFromSupabase();
+}
+
+async function editWorkout(sortedIdx) {
+  const sorted = [...(state.workouts || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const target = sorted[sortedIdx];
+  if (!target) return;
+
+  const durationInput = prompt('Antrenman süresini gir (dk):', formatMinutes(target.duration));
+  if (durationInput === null) return;
+
+  const duration = parseLocaleNumber(durationInput);
+  if (!duration || duration <= 0) {
+    alert('Geçerli bir antrenman süresi gir.');
+    return;
+  }
+
+  const normalizedDuration = parseFloat(duration.toFixed(1));
+  state.workouts[target.originalIndex] = {
+    ...state.workouts[target.originalIndex],
+    duration: normalizedDuration,
+  };
+  stateSave();
+  renderAll();
+
+  if (!isCloudRecordId(target.id) || !canUseCloud()) {
+    setStatus('Antrenman süresi cihazda güncellendi', 'ok');
+    return;
+  }
+
+  const { error } = await db
+    .from('workout_logs')
+    .update({ duration: normalizedDuration })
+    .eq('user_id', getUserId())
+    .eq('id', target.id);
+
+  if (error) {
+    recordSyncError(error);
+    setStatus('Süre cihazda güncellendi - cloud güncellemesi başarısız', 'error');
+    return;
+  }
+
+  recordSyncSuccess();
+  setStatus('Antrenman süresi güncellendi ✓', 'ok');
 }
 
 async function deleteWorkout(sortedIdx) {
