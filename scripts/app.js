@@ -1109,7 +1109,7 @@ function renderDashboardWeekLabel() {
     <div class="week-card-head">
       <div>
         <div class="week-card-title">${getDashboardWeekTitle()}</div>
-        <div class="week-card-date">${formatDate(range.start)} - ${formatDate(range.end)}</div>
+        <div class="week-card-date">${getDashboardWeekContext() || `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`}</div>
       </div>
 
       <div class="week-card-pill">
@@ -1646,6 +1646,13 @@ function getDashboardWeekTitle() {
   const range = getDashboardWeekRange();
   const current = getWeekRange(today());
   return range.start === current.start ? 'Bu Hafta' : 'Son Aktif Hafta';
+}
+
+function getDashboardWeekContext() {
+  const range = getDashboardWeekRange();
+  const current = getWeekRange(today());
+  if (range.start === current.start) return '';
+  return `Bu hafta henüz kayıt yok · ${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))} gösteriliyor`;
 }
 
 function getDailyViewRange() {
