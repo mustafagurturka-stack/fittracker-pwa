@@ -1607,9 +1607,22 @@ function getWeekRange(dateValue) {
   };
 }
 
+function shiftIsoDate(dateValue, days) {
+  const parts = parseIsoDateParts(dateValue);
+  if (!parts) return dateValue;
+  return toLocalIsoDate(new Date(parts.year, parts.month - 1, parts.day + days));
+}
+
+function getSleepRangeForReportWeek(range) {
+  return {
+    start: shiftIsoDate(range.start, 1),
+    end: shiftIsoDate(range.end, 1),
+  };
+}
+
 function getDashboardWeekRange() {
   const dates = [
-    ...(state.sleep || []).map(item => item.date),
+    ...(state.sleep || []).map(item => shiftIsoDate(item.date, -1)),
     ...(state.workouts || []).map(item => item.date),
   ].filter(Boolean);
 
@@ -1647,6 +1660,16 @@ function itemMatchesDailyView(item) {
   return item.date >= range.start && item.date <= range.end;
 }
 
+function itemMatchesSleepDailyView(item) {
+  const range = getDailyViewRange();
+  if (!item?.date) return false;
+  if (!range.start || !range.end) return true;
+  if (range.targetMode !== 'week') return item.date >= range.start && item.date <= range.end;
+
+  const sleepRange = getSleepRangeForReportWeek(range);
+  return item.date >= sleepRange.start && item.date <= sleepRange.end;
+}
+
 function renderDailyViewControls() {
   const range = getDailyViewRange();
   const grid = document.getElementById('dailyGrid');
@@ -1668,9 +1691,10 @@ function renderDailyViewControls() {
 function getCurrentWeekSleepTotal() {
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
   const range = getDashboardWeekRange();
+  const sleepRange = getSleepRangeForReportWeek(range);
 
   return sleep
-    .filter(item => item.date >= range.start && item.date <= range.end)
+    .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
     .reduce((total, item) => total + Number(item.hours || 0), 0);
 }
 
@@ -1684,7 +1708,7 @@ function renderSleepSummary() {
     .filter(item => item.date === today())
     .reduce((total, item) => total + Number(item.hours || 0), 0);
   const viewTotal = sleep
-    .filter(itemMatchesDailyView)
+    .filter(itemMatchesSleepDailyView)
     .reduce((total, item) => total + Number(item.hours || 0), 0);
   const viewValue = range.targetMode === 'week'
     ? `${viewTotal.toFixed(1)} / ${SLEEP_TARGET} saat`
@@ -1709,7 +1733,7 @@ function renderSleepList() {
   const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
   const sleep = sorted
     .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(itemMatchesDailyView);
+    .filter(itemMatchesSleepDailyView);
 
   if (!sleep.length) {
     list.innerHTML = `<div class="empty-state compact">${range.title} için uyku kaydı yok.</div>`;
@@ -1791,7 +1815,7 @@ function getWeeklyProgressData() {
   const weeks = {};
 
   (state.sleep || []).forEach(item => {
-    const range = getWeekRange(item.date);
+    const range = getWeekRange(shiftIsoDate(item.date, -1));
     const key = `${range.start}_${range.end}`;
 
     if (!weeks[key]) {
@@ -1847,9 +1871,10 @@ function getCurrentWeekWorkoutCategories() {
 function getWeekDailyTotals(range) {
   const sleepByDay = {};
   const workoutByDay = {};
+  const sleepRange = getSleepRangeForReportWeek(range);
 
   (state.sleep || [])
-    .filter(item => item.date >= range.start && item.date <= range.end)
+    .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
     .forEach(item => {
       sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
     });
@@ -1942,7 +1967,7 @@ function renderProgressSummary() {
     ? `${formatDate(insights.bestWorkout.date)} · ${insights.bestWorkout.duration} dk`
     : 'Veri bekleniyor';
 
-  const periodTitle = `${formatDate(range.start)} - ${formatDate(range.end)}`;
+  const periodTitle = `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`;
   const periodLabel = range.start === getWeekRange(today()).start ? 'Bu hafta' : 'Son aktif hafta';
   const sleepComparison = prev && previousDailyTotals.sleep.length
     ? `${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / önceki hafta`
@@ -2179,7 +2204,7 @@ function renderProgressList() {
         return `
           <div class="weekly-report-row">
             <div>
-              <strong>${formatDate(item.start)} - ${formatDate(item.end)}</strong>
+              <strong>${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}</strong>
               <span>${status}</span>
               <small>${categorySummary}</small>
             </div>
@@ -3151,7 +3176,7 @@ async function saveWorkout() {
   const type = typeInput.value;
   const category = categoryInput ? categoryInput.value : getWorkoutCategory(type);
   const intensity = intensityInput ? intensityInput.value : 'Orta';
-  const duration = parseInt(durationInput.value, 10);
+  const duration = parseLocaleNumber(durationInput.value);
   const freeNote = noteInput ? noteInput.value.trim() : '';
   const note = [`Kategori: ${category}`, `Zorluk: ${intensity}`, freeNote]
     .filter(Boolean)
@@ -3166,7 +3191,7 @@ async function saveWorkout() {
     user_id: getUserId(),
     date,
     type,
-    duration,
+    duration: parseFloat(duration.toFixed(1)),
     note,
   };
 
