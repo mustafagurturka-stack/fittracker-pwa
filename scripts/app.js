@@ -935,7 +935,7 @@ function stateLoad() {
       ...savedState,
       userId: savedState.userId || '',
       userEmail: savedState.userEmail || '',
-    visualTheme: ['aqua', 'citrus', 'neon', 'cream', 'graphite'].includes(savedState.visualTheme) ? savedState.visualTheme : 'aqua',
+    visualTheme: ['aqua', 'neon', 'lifestyle'].includes(savedState.visualTheme) ? savedState.visualTheme : 'aqua',
       onboarded: Boolean(savedState.onboarded),
       name: savedState.name || '',
       startDate: savedState.startDate || START_DATE,
@@ -991,14 +991,10 @@ function applyTheme() {
 
   if (themeMeta) {
     const lightMeta = state.visualTheme === 'neon'
-      ? '#f1ffc4'
-      : state.visualTheme === 'citrus'
-        ? '#efffca'
-      : state.visualTheme === 'cream'
+      ? '#101728'
+      : state.visualTheme === 'lifestyle'
         ? '#fff3df'
-        : state.visualTheme === 'graphite'
-          ? '#eef2f7'
-          : '#dff8f5';
+        : '#dff8f5';
     themeMeta.content = state.theme === 'dark' ? '#0d111b' : lightMeta;
   }
 }
@@ -1010,7 +1006,7 @@ function toggleTheme() {
 }
 
 function setVisualTheme(value) {
-  if (!['aqua', 'citrus', 'neon', 'cream', 'graphite'].includes(value)) return;
+  if (!['aqua', 'neon', 'lifestyle'].includes(value)) return;
   state.visualTheme = value;
   applyTheme();
   stateSave();
