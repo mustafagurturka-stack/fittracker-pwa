@@ -81,7 +81,7 @@ const MOTIVATIONS = [
 // â”€â”€ STATE â”€â”€
 let state = {
   theme: 'light',
-  visualTheme: 'aqua',
+  visualTheme: 'premium',
   userId: '',
   userEmail: '',
   onboarded: false,
@@ -935,7 +935,7 @@ function stateLoad() {
       ...savedState,
       userId: savedState.userId || '',
       userEmail: savedState.userEmail || '',
-    visualTheme: ['aqua', 'neon', 'lifestyle'].includes(savedState.visualTheme) ? savedState.visualTheme : 'aqua',
+    visualTheme: 'premium',
       onboarded: Boolean(savedState.onboarded),
       name: savedState.name || '',
       startDate: savedState.startDate || START_DATE,
@@ -978,7 +978,7 @@ function stateLoad() {
 // â”€â”€ THEME â”€â”€
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.theme);
-  document.documentElement.setAttribute('data-visual-theme', state.visualTheme || 'aqua');
+  document.documentElement.setAttribute('data-visual-theme', 'premium');
 
   const themeBtn = document.getElementById('themeBtn');
   const themeMeta = document.getElementById('themeColorMeta');
@@ -990,12 +990,7 @@ function applyTheme() {
   }
 
   if (themeMeta) {
-    const lightMeta = state.visualTheme === 'neon'
-      ? '#101728'
-      : state.visualTheme === 'lifestyle'
-        ? '#fff3df'
-        : '#dff8f5';
-    themeMeta.content = state.theme === 'dark' ? '#0d111b' : lightMeta;
+    themeMeta.content = state.theme === 'dark' ? '#0d111b' : '#0f766e';
   }
 }
 
@@ -1006,8 +1001,8 @@ function toggleTheme() {
 }
 
 function setVisualTheme(value) {
-  if (!['aqua', 'neon', 'lifestyle'].includes(value)) return;
-  state.visualTheme = value;
+  if (value !== 'premium') return;
+  state.visualTheme = 'premium';
   applyTheme();
   stateSave();
   renderSettings();
