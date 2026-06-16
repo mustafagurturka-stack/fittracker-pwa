@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=241" />
+  <link rel="manifest" href="/manifest.json?v=242" />
 
   <!-- Icons (Apple) -->
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=229" />
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=141" />
+  <link rel="stylesheet" href="/styles/main.css?v=142" />
 </head>
 <body>
 
@@ -467,6 +467,39 @@
                 <span></span>
               </label>
             </div>
+            <div class="settings-theme-block">
+              <div class="settings-theme-title">
+                <strong>GÃ¶rsel tema</strong>
+                <span>UygulamanÄ±n enerjisini seÃ§.</span>
+              </div>
+              <div class="visual-theme-picker" id="visualThemePicker" aria-label="GÃ¶rsel tema seÃ§imi">
+                <button class="visual-theme-option theme-aqua active" type="button" data-visual-theme="aqua" aria-pressed="true">
+                  <span class="theme-swatch"></span>
+                  <strong>Aqua Citrus</strong>
+                  <small>VarsayÄ±lan premium</small>
+                </button>
+                <button class="visual-theme-option theme-citrus" type="button" data-visual-theme="citrus" aria-pressed="false">
+                  <span class="theme-swatch"></span>
+                  <strong>Citrus Pop</strong>
+                  <small>Daha canlÄ±</small>
+                </button>
+                <button class="visual-theme-option theme-neon" type="button" data-visual-theme="neon" aria-pressed="false">
+                  <span class="theme-swatch"></span>
+                  <strong>Fitness Neon</strong>
+                  <small>Sportif kontrast</small>
+                </button>
+                <button class="visual-theme-option theme-cream" type="button" data-visual-theme="cream" aria-pressed="false">
+                  <span class="theme-swatch"></span>
+                  <strong>Calm Cream</strong>
+                  <small>SÄ±cak ve sade</small>
+                </button>
+                <button class="visual-theme-option theme-graphite" type="button" data-visual-theme="graphite" aria-pressed="false">
+                  <span class="theme-swatch"></span>
+                  <strong>Graphite Pro</strong>
+                  <small>Net ve ciddi</small>
+                </button>
+              </div>
+            </div>
             <div class="settings-toggle-row">
               <div>
                 <strong>Pazar ölçüm hatırlatması</strong>
@@ -527,6 +560,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=241" defer></script>
+  <script src="/scripts/app.js?v=242" defer></script>
 </body>
 </html>
