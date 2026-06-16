@@ -7617,3 +7617,221 @@ html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
     min-height: 92px;
   }
 }
+
+/* v242: Aqua Citrus theme picker + iPhone daily layout hardening */
+.settings-theme-block {
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(44, 57, 96, .11);
+}
+
+.settings-theme-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.settings-theme-title strong {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.settings-theme-title span {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+.visual-theme-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.visual-theme-option {
+  appearance: none;
+  border: 1px solid rgba(44, 57, 96, .12);
+  background: rgba(255, 255, 255, .72);
+  border-radius: 18px;
+  padding: 12px;
+  display: grid;
+  gap: 7px;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(33, 48, 83, .06);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.visual-theme-option:hover,
+.visual-theme-option.active {
+  transform: translateY(-2px);
+  border-color: rgba(82, 110, 245, .34);
+  box-shadow: 0 18px 38px rgba(33, 48, 83, .12);
+}
+
+.visual-theme-option.active {
+  outline: 2px solid rgba(82, 110, 245, .18);
+}
+
+.visual-theme-option strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.visual-theme-option small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.theme-swatch {
+  width: 100%;
+  height: 36px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38);
+}
+
+.theme-aqua .theme-swatch {
+  background: linear-gradient(135deg, #73f6df 0%, #56ccff 48%, #f5ff8c 100%);
+}
+
+.theme-citrus .theme-swatch {
+  background: linear-gradient(135deg, #dfff58 0%, #69f7c7 46%, #526ef5 100%);
+}
+
+.theme-neon .theme-swatch {
+  background: linear-gradient(135deg, #161b2e 0%, #9dff6a 48%, #b99cff 100%);
+}
+
+.theme-cream .theme-swatch {
+  background: linear-gradient(135deg, #fff0c6 0%, #ffb26f 48%, #65dbc4 100%);
+}
+
+.theme-graphite .theme-swatch {
+  background: linear-gradient(135deg, #1c2434 0%, #61738f 50%, #f7fafc 100%);
+}
+
+html[data-theme="light"][data-visual-theme="citrus"] body {
+  background:
+    radial-gradient(circle at 15% 18%, rgba(218, 255, 91, .42), transparent 34%),
+    radial-gradient(circle at 82% 14%, rgba(105, 247, 199, .38), transparent 32%),
+    linear-gradient(135deg, #f7ffe0 0%, #e9fbf5 48%, #eef3ff 100%) !important;
+}
+
+html[data-theme="light"][data-visual-theme="citrus"] body::before {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(223, 255, 88, .52), transparent 22%),
+    radial-gradient(circle at 76% 22%, rgba(82, 110, 245, .15), transparent 25%) !important;
+}
+
+html[data-theme="light"][data-visual-theme="citrus"] body .moti-card {
+  background: linear-gradient(110deg, rgba(235, 255, 146, .96), rgba(106, 247, 199, .84), rgba(255, 255, 255, .72)) !important;
+  border-color: rgba(109, 211, 93, .26) !important;
+}
+
+html[data-theme="light"][data-visual-theme="neon"] body {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(185, 156, 255, .25), transparent 34%),
+    radial-gradient(circle at 80% 12%, rgba(157, 255, 106, .42), transparent 31%),
+    linear-gradient(135deg, #f7ffd7 0%, #f2f5ff 48%, #f9fbff 100%) !important;
+}
+
+html[data-theme="light"][data-visual-theme="neon"] body .moti-card {
+  background: linear-gradient(110deg, rgba(245, 255, 188, .96), rgba(220, 246, 255, .9), rgba(237, 225, 255, .78)) !important;
+  border-color: rgba(157, 255, 106, .38) !important;
+}
+
+html[data-theme="light"][data-visual-theme="cream"] body {
+  background:
+    radial-gradient(circle at 16% 16%, rgba(255, 178, 111, .28), transparent 34%),
+    radial-gradient(circle at 84% 18%, rgba(101, 219, 196, .26), transparent 31%),
+    linear-gradient(135deg, #fff7e8 0%, #f7f3ea 47%, #eefbfa 100%) !important;
+}
+
+html[data-theme="light"][data-visual-theme="cream"] body .moti-card {
+  background: linear-gradient(110deg, rgba(255, 238, 202, .96), rgba(255, 214, 181, .84), rgba(230, 255, 248, .8)) !important;
+  border-color: rgba(255, 178, 111, .28) !important;
+}
+
+html[data-theme="light"][data-visual-theme="graphite"] body {
+  background:
+    radial-gradient(circle at 20% 14%, rgba(82, 110, 245, .12), transparent 34%),
+    radial-gradient(circle at 82% 16%, rgba(24, 184, 151, .16), transparent 32%),
+    linear-gradient(135deg, #eef2f7 0%, #f8fafc 48%, #eaf3f6 100%) !important;
+}
+
+html[data-theme="light"][data-visual-theme="graphite"] body .moti-card {
+  background: linear-gradient(110deg, rgba(245, 249, 255, .96), rgba(231, 238, 248, .92), rgba(228, 255, 248, .76)) !important;
+  border-color: rgba(31, 41, 55, .12) !important;
+}
+
+html[data-theme="light"][data-visual-theme] body .moti-card .moti-text {
+  color: #24324a !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .55);
+}
+
+@media (max-width: 900px) {
+  #pDaily .daily-grid,
+  #pDaily .daily-grid[data-view="today"],
+  #pDaily .daily-grid[data-view="week"],
+  #pDaily .daily-grid[data-view="all"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+  }
+
+  #pDaily .daily-grid .list-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  #pDaily #sleepList,
+  #pDaily #workoutList,
+  #pDaily .daily-grid[data-view="week"] #sleepList,
+  #pDaily .daily-grid[data-view="week"] #workoutList,
+  #pDaily .daily-grid[data-view="all"] #sleepList,
+  #pDaily .daily-grid[data-view="all"] #workoutList {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+
+  #pDaily .daily-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center !important;
+    gap: 12px !important;
+    min-height: 76px !important;
+    flex: initial !important;
+  }
+
+  #pDaily .daily-row > div:first-child {
+    min-width: 0 !important;
+  }
+
+  #pDaily .daily-row-title,
+  #pDaily .daily-row-meta {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .visual-theme-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-theme-title {
+    display: grid;
+  }
+
+  .settings-theme-title span {
+    text-align: left;
+  }
+}
