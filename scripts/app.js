@@ -1000,14 +1000,6 @@ function toggleTheme() {
   stateSave();
 }
 
-function setVisualTheme(value) {
-  if (value !== 'premium') return;
-  state.visualTheme = 'premium';
-  applyTheme();
-  stateSave();
-  renderSettings();
-}
-
 // â”€â”€ NAVIGATION â”€â”€
 function goPanel(idx) {
   PANELS.forEach((id, i) => {
@@ -2368,11 +2360,6 @@ function renderSettings() {
     if (label) label.textContent = cloudSyncInProgress ? 'Senkronize Ediliyor' : 'Şimdi Senkronize Et';
   }
   if (profileThemeToggle) profileThemeToggle.checked = state.theme === 'dark';
-  document.querySelectorAll('[data-visual-theme]').forEach(button => {
-    const isActive = button.dataset.visualTheme === (state.visualTheme || 'aqua');
-    button.classList.toggle('active', isActive);
-    button.setAttribute('aria-pressed', String(isActive));
-  });
   if (measureReminderToggle) measureReminderToggle.checked = Boolean(state.preferences?.measureReminder);
   if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
 }
@@ -4018,10 +4005,6 @@ function bindUiEvents() {
       renderSettings();
     });
   }
-
-  document.querySelectorAll('[data-visual-theme]').forEach(button => {
-    button.addEventListener('click', () => setVisualTheme(button.dataset.visualTheme));
-  });
 
   const measureReminderToggle = document.getElementById('measureReminderToggle');
   if (measureReminderToggle) {
