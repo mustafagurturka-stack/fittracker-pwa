@@ -81,6 +81,7 @@ const MOTIVATIONS = [
 // â”€â”€ STATE â”€â”€
 let state = {
   theme: 'light',
+  visualTheme: 'aqua',
   userId: '',
   userEmail: '',
   onboarded: false,
@@ -934,6 +935,7 @@ function stateLoad() {
       ...savedState,
       userId: savedState.userId || '',
       userEmail: savedState.userEmail || '',
+    visualTheme: ['aqua', 'citrus', 'neon', 'cream', 'graphite'].includes(savedState.visualTheme) ? savedState.visualTheme : 'aqua',
       onboarded: Boolean(savedState.onboarded),
       name: savedState.name || '',
       startDate: savedState.startDate || START_DATE,
@@ -976,6 +978,7 @@ function stateLoad() {
 // â”€â”€ THEME â”€â”€
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.theme);
+  document.documentElement.setAttribute('data-visual-theme', state.visualTheme || 'aqua');
 
   const themeBtn = document.getElementById('themeBtn');
   const themeMeta = document.getElementById('themeColorMeta');
@@ -987,7 +990,16 @@ function applyTheme() {
   }
 
   if (themeMeta) {
-    themeMeta.content = state.theme === 'dark' ? '#0d111b' : '#e9eef7';
+    const lightMeta = state.visualTheme === 'neon'
+      ? '#f1ffc4'
+      : state.visualTheme === 'citrus'
+        ? '#efffca'
+      : state.visualTheme === 'cream'
+        ? '#fff3df'
+        : state.visualTheme === 'graphite'
+          ? '#eef2f7'
+          : '#dff8f5';
+    themeMeta.content = state.theme === 'dark' ? '#0d111b' : lightMeta;
   }
 }
 
@@ -995,6 +1007,14 @@ function toggleTheme() {
   state.theme = state.theme === 'dark' ? 'light' : 'dark';
   applyTheme();
   stateSave();
+}
+
+function setVisualTheme(value) {
+  if (!['aqua', 'citrus', 'neon', 'cream', 'graphite'].includes(value)) return;
+  state.visualTheme = value;
+  applyTheme();
+  stateSave();
+  renderSettings();
 }
 
 // â”€â”€ NAVIGATION â”€â”€
@@ -2357,6 +2377,11 @@ function renderSettings() {
     if (label) label.textContent = cloudSyncInProgress ? 'Senkronize Ediliyor' : 'Şimdi Senkronize Et';
   }
   if (profileThemeToggle) profileThemeToggle.checked = state.theme === 'dark';
+  document.querySelectorAll('[data-visual-theme]').forEach(button => {
+    const isActive = button.dataset.visualTheme === (state.visualTheme || 'aqua');
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
   if (measureReminderToggle) measureReminderToggle.checked = Boolean(state.preferences?.measureReminder);
   if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
 }
@@ -4002,6 +4027,10 @@ function bindUiEvents() {
       renderSettings();
     });
   }
+
+  document.querySelectorAll('[data-visual-theme]').forEach(button => {
+    button.addEventListener('click', () => setVisualTheme(button.dataset.visualTheme));
+  });
 
   const measureReminderToggle = document.getElementById('measureReminderToggle');
   if (measureReminderToggle) {
