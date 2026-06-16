@@ -8350,3 +8350,199 @@ html[data-theme="light"][data-visual-theme="premium"] .bn-item.active .bn-icon {
     border-radius: 24px !important;
   }
 }
+
+/* v247: tighter premium layout rhythm */
+html[data-theme="light"][data-visual-theme="premium"] #panels {
+  padding-top: 28px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .panel {
+  gap: 18px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .section {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .section:has(.sec-head):not(:has(.card)):not(:has(.page-intro)) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 2px !important;
+  margin-bottom: 8px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .sec-head,
+html[data-theme="light"][data-visual-theme="premium"] .section-head {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  min-height: 0 !important;
+  margin: 0 0 10px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .sec-title {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  margin: 0 !important;
+  color: #667794 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: .13em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .sec-title::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--primary));
+  box-shadow: 0 0 0 5px rgba(45, 212, 191, .13);
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .page-intro {
+  position: relative;
+  overflow: hidden;
+  align-items: center !important;
+  min-height: 134px !important;
+  padding: 24px 28px !important;
+  margin-bottom: 14px !important;
+  background:
+    radial-gradient(circle at 84% 18%, rgba(255, 196, 107, .38), transparent 28%),
+    radial-gradient(circle at 8% 18%, rgba(45, 212, 191, .28), transparent 32%),
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,248,229,.84)) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .page-intro > div {
+  max-width: 760px;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .page-intro h2 {
+  margin: 8px 0 0 !important;
+  font-size: clamp(27px, 3vw, 38px) !important;
+  line-height: 1.02 !important;
+  letter-spacing: -.045em !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .page-intro p {
+  margin: 10px 0 0 !important;
+  max-width: 720px !important;
+  color: #6d7f98 !important;
+  font-size: 14px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .page-intro .btn {
+  align-self: center !important;
+  min-width: 124px;
+  height: 44px !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--primary), var(--primary2)) !important;
+  box-shadow: 0 18px 36px rgba(8,119,238,.22) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #pWeight .section:nth-of-type(2) {
+  margin-top: -6px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #pWeight .input-card {
+  padding: 18px !important;
+  border-radius: 24px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #pWeight .form-grid {
+  grid-template-columns: 1.05fr 1fr 1fr .95fr !important;
+  gap: 12px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #pWeight .form-grid label {
+  color: #71829a !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #pWeight .form-grid input {
+  height: 46px !important;
+  border-radius: 15px !important;
+  background: rgba(255,255,255,.82) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #pWeight .form-submit {
+  height: 46px !important;
+  border-radius: 15px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .measure-hint-strip {
+  margin-top: 12px !important;
+  border-radius: 15px !important;
+  background: linear-gradient(135deg, rgba(45, 212, 191, .13), rgba(8,119,238,.06)) !important;
+  border-color: rgba(15, 118, 110, .18) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #weightSummary {
+  display: block;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] #weightSummary .stats-grid,
+html[data-theme="light"][data-visual-theme="premium"] #weightSummary > div {
+  gap: 14px !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .stat-card {
+  min-height: 154px !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 90% 14%, rgba(45, 212, 191, .12), transparent 28%),
+    linear-gradient(145deg, rgba(255,255,255,.95), rgba(255,250,238,.82)) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .stat-card:nth-child(2) {
+  background:
+    radial-gradient(circle at 88% 18%, rgba(45, 212, 191, .2), transparent 30%),
+    linear-gradient(145deg, rgba(246,255,250,.98), rgba(255,255,255,.86)) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .stat-card:nth-child(4) {
+  background:
+    radial-gradient(circle at 88% 18%, rgba(255, 196, 107, .2), transparent 30%),
+    linear-gradient(145deg, rgba(255,251,240,.98), rgba(255,255,255,.86)) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .card:has(.weight-row),
+html[data-theme="light"][data-visual-theme="premium"] .card:has([onclick^="deleteWeight"]) {
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .weight-row {
+  min-height: 64px !important;
+  padding: 14px 18px !important;
+  background: rgba(255,255,255,.52) !important;
+  border-bottom: 1px solid rgba(15, 118, 110, .1) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .weight-row:last-child {
+  border-bottom: 0 !important;
+}
+
+@media (max-width: 760px) {
+  html[data-theme="light"][data-visual-theme="premium"] #panels {
+    padding-top: 18px !important;
+  }
+
+  html[data-theme="light"][data-visual-theme="premium"] .page-intro {
+    min-height: 0 !important;
+    padding: 22px !important;
+  }
+
+  html[data-theme="light"][data-visual-theme="premium"] .page-intro .btn {
+    width: 100%;
+  }
+
+  html[data-theme="light"][data-visual-theme="premium"] #pWeight .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
