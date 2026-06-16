@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=245" />
+  <link rel="manifest" href="/manifest.json?v=246" />
 
   <!-- Icons (Apple) -->
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=229" />
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=145" />
+  <link rel="stylesheet" href="/styles/main.css?v=146" />
 </head>
 <body>
 
@@ -41,28 +41,28 @@
     <div class="nav-logo">Fit<span>Tracker</span></div>
     <div class="nav-actions">
       <span class="sync-dot" id="syncDot" title="Senkronizasyon durumu" aria-label="Senkronizasyon"></span>
-      <button class="nav-logout-btn" id="signOutBtn" type="button" aria-label="Çıkış yap" title="Çıkış yap">
+      <button class="nav-logout-btn" id="signOutBtn" type="button" aria-label="Ã‡Ä±kÄ±ÅŸ yap" title="Ã‡Ä±kÄ±ÅŸ yap">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9"/><path d="M7.1 5.6a8 8 0 1 0 9.8 0"/></svg>
       </button>
-      <button class="icon-btn" id="themeBtn" aria-label="Tema değiştir" title="Tema değiştir"></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Tema deÄŸiÅŸtir" title="Tema deÄŸiÅŸtir"></button>
     </div>
   </nav>
 
   <!-- STATUS BAR -->
   <div class="status-bar" id="statusBar" role="status" aria-live="polite">
-    <span>•</span>
-    <span id="statusText">Yükleniyor...</span>
+    <span>â€¢</span>
+    <span id="statusText">YÃ¼kleniyor...</span>
   </div>
 
   <!-- PWA INSTALL BANNER -->
-  <div id="installBanner" role="complementary" aria-label="Uygulama yükle">
+  <div id="installBanner" role="complementary" aria-label="Uygulama yÃ¼kle">
     <span class="install-icon" aria-hidden="true">+</span>
     <div class="install-text">
       <strong>Ana ekrana ekle</strong><br>
-      Daha hızlı erişim için yükle.
+      Daha hÄ±zlÄ± eriÅŸim iÃ§in yÃ¼kle.
     </div>
-    <button class="btn green" id="installBtn">Yükle</button>
-    <button class="btn ghost" id="dismissInstall" aria-label="Kapat">×</button>
+    <button class="btn green" id="installBtn">YÃ¼kle</button>
+    <button class="btn ghost" id="dismissInstall" aria-label="Kapat">Ã—</button>
   </div>
 
   <!-- PANELS -->
@@ -73,7 +73,7 @@
   <div class="dashboard-wrap">
 
     <div class="hero">
-      <div class="hero-date" id="heroDate">—</div>
+      <div class="hero-date" id="heroDate">â€”</div>
       <h1 class="hero-title">
         Merhaba, <span id="heroName">Sporcu</span>
       </h1>
@@ -81,19 +81,19 @@
 
     <div class="moti-card" id="motiCard">
       <span class="moti-emoji moti-icon" aria-hidden="true"></span>
-      <p class="moti-text" id="motiText">Her adım seni hedefe yaklaştırıyor.</p>
+      <p class="moti-text" id="motiText">Her adÄ±m seni hedefe yaklaÅŸtÄ±rÄ±yor.</p>
     </div>
 
     <div id="dashboardGoalCard"></div>
 
     <div id="dashboardProgressCard"></div>
 
-    <div class="week-chip" id="dashboardWeekLabel">Gösterilen hafta: —</div>
+    <div class="week-chip" id="dashboardWeekLabel">GÃ¶sterilen hafta: â€”</div>
 
     <div class="quick-actions-card">
       <div>
-        <div class="quick-title">Bugün ne eklemek istersin?</div>
-        <div class="quick-sub">Uyku, antrenman veya not ekleyerek bugünü tamamla.</div>
+        <div class="quick-title">BugÃ¼n ne eklemek istersin?</div>
+        <div class="quick-sub">Uyku, antrenman veya not ekleyerek bugÃ¼nÃ¼ tamamla.</div>
       </div>
 
       <div class="quick-actions">
@@ -107,14 +107,14 @@
 </section>
 
 <!-- PANEL: WEIGHT -->
-<section class="panel" id="pWeight" aria-label="Kilo ve ölçüm takibi">
+<section class="panel" id="pWeight" aria-label="Kilo ve Ã¶lÃ§Ã¼m takibi">
   <div class="section page-intro">
     <div>
-      <div class="sec-title">Kilo ve Ölçüm</div>
-      <h2>Haftalık ölçüm kaydı</h2>
-      <p>Başlangıç 31 Mayıs 2026. Her pazar tartım sonrası kilo ve bel ölçümünü ekle.</p>
+      <div class="sec-title">Kilo ve Ã–lÃ§Ã¼m</div>
+      <h2>HaftalÄ±k Ã¶lÃ§Ã¼m kaydÄ±</h2>
+      <p>BaÅŸlangÄ±Ã§ 31 MayÄ±s 2026. Her pazar tartÄ±m sonrasÄ± kilo ve bel Ã¶lÃ§Ã¼mÃ¼nÃ¼ ekle.</p>
     </div>
-    <button class="btn" id="openAddWeightBtn">Ölçüm Ekle</button>
+    <button class="btn" id="openAddWeightBtn">Ã–lÃ§Ã¼m Ekle</button>
   </div>
 
   <div class="section">
@@ -135,7 +135,7 @@
         <button class="btn form-submit" id="saveMeasurementBtn">Kaydet</button>
       </div>
       <div id="waistMeasureHint" class="field-hint measure-hint-strip">
-        Bel ölçümü ayda 1, her 4. tartıda takip edilir.
+        Bel Ã¶lÃ§Ã¼mÃ¼ ayda 1, her 4. tartÄ±da takip edilir.
       </div>
     </div>
   </div>
@@ -146,21 +146,21 @@
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Ölçüm Geçmişi</span>
+      <span class="sec-title">Ã–lÃ§Ã¼m GeÃ§miÅŸi</span>
     </div>
     <div class="card list-card">
-      <div id="weightEmpty" class="empty-state">Henüz ölçüm yok.</div>
+      <div id="weightEmpty" class="empty-state">HenÃ¼z Ã¶lÃ§Ã¼m yok.</div>
       <div id="weightList"></div>
     </div>
   </div>
 </section>
 
 <!-- PANEL: DAILY -->
- <section class="panel" id="pDaily" aria-label="Günlük takip">
+ <section class="panel" id="pDaily" aria-label="GÃ¼nlÃ¼k takip">
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Günlük</span>
+      <span class="sec-title">GÃ¼nlÃ¼k</span>
     </div>
     <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
       Uyku, Antrenman ve Not takibi.
@@ -183,13 +183,13 @@
     <input
       type="number"
       id="sleepInput"
-      placeholder="Saat (örn: 7.5)"
+      placeholder="Saat (Ã¶rn: 7.5)"
       step="0.5"
       min="0"
       style="flex:1;min-width:140px;padding:10px;border:1px solid var(--border);border-radius:8px"
     />
 
-    <div class="quick-picks" aria-label="Hızlı uyku seçimi">
+    <div class="quick-picks" aria-label="HÄ±zlÄ± uyku seÃ§imi">
       <button type="button" data-sleep-hours="6">6s</button>
       <button type="button" data-sleep-hours="7">7s</button>
       <button type="button" data-sleep-hours="7.5">7.5s</button>
@@ -220,7 +220,7 @@
         style="flex:1;min-width:160px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"
       >
         <option value="Kuvvet">Kuvvet</option>
-        <option value="Core">Core / Bölge</option>
+        <option value="Core">Core / BÃ¶lge</option>
         <option value="Challenge">Challenge</option>
         <option value="Kardiyo">Kardiyo</option>
         <option value="Recovery">Recovery</option>
@@ -234,7 +234,7 @@
         <option value="Full Body B">Full Body B</option>
         <option value="Core / Tabata">Core / Tabata</option>
         <option value="Kardiyo">Kardiyo</option>
-        <option value="Yürüyüş">Yürüyüş</option>
+        <option value="YÃ¼rÃ¼yÃ¼ÅŸ">YÃ¼rÃ¼yÃ¼ÅŸ</option>
         <option value="Recovery">Recovery</option>
       </select>
 
@@ -247,7 +247,7 @@
         style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px"
       />
 
-      <div class="quick-picks" aria-label="Hızlı süre seçimi">
+      <div class="quick-picks" aria-label="HÄ±zlÄ± sÃ¼re seÃ§imi">
         <button type="button" data-workout-minutes="20">20dk</button>
         <button type="button" data-workout-minutes="30">30dk</button>
         <button type="button" data-workout-minutes="45">45dk</button>
@@ -281,20 +281,20 @@
   </div>
 
   <div class="section">
-    <div class="daily-filter-bar" aria-label="Kayıt görünümü">
-      <button type="button" data-daily-view="today">Bugün</button>
+    <div class="daily-filter-bar" aria-label="KayÄ±t gÃ¶rÃ¼nÃ¼mÃ¼">
+      <button type="button" data-daily-view="today">BugÃ¼n</button>
       <button type="button" data-daily-view="week">Son Aktif Hafta</button>
-      <button type="button" data-daily-view="all">Tüm Geçmiş</button>
+      <button type="button" data-daily-view="all">TÃ¼m GeÃ§miÅŸ</button>
     </div>
 
     <div class="daily-grid" id="dailyGrid">
       <div class="card list-card">
-        <div class="list-title">Uyku Kayıtları</div>
+        <div class="list-title">Uyku KayÄ±tlarÄ±</div>
         <div id="sleepSummary"></div>
         <div id="sleepList"></div>
       </div>
       <div class="card list-card">
-        <div class="list-title">Antrenman Kayıtları</div>
+        <div class="list-title">Antrenman KayÄ±tlarÄ±</div>
         <div id="workoutSummary"></div>
         <div id="workoutList"></div>
       </div>
@@ -308,7 +308,7 @@
 
     <div class="card input-card">
       <div class="note-compose">
-        <textarea id="noteInput" rows="3" placeholder="Bugün nasıl geçti? Enerji, iştah, stres veya antrenman hissini yaz."></textarea>
+        <textarea id="noteInput" rows="3" placeholder="BugÃ¼n nasÄ±l geÃ§ti? Enerji, iÅŸtah, stres veya antrenman hissini yaz."></textarea>
         <button class="btn" id="addNoteBtn">Notu Kaydet</button>
       </div>
       <div id="noteList"></div>
@@ -318,19 +318,19 @@
 </section>
 
     <!-- PANEL: PROGRESS -->
-<section class="panel" id="pProgress" aria-label="İlerleme">
+<section class="panel" id="pProgress" aria-label="Ä°lerleme">
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">İlerleme</span>
+      <span class="sec-title">Ä°lerleme</span>
     </div>
     <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
-      Haftalık uyku, antrenman ve gelişim analizi.
+      HaftalÄ±k uyku, antrenman ve geliÅŸim analizi.
     </p>
   </div>
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Haftalık Özet</span>
+      <span class="sec-title">HaftalÄ±k Ã–zet</span>
     </div>
     <div class="card">
       <div id="progressSummary"></div>
@@ -339,7 +339,7 @@
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Kilo ve Bel Grafiği</span>
+      <span class="sec-title">Kilo ve Bel GrafiÄŸi</span>
     </div>
     <div class="card chart-card" id="measurementChartHost">
       <canvas id="measurementChart"></canvas>
@@ -348,7 +348,7 @@
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Uyku Grafiği</span>
+      <span class="sec-title">Uyku GrafiÄŸi</span>
     </div>
     <div class="card chart-card">
       <div id="sleepBars"></div>
@@ -357,7 +357,7 @@
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Antrenman Grafiği</span>
+      <span class="sec-title">Antrenman GrafiÄŸi</span>
     </div>
     <div class="card chart-card">
       <div id="workoutBars"></div>
@@ -366,7 +366,7 @@
 
   <div class="section">
     <div class="sec-head">
-      <span class="sec-title">Haftalık Liste</span>
+      <span class="sec-title">HaftalÄ±k Liste</span>
     </div>
     <div class="card">
       <div id="progressList"></div>
@@ -388,112 +388,89 @@
               <strong id="settingsName">Sporcu</strong>
             </div>
             <div class="settings-row">
-              <span>Başlangıç</span>
+              <span>BaÅŸlangÄ±Ã§</span>
               <strong id="settingsStartDate">31 May 2026</strong>
             </div>
             <div class="settings-row">
               <span>Hesap</span>
-              <strong id="settingsEmail">—</strong>
+              <strong id="settingsEmail">â€”</strong>
             </div>
-            <button class="btn ghost settings-action" id="editNameBtn" type="button">Profili Düzenle</button>
+            <button class="btn ghost settings-action" id="editNameBtn" type="button">Profili DÃ¼zenle</button>
           </div>
 
           <div class="settings-card">
             <div class="settings-card-title">Hedefler</div>
             <div class="settings-row">
-              <span>Başlangıç kilosu</span>
-              <strong id="settingsStartWeight">— kg</strong>
+              <span>BaÅŸlangÄ±Ã§ kilosu</span>
+              <strong id="settingsStartWeight">â€” kg</strong>
             </div>
             <div class="settings-row">
               <span>Son kilo</span>
-              <strong id="settingsCurrentWeight">— kg</strong>
+              <strong id="settingsCurrentWeight">â€” kg</strong>
             </div>
             <div class="settings-row">
               <span>Son bel</span>
-              <strong id="settingsCurrentWaist">— cm</strong>
+              <strong id="settingsCurrentWaist">â€” cm</strong>
             </div>
             <div class="settings-row">
-              <span>İlk hedef</span>
-              <strong id="settingsFirstGoal">— kg</strong>
+              <span>Ä°lk hedef</span>
+              <strong id="settingsFirstGoal">â€” kg</strong>
             </div>
             <div class="settings-row">
               <span>Final hedef</span>
-              <strong id="settingsFinalGoal">— kg</strong>
+              <strong id="settingsFinalGoal">â€” kg</strong>
             </div>
-            <button class="btn ghost settings-action" id="editGoalsBtn" type="button">Hedefleri Düzenle</button>
+            <button class="btn ghost settings-action" id="editGoalsBtn" type="button">Hedefleri DÃ¼zenle</button>
           </div>
 
           <div class="settings-card">
             <div class="settings-card-title">Senkronizasyon</div>
-            <p class="settings-copy">Aynı hesapla web ve iPhone PWA verileri birlikte güncellenir.</p>
+            <p class="settings-copy">AynÄ± hesapla web ve iPhone PWA verileri birlikte gÃ¼ncellenir.</p>
             <div class="sync-status-grid">
               <div>
                 <span>Web</span>
-                <strong>Hazır</strong>
+                <strong>HazÄ±r</strong>
               </div>
               <div>
                 <span>iPhone PWA</span>
-                <strong>Aynı hesap</strong>
+                <strong>AynÄ± hesap</strong>
               </div>
             </div>
             <div class="settings-row">
               <span>Durum</span>
-              <strong id="settingsSyncState">Hazır</strong>
+              <strong id="settingsSyncState">HazÄ±r</strong>
             </div>
             <div class="settings-row">
               <span>Son senkron</span>
-              <strong id="settingsLastSync">Henüz yok</strong>
+              <strong id="settingsLastSync">HenÃ¼z yok</strong>
             </div>
             <div class="settings-row">
               <span>Bekleyen</span>
-              <strong id="settingsPendingSync">0 değişiklik</strong>
+              <strong id="settingsPendingSync">0 deÄŸiÅŸiklik</strong>
             </div>
             <p class="sync-error-copy" id="settingsSyncError" hidden></p>
             <button class="btn ghost settings-action sync-now-btn" id="syncNowBtn" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.5-2L20 9"/><path d="m4 15 2.4 2A7 7 0 0 0 18 15"/></svg>
-              <span>Şimdi Senkronize Et</span>
+              <span>Åimdi Senkronize Et</span>
             </button>
           </div>
 
           <div class="settings-card">
-            <div class="settings-card-title">Uygulama Ayarları</div>
+            <div class="settings-card-title">Uygulama Ayarlar&#305;</div>
             <div class="settings-toggle-row">
               <div>
                 <strong>Koyu tema</strong>
-                <span>Göz yormayan gece görünümü.</span>
+                <span>G&ouml;z yormayan gece g&ouml;r&uuml;n&uuml;m&uuml;.</span>
               </div>
               <label class="switch">
                 <input id="profileThemeToggle" type="checkbox" />
                 <span></span>
               </label>
             </div>
-            <div class="settings-theme-block">
-              <div class="settings-theme-title">
-                <strong>G&ouml;rsel tema</strong>
-                <span>3 farkl&#305; uygulama karakteri.</span>
-              </div>
-              <div class="visual-theme-picker" id="visualThemePicker" aria-label="G&ouml;rsel tema se&ccedil;imi">
-                <button class="visual-theme-option theme-aqua active" type="button" data-visual-theme="aqua" aria-pressed="true">
-                  <span class="theme-swatch"></span>
-                  <strong>Aqua Health</strong>
-                  <small>Temiz, ferah, medikal</small>
-                </button>
-                <button class="visual-theme-option theme-neon" type="button" data-visual-theme="neon" aria-pressed="false">
-                  <span class="theme-swatch"></span>
-                  <strong>Fitness Neon</strong>
-                  <small>Kontrastl&#305;, sportif, enerjik</small>
-                </button>
-                <button class="visual-theme-option theme-lifestyle" type="button" data-visual-theme="lifestyle" aria-pressed="false">
-                  <span class="theme-swatch"></span>
-                  <strong>Lifestyle Cream</strong>
-                  <small>S&#305;cak, motive edici, yumu&#351;ak</small>
-                </button>
-              </div>
-            </div>
             <div class="settings-toggle-row">
               <div>
-                <strong>Pazar ölçüm hatırlatması</strong>
-                <span>Haftalık kilo ve bel ölçümü için.</span>
+                <strong>Pazar &ouml;l&ccedil;&uuml;m hat&#305;rlatmas&#305;</strong>
+                <span>Haftal&#305;k kilo ve bel &ouml;l&ccedil;&uuml;m&uuml; i&ccedil;in.</span>
               </div>
               <label class="switch">
                 <input id="measureReminderToggle" type="checkbox" />
@@ -502,8 +479,8 @@
             </div>
             <div class="settings-toggle-row">
               <div>
-                <strong>Günlük kayıt hatırlatması</strong>
-                <span>Uyku, antrenman ve not girişini unutma.</span>
+                <strong>G&uuml;nl&uuml;k kay&#305;t hat&#305;rlatmas&#305;</strong>
+                <span>Uyku, antrenman ve not giri&#351;ini unutma.</span>
               </div>
               <label class="switch">
                 <input id="dailyReminderToggle" type="checkbox" />
@@ -518,7 +495,7 @@
   </main>
 
   <!-- OFFLINE NOTICE -->
-  <div id="offlineNotice" role="alert">Çevrimdışı mod</div>
+  <div id="offlineNotice" role="alert">Ã‡evrimdÄ±ÅŸÄ± mod</div>
 
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav" role="navigation" aria-label="Alt navigasyon">
@@ -530,13 +507,13 @@
       <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.2 8h13.6l1.2 12H4L5.2 8Z"/><path d="M9.2 8a2.8 2.8 0 0 1 5.6 0"/><path d="m12 13 2-1"/></svg></span>
       <span>Kilo</span>
     </button>
-    <button class="bn-item" id="bn2" onclick="goPanel(2)" aria-label="Günlük kayıt">
+    <button class="bn-item" id="bn2" onclick="goPanel(2)" aria-label="GÃ¼nlÃ¼k kayÄ±t">
       <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="13" height="16" rx="2.2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 9.5h7M8.5 13.5h7M8.5 17.5h4"/></svg></span>
-      <span>Kayıt</span>
+      <span>KayÄ±t</span>
     </button>
-    <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="İlerleme">
+    <button class="bn-item" id="bn3" onclick="goPanel(3)" aria-label="Ä°lerleme">
       <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 19.5h15"/><path d="m6.5 16 4-4.2 3.2 3.1 4.3-7"/><path d="M15.5 7.9H18v2.5"/></svg></span>
-      <span>İlerleme</span>
+      <span>Ä°lerleme</span>
     </button>
     <button class="bn-item" id="bn4" onclick="goPanel(4)" aria-label="Profil">
       <span class="bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
@@ -550,6 +527,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=245" defer></script>
+  <script src="/scripts/app.js?v=246" defer></script>
 </body>
 </html>
