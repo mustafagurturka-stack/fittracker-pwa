@@ -8135,3 +8135,218 @@ html[data-theme="light"][data-visual-theme="lifestyle"] .seg-btn.active {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* v246: single premium fitness design system */
+html[data-theme="light"][data-visual-theme="premium"] {
+  --bg: #e9f6f3;
+  --surface: rgba(255, 254, 248, .92);
+  --surface2: #f2fbf8;
+  --border: rgba(15, 118, 110, .14);
+  --text: #142236;
+  --muted: #71829a;
+  --primary: #0877ee;
+  --primary2: #0f766e;
+  --accent: #2dd4bf;
+  --warm: #ffc46b;
+  --premium-ink: #0e1726;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] body {
+  background:
+    radial-gradient(circle at 11% 9%, rgba(45, 212, 191, .35), transparent 28%),
+    radial-gradient(circle at 86% 10%, rgba(255, 196, 107, .34), transparent 29%),
+    radial-gradient(circle at 84% 82%, rgba(8, 119, 238, .14), transparent 34%),
+    linear-gradient(135deg, #e8f7f4 0%, #f8fbf7 47%, #eef8ff 100%) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] body::before {
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.48), rgba(255,255,255,0) 42%),
+    radial-gradient(circle at 72% 28%, rgba(15, 118, 110, .12), transparent 24%) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .app-shell,
+html[data-theme="light"][data-visual-theme="premium"] #panels {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .topbar {
+  height: 70px !important;
+  background: rgba(255, 254, 248, .78) !important;
+  border-bottom: 1px solid rgba(15, 118, 110, .11) !important;
+  box-shadow: 0 18px 48px rgba(16, 45, 61, .08) !important;
+  backdrop-filter: blur(22px);
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .brand {
+  color: var(--premium-ink) !important;
+  font-weight: 950 !important;
+  letter-spacing: -.03em;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .brand span {
+  background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .section,
+html[data-theme="light"][data-visual-theme="premium"] .profile-card,
+html[data-theme="light"][data-visual-theme="premium"] .settings-card,
+html[data-theme="light"][data-visual-theme="premium"] .list-card,
+html[data-theme="light"][data-visual-theme="premium"] .measure-card,
+html[data-theme="light"][data-visual-theme="premium"] .goal-hero-card,
+html[data-theme="light"][data-visual-theme="premium"] .progress-summary-card,
+html[data-theme="light"][data-visual-theme="premium"] .weekly-report-list,
+html[data-theme="light"][data-visual-theme="premium"] .weekly-report-row {
+  color: var(--text) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,251,240,.8)),
+    var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 26px 70px rgba(16, 45, 61, .11),
+    inset 0 1px 0 rgba(255,255,255,.75) !important;
+  backdrop-filter: blur(18px);
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .hero-card,
+html[data-theme="light"][data-visual-theme="premium"] .goal-hero-card {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(45, 212, 191, .28), transparent 28%),
+    linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,247,224,.8)) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .moti-card,
+html[data-theme="light"][data-visual-theme="premium"] #pHome .moti-card {
+  isolation: isolate;
+  min-height: 92px !important;
+  color: var(--premium-ink) !important;
+  background:
+    radial-gradient(circle at 84% 22%, rgba(255, 196, 107, .62), transparent 29%),
+    linear-gradient(110deg, rgba(45, 212, 191, .92) 0%, rgba(232, 255, 249, .94) 46%, rgba(255, 244, 200, .92) 100%) !important;
+  border: 1px solid rgba(15, 118, 110, .18) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 24px 58px rgba(15, 118, 110, .16) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .moti-card .moti-text,
+html[data-theme="light"][data-visual-theme="premium"] #pHome .moti-card .moti-text {
+  color: var(--premium-ink) !important;
+  font-weight: 850 !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .moti-card .moti-icon,
+html[data-theme="light"][data-visual-theme="premium"] #pHome .moti-card .moti-icon {
+  background: rgba(255,255,255,.68) !important;
+  border-color: rgba(15,118,110,.14) !important;
+  color: var(--primary2) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .section-title,
+html[data-theme="light"][data-visual-theme="premium"] .settings-card-title,
+html[data-theme="light"][data-visual-theme="premium"] .list-title {
+  color: #667794 !important;
+  letter-spacing: .11em !important;
+  font-weight: 950 !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] h1,
+html[data-theme="light"][data-visual-theme="premium"] h2,
+html[data-theme="light"][data-visual-theme="premium"] h3,
+html[data-theme="light"][data-visual-theme="premium"] strong,
+html[data-theme="light"][data-visual-theme="premium"] .daily-row-title {
+  color: var(--premium-ink) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] small,
+html[data-theme="light"][data-visual-theme="premium"] .muted,
+html[data-theme="light"][data-visual-theme="premium"] .daily-row-meta,
+html[data-theme="light"][data-visual-theme="premium"] .settings-toggle-row span {
+  color: var(--muted) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] input,
+html[data-theme="light"][data-visual-theme="premium"] select,
+html[data-theme="light"][data-visual-theme="premium"] textarea,
+html[data-theme="light"][data-visual-theme="premium"] .sync-device-card,
+html[data-theme="light"][data-visual-theme="premium"] .weekly-report-metrics > div,
+html[data-theme="light"][data-visual-theme="premium"] .quick-chip {
+  color: var(--text) !important;
+  background: rgba(255,255,255,.72) !important;
+  border-color: rgba(15, 118, 110, .13) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .btn.primary,
+html[data-theme="light"][data-visual-theme="premium"] .seg-btn.active,
+html[data-theme="light"][data-visual-theme="premium"] .quick-chip.active,
+html[data-theme="light"][data-visual-theme="premium"] .nav-btn.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--primary), var(--primary2)) !important;
+  border-color: transparent !important;
+  border-radius: 18px !important;
+  box-shadow: 0 18px 36px rgba(8,119,238,.24) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .bar-fill,
+html[data-theme="light"][data-visual-theme="premium"] .progress-fill,
+html[data-theme="light"][data-visual-theme="premium"] .week-progress-fill,
+html[data-theme="light"][data-visual-theme="premium"] .weekly-report-metrics i {
+  background: linear-gradient(90deg, var(--accent), var(--primary)) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .sleep-bar {
+  background: linear-gradient(180deg, #54d6ff, #2f80ed) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .workout-bar {
+  background: linear-gradient(180deg, var(--warm), #f97316) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .bottom-nav {
+  background: rgba(255, 254, 248, .86) !important;
+  border: 1px solid rgba(15, 118, 110, .12) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 24px 64px rgba(16, 45, 61, .14) !important;
+  backdrop-filter: blur(22px);
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .bn-icon {
+  border-radius: 16px !important;
+  background: rgba(15,118,110,.08) !important;
+  color: #687a95 !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .bn-item.active {
+  color: var(--premium-ink) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .bn-item.active .bn-icon {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--premium-ink), #0f766e) !important;
+  box-shadow: 0 18px 34px rgba(14, 23, 38, .22) !important;
+}
+
+html[data-theme="light"][data-visual-theme="premium"] .bn-item:nth-child(1) .bn-icon { color: #0f766e !important; }
+html[data-theme="light"][data-visual-theme="premium"] .bn-item:nth-child(2) .bn-icon { color: #f59e0b !important; }
+html[data-theme="light"][data-visual-theme="premium"] .bn-item:nth-child(3) .bn-icon { color: #334155 !important; }
+html[data-theme="light"][data-visual-theme="premium"] .bn-item:nth-child(4) .bn-icon { color: #0877ee !important; }
+html[data-theme="light"][data-visual-theme="premium"] .bn-item:nth-child(5) .bn-icon { color: #7c3aed !important; }
+html[data-theme="light"][data-visual-theme="premium"] .bn-item.active .bn-icon { color: #fff !important; }
+
+@media (max-width: 760px) {
+  html[data-theme="light"][data-visual-theme="premium"] .section,
+  html[data-theme="light"][data-visual-theme="premium"] .profile-card,
+  html[data-theme="light"][data-visual-theme="premium"] .settings-card,
+  html[data-theme="light"][data-visual-theme="premium"] .list-card,
+  html[data-theme="light"][data-visual-theme="premium"] .measure-card,
+  html[data-theme="light"][data-visual-theme="premium"] .goal-hero-card {
+    border-radius: 24px !important;
+  }
+}
