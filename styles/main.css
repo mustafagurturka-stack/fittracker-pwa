@@ -8705,3 +8705,71 @@ html[data-theme="light"] body #pHome .moti-card .moti-icon {
     width: 100%;
   }
 }
+
+/* v255 - Dashboard overflow and spacing fix */
+#pHome #dashboardProgressCard {
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 0 24px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome .dashboard-measure-grid {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome .progress-summary-card {
+  position: relative !important;
+  z-index: 1 !important;
+  overflow: hidden !important;
+}
+
+#pHome .week-chip {
+  clear: both !important;
+  position: relative !important;
+  z-index: 2 !important;
+  margin: 0 0 18px !important;
+  transform: none !important;
+}
+
+#pHome .week-card {
+  min-width: 0 !important;
+}
+
+#pHome .quick-actions-card {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+@media (max-width: 900px) {
+  #pHome #dashboardProgressCard {
+    margin-bottom: 20px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome #dashboardProgressCard {
+    margin-bottom: 18px !important;
+  }
+
+  #pHome .week-card-title,
+  #pHome .week-card-date,
+  #pHome .week-metric,
+  #pHome .progress-summary-card {
+    overflow-wrap: anywhere !important;
+  }
+}
