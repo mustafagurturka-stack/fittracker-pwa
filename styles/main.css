@@ -8951,3 +8951,165 @@ html[data-theme="light"] #pHome .week-chip {
     min-height: 50px !important;
   }
 }
+
+/* v267 - Final dashboard measure card alignment */
+#pHome #dashboardProgressCard {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 22px 0 26px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+#pHome #dashboardProgressCard > .dashboard-measure-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 18px !important;
+  min-width: 0 !important;
+  min-height: 136px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 24px 28px !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 96% 18%, rgba(88, 101, 242, .12), transparent 36%),
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,252,255,.92)) !important;
+  border: 1px solid rgba(46, 77, 116, .12) !important;
+  box-shadow: 0 22px 54px rgba(31, 46, 75, .09), inset 0 1px 0 rgba(255,255,255,.95) !important;
+  transform: none !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 4px !important;
+  background: linear-gradient(180deg, #29d5c2, #4f6df5) !important;
+  opacity: .95 !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-main,
+#pHome #dashboardProgressCard .progress-summary-side {
+  min-width: 0 !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-label {
+  margin: 0 0 12px !important;
+  color: #7182a0 !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: .14em !important;
+  line-height: 1.15 !important;
+  text-transform: uppercase !important;
+  white-space: normal !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-value {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px !important;
+  color: #101a32 !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: clamp(34px, 4.7vw, 46px) !important;
+  font-weight: 950 !important;
+  letter-spacing: -.04em !important;
+  line-height: .95 !important;
+  white-space: nowrap !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-value span {
+  color: #627390 !important;
+  font-size: .42em !important;
+  font-weight: 850 !important;
+  letter-spacing: -.01em !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-side {
+  display: grid !important;
+  justify-items: end !important;
+  align-content: center !important;
+  gap: 8px !important;
+  text-align: right !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-diff {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 36px !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: clamp(20px, 2.5vw, 28px) !important;
+  font-weight: 950 !important;
+  letter-spacing: -.03em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-diff.good {
+  color: #079a74 !important;
+  background: rgba(16, 185, 129, .12) !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-diff.bad {
+  color: #e05252 !important;
+  background: rgba(239, 68, 68, .10) !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-small {
+  max-width: 190px !important;
+  color: #7384a1 !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+}
+
+@media (max-width: 900px) {
+  #pHome #dashboardProgressCard > .dashboard-measure-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome #dashboardProgressCard {
+    margin: 18px 0 22px !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-card {
+    grid-template-columns: 1fr !important;
+    align-items: start !important;
+    gap: 18px !important;
+    min-height: 0 !important;
+    padding: 24px !important;
+    border-radius: 28px !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-side {
+    justify-items: start !important;
+    text-align: left !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-small {
+    max-width: 100% !important;
+  }
+}
