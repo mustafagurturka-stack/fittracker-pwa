@@ -3189,6 +3189,7 @@ async function saveSleep() {
   saveSleepLocally(payload);
   setStatus('Uyku kaydedildi ✓', 'ok');
   hourInput.value = '';
+  document.querySelectorAll('[data-sleep-hours]').forEach(btn => btn.classList.remove('is-selected'));
   dateInput.value = today();
 
   if (!canUseCloud()) return;
@@ -3242,6 +3243,7 @@ async function saveWorkout() {
   const localId = saveWorkoutLocally(payload);
   setStatus('Antrenman kaydedildi ✓', 'ok');
   durationInput.value = '';
+  document.querySelectorAll('[data-workout-minutes]').forEach(btn => btn.classList.remove('is-selected'));
   if (noteInput) noteInput.value = '';
   dateInput.value = today();
 
@@ -3941,6 +3943,8 @@ function bindUiEvents() {
     btn.addEventListener('click', () => {
       const input = document.getElementById('sleepInput');
       if (input) input.value = btn.dataset.sleepHours;
+      btn.closest('.quick-picks')?.querySelectorAll('button').forEach(item => item.classList.remove('is-selected'));
+      btn.classList.add('is-selected');
     });
   });
 
@@ -3948,6 +3952,8 @@ function bindUiEvents() {
     btn.addEventListener('click', () => {
       const input = document.getElementById('workoutDurationInput');
       if (input) input.value = btn.dataset.workoutMinutes;
+      btn.closest('.quick-picks')?.querySelectorAll('button').forEach(item => item.classList.remove('is-selected'));
+      btn.classList.add('is-selected');
     });
   });
 
