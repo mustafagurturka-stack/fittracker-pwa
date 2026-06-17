@@ -2339,6 +2339,18 @@ function renderSettings() {
         : syncMeta.lastError
           ? 'Kontrol gerekli'
           : 'Cloud hazır';
+    syncEl.className = 'sync-state-badge';
+    syncEl.classList.add(
+      cloudSyncInProgress
+        ? 'is-syncing'
+        : !navigator.onLine
+          ? 'is-offline'
+          : syncMeta.lastError
+            ? 'is-error'
+            : pendingCount
+              ? 'is-pending'
+              : 'is-ready'
+    );
   }
   if (lastSyncEl) lastSyncEl.textContent = formatSyncTimestamp(syncMeta.lastSuccess);
   if (pendingSyncEl) pendingSyncEl.textContent = `${pendingCount} değişiklik`;
