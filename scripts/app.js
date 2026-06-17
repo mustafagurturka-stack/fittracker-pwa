@@ -246,6 +246,17 @@ function getStateStorageKey() {
   return state.userId ? `${STORAGE_KEY}_${state.userId}` : `${STORAGE_KEY}_anonymous`;
 }
 
+function releaseMobileInputFocus() {
+  const active = document.activeElement;
+  if (active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName)) {
+    active.blur();
+  }
+
+  window.setTimeout(() => {
+    window.scrollTo({ top: window.scrollY, left: 0, behavior: 'instant' });
+  }, 60);
+}
+
 function getWorkoutCategory(type) {
   return Object.entries(WORKOUT_CATALOG)
     .find(([, items]) => items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
@@ -3190,6 +3201,7 @@ async function saveSleep() {
   setStatus('Uyku kaydedildi ✓', 'ok');
   hourInput.value = '';
   document.querySelectorAll('[data-sleep-hours]').forEach(btn => btn.classList.remove('is-selected'));
+  releaseMobileInputFocus();
   dateInput.value = today();
 
   if (!canUseCloud()) return;
@@ -3244,6 +3256,7 @@ async function saveWorkout() {
   setStatus('Antrenman kaydedildi ✓', 'ok');
   durationInput.value = '';
   document.querySelectorAll('[data-workout-minutes]').forEach(btn => btn.classList.remove('is-selected'));
+  releaseMobileInputFocus();
   if (noteInput) noteInput.value = '';
   dateInput.value = today();
 
@@ -3945,6 +3958,7 @@ function bindUiEvents() {
       if (input) input.value = btn.dataset.sleepHours;
       btn.closest('.quick-picks')?.querySelectorAll('button').forEach(item => item.classList.remove('is-selected'));
       btn.classList.add('is-selected');
+      releaseMobileInputFocus();
     });
   });
 
@@ -3954,6 +3968,7 @@ function bindUiEvents() {
       if (input) input.value = btn.dataset.workoutMinutes;
       btn.closest('.quick-picks')?.querySelectorAll('button').forEach(item => item.classList.remove('is-selected'));
       btn.classList.add('is-selected');
+      releaseMobileInputFocus();
     });
   });
 
