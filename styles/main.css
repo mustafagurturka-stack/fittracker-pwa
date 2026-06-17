@@ -7894,3 +7894,32 @@ html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
     flex: 0 0 auto !important;
   }
 }
+
+/* v252 iOS PWA zoom guard: inputs below 16px trigger viewport zoom */
+@media (max-width: 760px) {
+  input,
+  select,
+  textarea,
+  .entry-form input,
+  .entry-form select,
+  .form-grid input,
+  .form-grid select,
+  .note-compose textarea {
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+    touch-action: manipulation;
+  }
+
+  .entry-form input,
+  .entry-form select,
+  .form-grid input,
+  .form-grid select {
+    min-height: 50px !important;
+  }
+
+  .sleep-entry-form #saveSleepBtn,
+  .workout-entry-form #saveWorkoutBtn,
+  .quick-picks button {
+    touch-action: manipulation;
+  }
+}
