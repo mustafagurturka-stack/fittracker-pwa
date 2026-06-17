@@ -8891,3 +8891,63 @@ html[data-theme="light"] #pHome .week-chip {
     align-self: flex-start !important;
   }
 }
+
+/* v257 - iPhone PWA dashboard safe-area pass */
+.topnav {
+  z-index: 600 !important;
+}
+
+.bottom-nav {
+  z-index: 650 !important;
+}
+
+#panels > #pHome.panel.active {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+}
+
+#pHome .dashboard-wrap {
+  padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
+}
+
+#pHome .quick-actions-card {
+  margin-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+}
+
+@supports (-webkit-touch-callout: none) {
+  html,
+  body {
+    background-color: #effaf5 !important;
+  }
+
+  .topnav {
+    position: sticky !important;
+    top: 0 !important;
+    min-height: calc(64px + env(safe-area-inset-top)) !important;
+    padding-top: env(safe-area-inset-top) !important;
+  }
+
+  #panels > .panel.active {
+    padding-bottom: calc(158px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .dashboard-wrap {
+    padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome .quick-actions-card {
+    margin-bottom: calc(34px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .quick-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  #pHome .quick-btn {
+    width: 100% !important;
+    min-height: 50px !important;
+  }
+}
