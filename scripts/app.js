@@ -1259,28 +1259,28 @@ function renderStats() {
   el.innerHTML = `
     <div class="dashboard-measure-grid">
       <div class="progress-summary-card">
-        <div>
+        <div class="progress-summary-main">
           <div class="progress-summary-label">Son Kilo</div>
           <div class="progress-summary-value">${last.weight} <span>kg</span></div>
         </div>
         <div class="progress-summary-side">
-          <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
           <div class="progress-summary-diff ${weightDiff <= 0 ? 'good' : 'bad'}">
             ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
           </div>
+          <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
         </div>
       </div>
 
       <div class="progress-summary-card">
-        <div>
+        <div class="progress-summary-main">
           <div class="progress-summary-label">Son Bel Ölçümü</div>
           <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
         </div>
         <div class="progress-summary-side">
-          <div class="progress-summary-small">${waistMeasurements.length ? 'Sonraki bel 4. tartıda' : 'Her 4. tartıda'}</div>
           <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
             ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
           </div>
+          <div class="progress-summary-small">${waistMeasurements.length ? 'Sonraki bel 4. tartıda' : 'Her 4. tartıda'}</div>
         </div>
       </div>
     </div>
