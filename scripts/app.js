@@ -277,7 +277,23 @@ function updateWorkoutTypes() {
     typeInput.value = current;
   }
 
+  updateWorkoutDistanceField();
   updateWorkoutGuidance();
+}
+
+function isWalkingWorkout(type = '') {
+  return String(type).toLocaleLowerCase('tr-TR').includes('yürü');
+}
+
+function updateWorkoutDistanceField() {
+  const typeInput = document.getElementById('workoutTypeInput');
+  const distanceInput = document.getElementById('workoutDistanceInput');
+  if (!typeInput || !distanceInput) return;
+
+  const visible = isWalkingWorkout(typeInput.value);
+  distanceInput.hidden = !visible;
+  distanceInput.disabled = !visible;
+  if (!visible) distanceInput.value = '';
 }
 
 function getWorkoutGuidance(category = 'Kuvvet', type = '') {
@@ -319,6 +335,36 @@ function getWorkoutIntensityFromNote(note = '') {
   return match ? match[1] : 'Orta';
 }
 
+function getWorkoutDistanceFromNote(note = '') {
+  const match = String(note).match(/Mesafe:\s*([\d.,]+)\s*km/i);
+  if (!match) return 0;
+  return parseLocaleNumber(match[1]) || 0;
+}
+
+function setWorkoutDistanceInNote(note = '', distance = 0) {
+  const cleaned = String(note)
+    .replace(/\s*·?\s*Mesafe:\s*[\d.,]+\s*km/gi, '')
+    .trim();
+  if (!distance || distance <= 0) return cleaned;
+  return [cleaned, `Mesafe: ${formatDecimal(distance)} km`].filter(Boolean).join(' · ');
+}
+
+function getWalkingStatsForRange(range) {
+  const entries = (state.workouts || []).filter(item =>
+    item.date >= range.start &&
+    item.date <= range.end &&
+    isWalkingWorkout(item.type) &&
+    getWorkoutDistanceFromNote(item.note) > 0
+  );
+  const distance = entries.reduce((total, item) => total + getWorkoutDistanceFromNote(item.note), 0);
+  const duration = entries.reduce((total, item) => total + Number(item.duration || 0), 0);
+  return {
+    distance,
+    duration,
+    pace: distance > 0 ? duration / distance : 0,
+  };
+}
+
 function getWorkoutCategoryFromNote(note = '', type = '') {
   const match = String(note).match(/Kategori:\s*([^·]+)/i);
   return match ? match[1].trim() : getWorkoutCategory(type);
@@ -326,6 +372,7 @@ function getWorkoutCategoryFromNote(note = '', type = '') {
 
 function getCleanWorkoutNote(note = '') {
   return String(note)
+    .replace(/\s*·?\s*Mesafe:\s*[\d.,]+\s*km/gi, '')
     .replace(/^Kategori:\s*[^·]+·\s*/i, '')
     .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*·\s*/i, '')
     .replace(/^Kategori:\s*[^·]+\s*/i, '')
@@ -1079,6 +1126,9 @@ function renderDashboardWeekLabel() {
   const dailyTotals = getWeekDailyTotals(range);
   const sleepDays = VERIFIED_WEEK_TOTALS[range.start]?.sleepNights || dailyTotals.sleep.length;
   const workoutDays = dailyTotals.workouts.length;
+  const walkingStats = getWalkingStatsForRange(range);
+  const walkingDistance = walkingStats.distance;
+  const walkingPace = walkingStats.pace;
   const sleepAverage = sleepDays ? sleepTotal / sleepDays : 0;
   const weekStatus = sleepPct >= 100 && workoutPct >= 100
     ? 'Hedef üstü'
@@ -1135,10 +1185,13 @@ function renderDashboardWeekLabel() {
       </div>
     </div>
 
-    <div class="week-mini-insights">
+    <div class="week-mini-insights${walkingDistance > 0 ? ' has-distance' : ''}">
       <span>Uyku <strong>${sleepInsight}</strong></span>
       <span>Antrenman <strong>${workoutInsight}</strong></span>
       <span>Durum <strong>${balanceInsight}</strong></span>
+      ${walkingDistance > 0
+        ? `<span>Yürüyüş <strong>${formatDecimal(walkingDistance)} km · ${formatDecimal(walkingPace)} dk/km</strong></span>`
+        : ''}
     </div>
   `;
 }
@@ -1816,10 +1869,12 @@ function renderWorkoutList() {
     return;
   }
 
-  list.innerHTML = workouts.map(item => `
+  list.innerHTML = workouts.map(item => {
+    const distance = getWorkoutDistanceFromNote(item.note);
+    return `
     <div class="daily-row">
       <div>
-        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk</div>
+        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDecimal(distance)} km` : ''}</div>
         <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
       <div class="row-actions">
@@ -1827,7 +1882,8 @@ function renderWorkoutList() {
         <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 function getWeeklyProgressData() {
   const weeks = {};
@@ -2152,13 +2208,17 @@ function renderProgressCharts() {
   if (workoutWrap) {
     const workoutData = getWeekDailyTotals(latestWeek).workouts;
     const categories = getWorkoutCategoriesForRange(latestWeek);
+    const walkingStats = getWalkingStatsForRange(latestWeek);
     const recordedCategoryText = categories.length
       ? categories.map(([category, duration]) => `${category}: ${formatMinutes(duration)} dk`).join(' · ')
       : 'Kategori verisi bekleniyor';
+    const distanceText = walkingStats.distance > 0
+      ? ` · Yürüyüş: ${formatDecimal(walkingStats.distance)} km`
+      : '';
     const workoutAdjustment = getVerifiedAdjustment(latestWeek, 'workouts');
     const categoryText = workoutAdjustment
-      ? `${recordedCategoryText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
-      : recordedCategoryText;
+      ? `${recordedCategoryText}${distanceText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
+      : `${recordedCategoryText}${distanceText}`;
     const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
     const workoutDays = workoutData.length;
 
@@ -2238,6 +2298,10 @@ function renderProgressList() {
         const categorySummary = categories.length
           ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${formatMinutes(minutes)} dk`).join(' · ')
           : 'Kategori bekleniyor';
+        const walkingStats = getWalkingStatsForRange(item);
+        const activitySummary = walkingStats.distance > 0
+          ? `${categorySummary} · Yürüyüş ${formatDecimal(walkingStats.distance)} km`
+          : categorySummary;
         const workoutDays = new Set(
           state.workouts
             .filter(workout => workout.date >= item.start && workout.date <= item.end)
@@ -2259,7 +2323,7 @@ function renderProgressList() {
             <div>
               <strong>${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}</strong>
               <span>${status}</span>
-              <small>${categorySummary}</small>
+              <small>${activitySummary}</small>
               ${verifiedNote ? `<small>${verifiedNote}</small>` : ''}
             </div>
             <div class="weekly-report-metrics">
@@ -3236,6 +3300,7 @@ async function saveWorkout() {
   const categoryInput = document.getElementById('workoutCategoryInput');
   const typeInput = document.getElementById('workoutTypeInput');
   const durationInput = document.getElementById('workoutDurationInput');
+  const distanceInput = document.getElementById('workoutDistanceInput');
   const intensityInput = document.getElementById('workoutIntensityInput');
   const noteInput = document.getElementById('workoutNoteInput');
 
@@ -3246,6 +3311,9 @@ async function saveWorkout() {
   const category = categoryInput ? categoryInput.value : getWorkoutCategory(type);
   const intensity = intensityInput ? intensityInput.value : 'Orta';
   const duration = parseLocaleNumber(durationInput.value);
+  const distance = isWalkingWorkout(type) && distanceInput?.value
+    ? parseLocaleNumber(distanceInput.value)
+    : 0;
   const freeNote = noteInput ? noteInput.value.trim() : '';
   const note = [`Kategori: ${category}`, `Zorluk: ${intensity}`, freeNote]
     .filter(Boolean)
@@ -3256,17 +3324,23 @@ async function saveWorkout() {
     return;
   }
 
+  if (distanceInput?.value && (!distance || distance <= 0)) {
+    alert('Geçerli bir yürüyüş mesafesi gir');
+    return;
+  }
+
   const payload = {
     user_id: getUserId(),
     date,
     type,
     duration: parseFloat(duration.toFixed(1)),
-    note,
+    note: setWorkoutDistanceInNote(note, distance),
   };
 
   const localId = saveWorkoutLocally(payload);
   setStatus('Antrenman kaydedildi ✓', 'ok');
   durationInput.value = '';
+  if (distanceInput) distanceInput.value = '';
   document.querySelectorAll('[data-workout-minutes]').forEach(btn => btn.classList.remove('is-selected'));
   releaseMobileInputFocus();
   if (noteInput) noteInput.value = '';
@@ -3311,9 +3385,22 @@ async function editWorkout(sortedIdx) {
   }
 
   const normalizedDuration = parseFloat(duration.toFixed(1));
+  let updatedNote = target.note || '';
+  if (isWalkingWorkout(target.type)) {
+    const currentDistance = getWorkoutDistanceFromNote(target.note);
+    const distanceInput = prompt('Yürüyüş mesafesini gir (km, boş bırakabilirsin):', currentDistance || '');
+    if (distanceInput === null) return;
+    const distance = distanceInput ? parseLocaleNumber(distanceInput) : 0;
+    if (distanceInput && (!distance || distance <= 0)) {
+      alert('Geçerli bir yürüyüş mesafesi gir.');
+      return;
+    }
+    updatedNote = setWorkoutDistanceInNote(target.note, distance);
+  }
   state.workouts[target.originalIndex] = {
     ...state.workouts[target.originalIndex],
     duration: normalizedDuration,
+    note: updatedNote,
   };
   stateSave();
   renderAll();
@@ -3325,7 +3412,7 @@ async function editWorkout(sortedIdx) {
 
   const { error } = await db
     .from('workout_logs')
-    .update({ duration: normalizedDuration })
+    .update({ duration: normalizedDuration, note: updatedNote })
     .eq('user_id', getUserId())
     .eq('id', target.id);
 
@@ -3961,7 +4048,11 @@ function bindUiEvents() {
 
   const workoutTypeInput = document.getElementById('workoutTypeInput');
   if (workoutTypeInput) {
-    workoutTypeInput.addEventListener('change', updateWorkoutGuidance);
+    workoutTypeInput.addEventListener('change', () => {
+      updateWorkoutDistanceField();
+      updateWorkoutGuidance();
+    });
+    updateWorkoutDistanceField();
   }
 
   document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
