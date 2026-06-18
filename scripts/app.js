@@ -351,7 +351,7 @@ function setWorkoutDistanceInNote(note = '', distance = 0) {
     .replace(/\s*·?\s*Mesafe:\s*[\d.,]+\s*km/gi, '')
     .trim();
   if (!distance || distance <= 0) return cleaned;
-  return [cleaned, `Mesafe: ${formatDecimal(distance)} km`].filter(Boolean).join(' · ');
+  return [cleaned, `Mesafe: ${formatDistanceKm(distance)} km`].filter(Boolean).join(' · ');
 }
 
 function getWalkingStatsForRange(range) {
@@ -388,6 +388,14 @@ function getCleanWorkoutNote(note = '') {
 function formatDecimal(value, digits = 1) {
   const number = Number(value || 0);
   return Number.isInteger(number) ? String(number) : number.toFixed(digits);
+}
+
+function formatDistanceKm(value) {
+  const number = Number(value || 0);
+  if (!number) return '0';
+  return number
+    .toFixed(2)
+    .replace(/\.?0+$/, '');
 }
 
 function formatMinutes(value) {
@@ -1195,7 +1203,11 @@ function getAchievements() {
 }
 
 function formatAchievementProgress(item) {
-  const current = item.unit ? formatDecimal(item.current) : Math.floor(item.current);
+  const current = item.unit === 'km'
+    ? formatDistanceKm(item.current)
+    : item.unit
+      ? formatDecimal(item.current)
+      : Math.floor(item.current);
   return `${current} / ${item.target}${item.unit ? ` ${item.unit}` : ''}`;
 }
 
@@ -1362,6 +1374,16 @@ function renderDashboardWeekLabel() {
           <div class="week-fill workout" style="width:${workoutPct}%"></div>
         </div>
       </div>
+
+      ${walkingDistance > 0
+        ? `<div class="week-metric walking-distance-metric">
+            <div class="week-metric-top">
+              <span>Yürüyüş mesafesi</span>
+              <strong>${formatDistanceKm(walkingDistance)} km</strong>
+            </div>
+            <small>${formatDecimal(walkingPace)} dk/km ortalama tempo</small>
+          </div>`
+        : ''}
     </div>
 
     <div class="week-mini-insights${walkingDistance > 0 ? ' has-distance' : ''}">
@@ -1369,7 +1391,7 @@ function renderDashboardWeekLabel() {
       <span>Antrenman <strong>${workoutInsight}</strong></span>
       <span>Durum <strong>${balanceInsight}</strong></span>
       ${walkingDistance > 0
-        ? `<span>Yürüyüş <strong>${formatDecimal(walkingDistance)} km · ${formatDecimal(walkingPace)} dk/km</strong></span>`
+        ? `<span>Yürüyüş <strong>${formatDistanceKm(walkingDistance)} km · ${formatDecimal(walkingPace)} dk/km</strong></span>`
         : ''}
     </div>
   `;
@@ -2053,7 +2075,7 @@ function renderWorkoutList() {
     return `
     <div class="daily-row">
       <div>
-        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDecimal(distance)} km` : ''}</div>
+        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
         <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
       <div class="row-actions">
@@ -2392,7 +2414,7 @@ function renderProgressCharts() {
       ? categories.map(([category, duration]) => `${category}: ${formatMinutes(duration)} dk`).join(' · ')
       : 'Kategori verisi bekleniyor';
     const distanceText = walkingStats.distance > 0
-      ? ` · Yürüyüş: ${formatDecimal(walkingStats.distance)} km`
+      ? ` · Yürüyüş: ${formatDistanceKm(walkingStats.distance)} km`
       : '';
     const workoutAdjustment = getVerifiedAdjustment(latestWeek, 'workouts');
     const categoryText = workoutAdjustment
@@ -2479,7 +2501,7 @@ function renderProgressList() {
           : 'Kategori bekleniyor';
         const walkingStats = getWalkingStatsForRange(item);
         const activitySummary = walkingStats.distance > 0
-          ? `${categorySummary} · Yürüyüş ${formatDecimal(walkingStats.distance)} km`
+          ? `${categorySummary} · Yürüyüş ${formatDistanceKm(walkingStats.distance)} km`
           : categorySummary;
         const workoutDays = new Set(
           state.workouts
