@@ -9216,6 +9216,35 @@ html[data-theme="light"] #pHome .week-chip {
 }
 
 /* v269 - Compact mobile dashboard scroll */
+@media (min-width: 761px) {
+  #panels {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  #panels > .panel,
+  #panels > .panel.active,
+  #panels > #pHome.panel.active {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .bottom-nav {
+    position: relative !important;
+    inset: auto !important;
+    margin: 18px auto 10px !important;
+    transform: none !important;
+  }
+}
+
+.workout-distance-field[hidden] {
+  display: none !important;
+}
+
+.week-mini-insights.has-distance {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 @media (max-width: 760px) {
   #panels > #pHome.panel.active {
     padding-bottom: calc(94px + env(safe-area-inset-bottom)) !important;
@@ -9227,6 +9256,10 @@ html[data-theme="light"] #pHome .week-chip {
 
   #pHome .quick-actions-card {
     margin-bottom: 0 !important;
+  }
+
+  .week-mini-insights.has-distance {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -9312,5 +9345,18 @@ html[data-theme="light"] #pHome .week-chip {
 
   #pHome .quick-actions-card {
     padding: 15px !important;
+  }
+}
+
+@media (min-width: 981px) {
+  .workout-entry-form {
+    grid-template-columns:
+      minmax(136px, .72fr)
+      minmax(120px, .65fr)
+      minmax(145px, .85fr)
+      minmax(96px, .48fr)
+      minmax(110px, .52fr)
+      auto
+      minmax(116px, .58fr) !important;
   }
 }
