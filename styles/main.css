@@ -9113,3 +9113,104 @@ html[data-theme="light"] #pHome .week-chip {
     max-width: 100% !important;
   }
 }
+
+/* v268 - PWA final responsive audit */
+#pProgress .sleep-chart.enhanced::before {
+  content: "" !important;
+  left: 18px !important;
+  right: 18px !important;
+  bottom: 112px !important;
+  height: 0 !important;
+  border-top: 1px dashed rgba(37, 99, 235, .32) !important;
+  color: transparent !important;
+  transform: none !important;
+}
+
+#pProgress .sleep-chart.enhanced::after {
+  content: "7 saat hedef";
+  position: absolute;
+  right: 18px;
+  bottom: 116px;
+  z-index: 3;
+  padding: 3px 7px;
+  border: 1px solid rgba(37, 99, 235, .12);
+  border-radius: 999px;
+  color: #7182a0;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 4px 12px rgba(31, 46, 75, .06);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  #panels > .panel.active {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pProgress .chart-card,
+  #pProgress .weekly-report-list,
+  #pProfile .profile-card,
+  #pLog .log-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #pProgress .chart-mini-head.enhanced {
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  #pProgress .chart-mini-head.enhanced em {
+    align-self: flex-start !important;
+    white-space: nowrap !important;
+  }
+
+  #pProgress .bar-chart.enhanced {
+    overflow: visible !important;
+  }
+
+  #pProgress .sleep-chart.enhanced::before {
+    left: 10px !important;
+    right: 10px !important;
+  }
+
+  #pProgress .sleep-chart.enhanced::after {
+    right: 10px;
+  }
+
+  #pProfile .profile-row > strong,
+  #pProfile .profile-row > span {
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pProgress .chart-stat-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pProgress .bar-chart.enhanced {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  #pProgress .sleep-chart.enhanced::after {
+    right: 6px;
+    bottom: 116px;
+    font-size: 9px;
+  }
+
+  #pHome .quick-actions-card,
+  #pWeight .measurement-form-card,
+  #pLog .notes-card,
+  #pProfile .profile-card {
+    margin-bottom: 12px !important;
+  }
+
+  .bottom-nav {
+    z-index: 1000 !important;
+  }
+}
