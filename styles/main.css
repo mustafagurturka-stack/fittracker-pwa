@@ -9360,3 +9360,39 @@ html[data-theme="light"] #pHome .week-chip {
       minmax(116px, .58fr) !important;
   }
 }
+
+/* v271 - Web-only fixed navigation and dashboard gap correction */
+@media (min-width: 761px) {
+  html body .app-shell #panels,
+  html[data-theme="light"] body .app-shell #panels {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  html body .app-shell #panels > .panel,
+  html body .app-shell #panels > .panel.active,
+  html body .app-shell #panels > #pHome.panel.active {
+    min-height: 0 !important;
+    padding-bottom: 96px !important;
+  }
+
+  html body #pHome .dashboard-wrap {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  html body #pHome .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+
+  html body .bottom-nav {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 12px !important;
+    width: min(1120px, calc(100% - 48px)) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    z-index: 1000 !important;
+  }
+}
