@@ -103,6 +103,10 @@ let state = {
     measureReminder: true,
     dailyReminder: false,
   },
+  achievementState: {
+    seen: [],
+    initialized: false,
+  },
   syncMeta: {
     lastSuccess: '',
     lastAttempt: '',
@@ -118,6 +122,7 @@ let sleepChart = null;
 let workoutChart = null;
 let authMode = 'signIn';
 let dailyView = 'week';
+let achievementSessionReady = false;
 
 function withTimeout(promise, ms = 10000, label = 'İşlem') {
   let timer;
@@ -988,6 +993,10 @@ function stateLoad() {
         measureReminder: savedState.preferences?.measureReminder ?? true,
         dailyReminder: savedState.preferences?.dailyReminder ?? false,
       },
+      achievementState: {
+        seen: Array.isArray(savedState.achievementState?.seen) ? savedState.achievementState.seen : [],
+        initialized: Boolean(savedState.achievementState?.initialized),
+      },
       syncMeta: {
         lastSuccess: savedState.syncMeta?.lastSuccess || '',
         lastAttempt: savedState.syncMeta?.lastAttempt || '',
@@ -1110,6 +1119,176 @@ function renderMoti() {
   const localDay = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   const idx = localDay % MOTIVATIONS.length;
   el.textContent = MOTIVATIONS[idx];
+}
+
+function getAchievementMetrics() {
+  const measurements = getSortedMeasurements();
+  const firstWeight = Number(measurements[0]?.weight ?? state.startWeight ?? 0);
+  const lastWeight = Number(measurements.at(-1)?.weight ?? firstWeight);
+  const weightLoss = Math.max(0, firstWeight - lastWeight);
+  const firstGoal = Number((state.milestones || [])[0]);
+  const walkingDistance = (state.workouts || [])
+    .reduce((total, item) => total + getWorkoutDistanceFromNote(item.note), 0);
+  const activityCount = (state.sleep || []).length + (state.workouts || []).length + (state.notes || []).length;
+  const weeks = new Map();
+
+  [...(state.sleep || []), ...(state.workouts || [])].forEach(item => {
+    if (!item?.date) return;
+    const start = getWeekRange(item.date).start;
+    if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
+    const bucket = weeks.get(start);
+    if ((state.sleep || []).includes(item)) bucket.sleep.add(item.date);
+    else bucket.workouts.add(item.date);
+  });
+
+  VERIFIED_WEEK_TOTALS && Object.entries(VERIFIED_WEEK_TOTALS).forEach(([start, values]) => {
+    if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
+    const bucket = weeks.get(start);
+    if (values.sleepNights >= 7) {
+      for (let day = 0; day < 7; day += 1) bucket.sleep.add(shiftIsoDate(start, day));
+    }
+  });
+
+  const maxActiveDays = Math.max(0, ...[...weeks.values()].map(week => week.workouts.size));
+  const maxSleepDays = Math.max(0, ...[...weeks.values()].map(week => week.sleep.size));
+  const activeWeekStarts = [...weeks.entries()]
+    .filter(([, week]) => week.sleep.size || week.workouts.size)
+    .map(([start]) => start)
+    .sort();
+  let currentStreak = 0;
+  let bestStreak = 0;
+  let previous = '';
+  activeWeekStarts.forEach(start => {
+    currentStreak = previous && shiftIsoDate(previous, 7) === start ? currentStreak + 1 : 1;
+    bestStreak = Math.max(bestStreak, currentStreak);
+    previous = start;
+  });
+
+  return {
+    activityCount,
+    maxActiveDays,
+    maxSleepDays,
+    walkingDistance,
+    weightLoss,
+    firstGoalReached: Number.isFinite(firstGoal) && lastWeight > 0 && lastWeight <= firstGoal,
+    bestStreak,
+  };
+}
+
+function getAchievements() {
+  const metrics = getAchievementMetrics();
+  return [
+    { id: 'first-step', icon: '01', title: 'İlk Adım', detail: 'İlk günlük kaydını tamamla', current: metrics.activityCount, target: 1 },
+    { id: 'active-3', icon: '3G', title: 'Ritim Kuruldu', detail: 'Bir haftada 3 aktif gün', current: metrics.maxActiveDays, target: 3 },
+    { id: 'active-5', icon: '5G', title: 'Güçlü Hafta', detail: 'Bir haftada 5 aktif gün', current: metrics.maxActiveDays, target: 5 },
+    { id: 'sleep-7', icon: '7U', title: 'Uyku Ustası', detail: '7 gecelik uyku kaydı', current: metrics.maxSleepDays, target: 7 },
+    { id: 'walk-5', icon: '5K', title: 'Yol Başladı', detail: 'Toplam 5 km yürüyüş', current: metrics.walkingDistance, target: 5, unit: 'km' },
+    { id: 'walk-25', icon: '25', title: 'Mesafe Avcısı', detail: 'Toplam 25 km yürüyüş', current: metrics.walkingDistance, target: 25, unit: 'km' },
+    { id: 'loss-5', icon: '5-', title: 'Dönüşüm', detail: 'Toplam 5 kg ilerleme', current: metrics.weightLoss, target: 5, unit: 'kg' },
+    { id: 'goal-1', icon: 'H1', title: 'İlk Hedef', detail: 'İlk kilo hedefine ulaş', current: metrics.firstGoalReached ? 1 : 0, target: 1 },
+    { id: 'streak-3', icon: '3H', title: 'İstikrar', detail: '3 hafta üst üste kayıt', current: metrics.bestStreak, target: 3 },
+  ].map(item => ({
+    ...item,
+    unlocked: Number(item.current) >= Number(item.target),
+    progress: Math.min(100, Math.round((Number(item.current || 0) / Number(item.target || 1)) * 100)),
+  }));
+}
+
+function formatAchievementProgress(item) {
+  const current = item.unit ? formatDecimal(item.current) : Math.floor(item.current);
+  return `${current} / ${item.target}${item.unit ? ` ${item.unit}` : ''}`;
+}
+
+function showAchievementToast(items) {
+  document.querySelector('.achievement-toast')?.remove();
+  const toast = document.createElement('div');
+  toast.className = 'achievement-toast';
+  const title = items.length > 1 ? `${items.length} yeni başarı` : items[0].title;
+  toast.innerHTML = `
+    <span class="achievement-toast-icon">${items.length > 1 ? items.length : items[0].icon}</span>
+    <div><strong>${title}</strong><small>Rozet vitrinin güncellendi.</small></div>
+  `;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  window.setTimeout(() => {
+    toast.classList.remove('show');
+    window.setTimeout(() => toast.remove(), 300);
+  }, 3400);
+}
+
+function updateAchievementState(achievements) {
+  if (!state.achievementState || typeof state.achievementState !== 'object') {
+    state.achievementState = { seen: [], initialized: false };
+  }
+  const unlocked = achievements.filter(item => item.unlocked);
+  const seen = new Set(state.achievementState.seen || []);
+  const newlyUnlocked = unlocked.filter(item => !seen.has(item.id));
+
+  if (!achievementSessionReady) {
+    unlocked.forEach(item => seen.add(item.id));
+    state.achievementState.seen = [...seen];
+    state.achievementState.initialized = true;
+    achievementSessionReady = true;
+    stateSave();
+    return;
+  }
+
+  if (newlyUnlocked.length) {
+    newlyUnlocked.forEach(item => seen.add(item.id));
+    state.achievementState.seen = [...seen];
+    stateSave();
+    showAchievementToast(newlyUnlocked);
+  }
+}
+
+function renderAchievements() {
+  const showcase = document.getElementById('achievementShowcase');
+  const dashboard = document.getElementById('dashboardAchievement');
+  const achievements = getAchievements();
+  const unlocked = achievements.filter(item => item.unlocked);
+  const next = achievements
+    .filter(item => !item.unlocked)
+    .sort((a, b) => b.progress - a.progress)[0];
+
+  if (dashboard) {
+    dashboard.innerHTML = `
+      <div class="dashboard-achievement-card">
+        <span class="achievement-ring">${unlocked.length}</span>
+        <div>
+          <strong>${unlocked.length} / ${achievements.length} başarı tamamlandı</strong>
+          <small>${next ? `Sıradaki: ${next.title} · ${formatAchievementProgress(next)}` : 'Tüm başarılar tamamlandı.'}</small>
+        </div>
+        <button type="button" onclick="goPanel(4)">Rozetler</button>
+      </div>
+    `;
+  }
+
+  if (showcase) {
+    showcase.innerHTML = `
+      <div class="achievement-showcase-head">
+        <div>
+          <span>Başarılar</span>
+          <strong>${unlocked.length} rozet kazanıldı</strong>
+        </div>
+        ${next ? `<small>Sıradaki hedef: ${next.title}</small>` : '<small>Tüm rozetler açıldı</small>'}
+      </div>
+      <div class="achievement-grid">
+        ${achievements.map(item => `
+          <article class="achievement-badge ${item.unlocked ? 'is-unlocked' : 'is-locked'}">
+            <span class="achievement-icon">${item.icon}</span>
+            <div class="achievement-copy">
+              <strong>${item.title}</strong>
+              <small>${item.detail}</small>
+              <div class="achievement-progress"><i style="width:${item.progress}%"></i></div>
+              <em>${item.unlocked ? 'Tamamlandı' : formatAchievementProgress(item)}</em>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  updateAchievementState(achievements);
 }
 
 function renderDashboardWeekLabel() {
@@ -2440,6 +2619,7 @@ function renderAll() {
     renderHero,
     renderMoti,
     renderDashboardWeekLabel,
+    renderAchievements,
     renderDashboardGoalCard,
     renderStats,
     renderMeasurementChart,
