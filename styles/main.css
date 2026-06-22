@@ -9262,6 +9262,125 @@ html[data-theme="light"] #pHome .week-chip {
   font-weight: 800;
 }
 
+/* v274 - Progress week picker and mobile chart fit */
+.progress-week-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 255, 0.78)),
+    rgba(255, 255, 255, 0.7);
+  box-shadow: 0 16px 38px rgba(45, 78, 120, 0.08);
+}
+
+.progress-week-picker span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.progress-week-picker strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.progress-week-picker select {
+  min-width: 220px;
+  padding: 12px 42px 12px 14px;
+  border: 1px solid rgba(105, 122, 153, .16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .86);
+  color: var(--text);
+  font-weight: 850;
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  #pProgress .sleep-chart.enhanced::after {
+    display: none !important;
+    content: "" !important;
+  }
+
+  #pProgress .bar-chart.enhanced,
+  #pProgress .workout-chart.enhanced {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    overflow: visible !important;
+    min-height: 168px !important;
+    padding: 18px 2px 8px !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-item {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-fill {
+    width: clamp(26px, 8vw, 38px) !important;
+    min-width: 26px !important;
+    margin-inline: auto !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-fill span {
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-label,
+  #pProgress .bar-chart.enhanced .bar-value {
+    max-width: 100% !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  #pProgress .workout-chart.enhanced .bar-value {
+    font-size: 9px !important;
+  }
+
+  .progress-week-picker {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .progress-week-picker select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  #pProgress .bar-chart.enhanced,
+  #pProgress .workout-chart.enhanced {
+    gap: 2px !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-fill {
+    width: clamp(23px, 7vw, 32px) !important;
+    min-width: 23px !important;
+  }
+
+  #pProgress .workout-chart.enhanced .bar-value {
+    font-size: 8.5px !important;
+  }
+}
+
 @media (max-width: 760px) {
   #panels > #pHome.panel.active {
     padding-bottom: calc(94px + env(safe-area-inset-bottom)) !important;
