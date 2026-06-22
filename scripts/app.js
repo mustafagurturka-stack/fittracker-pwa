@@ -123,6 +123,7 @@ let workoutChart = null;
 let authMode = 'signIn';
 let dailyView = 'week';
 let achievementSessionReady = false;
+let progressWeekStart = '';
 
 function withTimeout(promise, ms = 10000, label = 'İşlem') {
   let timer;
@@ -2216,12 +2217,58 @@ function getWeekInsights(current, range) {
   };
 }
 
+function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
+  if (!weekly.length) return null;
+  const sorted = [...weekly].sort((a, b) => a.start.localeCompare(b.start));
+  const selected = sorted.find(item => item.start === progressWeekStart);
+  if (selected) return selected;
+  const latest = sorted[sorted.length - 1];
+  progressWeekStart = latest.start;
+  return latest;
+}
+
+function renderProgressWeekPicker(weekly = getWeeklyProgressData()) {
+  const el = document.getElementById('progressWeekPicker');
+  if (!el) return;
+
+  if (!weekly.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const sorted = [...weekly].sort((a, b) => b.start.localeCompare(a.start));
+  const selected = getSelectedProgressWeek(sorted);
+
+  el.innerHTML = `
+    <div class="progress-week-picker">
+      <div>
+        <span>Görüntülenen hafta</span>
+        <strong>${formatDate(selected.start)} - ${formatDate(shiftIsoDate(selected.end, 1))}</strong>
+      </div>
+      <select id="progressWeekSelect" aria-label="İlerleme haftası seç">
+        ${sorted.map(item => `
+          <option value="${item.start}" ${item.start === selected.start ? 'selected' : ''}>
+            ${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}
+          </option>
+        `).join('')}
+      </select>
+    </div>
+  `;
+
+  document.getElementById('progressWeekSelect')?.addEventListener('change', event => {
+    progressWeekStart = event.target.value;
+    renderProgressSummary();
+    renderProgressCharts();
+    renderProgressWeekPicker();
+  });
+}
+
 function renderProgressSummary() {
   const el = document.getElementById('progressSummary');
   if (!el) return;
 
   const weekly = getWeeklyProgressData();
-  const current = weekly[weekly.length - 1] || { sleep: 0, workouts: 0 };
+  const current = getSelectedProgressWeek(weekly) || { sleep: 0, workouts: 0 };
   const range = current.start ? current : getDashboardWeekRange();
   const rangeStart = parseIsoDateParts(range.start);
   const dayBeforeRange = new Date(rangeStart.year, rangeStart.month - 1, rangeStart.day - 1);
@@ -2334,7 +2381,7 @@ function renderProgressSummary() {
 function renderProgressCharts() {
   const weekly = getWeeklyProgressData();
 
-  const latestWeek = weekly[weekly.length - 1];
+  const latestWeek = getSelectedProgressWeek(weekly);
 
   const sleepWrap = document.getElementById('sleepBars');
   const workoutWrap = document.getElementById('workoutBars');
@@ -2655,6 +2702,7 @@ function renderAll() {
     renderWorkoutList,
     updateWorkoutGuidance,
     renderProgressSummary,
+    renderProgressWeekPicker,
     renderProgressCharts,
     renderProgressList,
     renderSettings,
