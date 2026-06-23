@@ -330,14 +330,6 @@ function updateWorkoutGuidance() {
   const type = document.getElementById('workoutTypeInput')?.value || '';
   const guidance = getWorkoutGuidance(category, type);
 
-  const coach = getProgressCoachInsight(current, range, prev);
-  const walkingLabel = coach.walkingStats.distance > 0
-    ? `${formatDistanceKm(coach.walkingStats.distance)} km`
-    : 'Mesafe bekleniyor';
-  const walkingPaceLabel = coach.walkingStats.distance > 0
-    ? `${formatDecimal(coach.walkingStats.pace)} dk/km`
-    : 'Yürüyüş kaydına km ekle';
-
   el.innerHTML = `
     <strong>${guidance.title}</strong>
     <span>${guidance.text}</span>
