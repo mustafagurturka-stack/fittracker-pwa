@@ -5115,7 +5115,7 @@ body {
 }
 
 .sleep-chart.enhanced::before {
-  content: "";
+  content: "7 saat hedef";
   position: absolute;
   left: 18px;
   right: 18px;
@@ -9127,7 +9127,7 @@ html[data-theme="light"] #pHome .week-chip {
 }
 
 #pProgress .sleep-chart.enhanced::after {
-  content: "";
+  content: "7 saat hedef";
   position: absolute;
   right: 18px;
   bottom: 116px;
@@ -9799,265 +9799,129 @@ html[data-theme="light"] #pHome .week-chip {
   }
 }
 
-/* v275.1 - Smart weekly coach panel and hidden sleep target label */
-.weekly-coach-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(230px, .85fr);
-  gap: 12px;
-  margin: 0 14px 14px;
-}
-
-.weekly-coach-main,
-.weekly-walk-summary {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid rgba(82, 110, 245, .14);
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,248,255,.9)),
-    var(--surface);
-  box-shadow: 0 14px 32px rgba(31, 46, 75, .07);
-}
-
-.weekly-coach-main {
-  border-left: 4px solid #5865f2;
-}
-
-.weekly-coach-panel.strong .weekly-coach-main {
-  border-left-color: #10b981;
-}
-
-.weekly-coach-panel.focus .weekly-coach-main {
-  border-left-color: #f59e0b;
-}
-
-.weekly-coach-main span,
-.weekly-walk-summary span {
-  display: block;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.weekly-coach-main strong,
-.weekly-walk-summary strong {
-  display: block;
-  margin-top: 7px;
-  color: var(--text);
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.weekly-coach-main p {
-  margin-top: 9px;
-  color: var(--text2);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.weekly-coach-main div,
-.weekly-walk-summary div {
-  display: grid;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.weekly-coach-main small,
-.weekly-walk-summary small {
-  display: block;
-  padding: 8px 10px;
-  border-radius: 12px;
-  color: var(--text2);
-  background: rgba(255, 255, 255, .72);
-  font-size: 12px;
-  font-weight: 850;
-  line-height: 1.25;
-}
-
-.weekly-walk-summary {
-  border-color: rgba(20, 184, 166, .22);
-  background:
-    linear-gradient(135deg, rgba(236,253,245,.82), rgba(239,246,255,.86)),
-    var(--surface);
-}
-
-#pProgress .sleep-chart.enhanced::before {
-  content: "" !important;
-  color: transparent !important;
-}
-
-#pProgress .sleep-chart.enhanced::after {
-  display: none !important;
-  content: "" !important;
-}
-
-[data-theme="dark"] .weekly-coach-main,
-[data-theme="dark"] .weekly-walk-summary {
-  background:
-    linear-gradient(135deg, rgba(30,34,53,.95), rgba(24,28,39,.92)),
-    var(--surface);
-  border-color: rgba(255,255,255,.08);
-}
-
-[data-theme="dark"] .weekly-coach-main small,
-[data-theme="dark"] .weekly-walk-summary small {
-  background: rgba(255,255,255,.05);
-}
-
-@media (max-width: 760px) {
-  .weekly-coach-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .weekly-coach-main,
-  .weekly-walk-summary {
-    padding: 14px;
-    border-radius: 16px;
-  }
-}
-
-/* v275.2 - Web layout polish */
-@media (min-width: 981px) {
-  #pDaily .workout-entry-form {
-    grid-template-columns:
-      minmax(150px, .85fr)
-      minmax(140px, .72fr)
-      minmax(170px, .95fr)
-      minmax(112px, .54fr)
-      minmax(120px, .55fr)
-      minmax(128px, .56fr) !important;
-    align-items: stretch !important;
-  }
-
-  #pDaily .workout-entry-form .quick-picks {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
-    overflow: visible !important;
-  }
-
-  #pDaily .workout-entry-form #workoutNoteInput {
-    grid-column: 1 / -2 !important;
-  }
-
-  #pDaily .workout-entry-form #saveWorkoutBtn {
-    grid-column: -2 / -1 !important;
-  }
+/* v275.4 — encoding-safe layout polish */
+#pDaily .workout-entry-form {
+  grid-template-columns: minmax(145px, .85fr) minmax(130px, .75fr) minmax(155px, .9fr) minmax(110px, .6fr) minmax(220px, .95fr) minmax(132px, .58fr) !important;
+  align-items: stretch !important;
 }
 
 #pDaily .workout-entry-form .quick-picks {
-  min-width: 0 !important;
-  flex-wrap: wrap !important;
-  justify-content: flex-start !important;
+  grid-column: 5 / 6 !important;
+  grid-row: 1 !important;
+  width: 100%;
+  justify-content: center;
 }
 
-#pDaily .workout-entry-form .quick-picks button {
-  flex: 0 0 auto !important;
+#pDaily .workout-entry-form #saveWorkoutBtn {
+  grid-column: 6 / 7 !important;
+  grid-row: 1 !important;
 }
 
-#pProgress .weekly-coach-panel {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, .56fr);
-  gap: 16px;
-  margin: 0 16px 18px;
+#pDaily .workout-entry-form #workoutIntensityInput {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 !important;
 }
 
-#pProgress .weekly-coach-main,
-#pProgress .weekly-walk-summary {
-  padding: 18px;
-  border-radius: 20px;
+#pDaily .workout-entry-form #workoutDistanceInput {
+  grid-column: 2 / 3 !important;
+  grid-row: 2 !important;
 }
 
-#pProgress .weekly-coach-main {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,.98), rgba(247,249,255,.94)),
-    var(--surface);
+#pDaily .workout-entry-form #workoutNoteInput {
+  grid-column: 3 / -1 !important;
+  grid-row: 2 !important;
 }
 
-#pProgress .weekly-walk-summary {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  min-height: 0;
-}
-
-#pProgress .weekly-walk-summary strong {
-  font-size: 19px;
-}
-
-#pProgress .weekly-walk-summary small,
-#pProgress .weekly-coach-main small {
-  background: rgba(248, 250, 252, .9);
-}
-
-@media (max-width: 980px) {
-  #pProgress .weekly-coach-panel {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* v275.3 - Compact notes, waist mini chart, badge polish */
 #pDaily .note-compose {
-  gap: 10px !important;
+  padding: 14px 16px !important;
 }
 
 #pDaily .note-compose textarea {
-  min-height: 92px !important;
-  max-height: 120px !important;
-  padding: 14px !important;
+  min-height: 84px !important;
+  max-height: 112px !important;
 }
 
-#pDaily .note-compose .btn {
-  min-height: 44px !important;
+#pDaily #noteList .empty-state {
+  min-height: 96px !important;
 }
 
-.waist-mini-chart {
-  margin-top: 18px;
-  padding: 12px;
+.waist-trend-panel {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(20, 184, 166, .18);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(240, 253, 250, .78), rgba(255, 255, 255, .9));
+  box-shadow: 0 16px 34px rgba(15, 23, 42, .05);
+}
+
+.waist-trend-panel.empty {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.waist-trend-panel.empty span,
+.waist-trend-panel .measurement-chart-top span {
+  color: #7585a1;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.waist-trend-panel.empty strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.waist-trend-panel.empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.waist-chart-canvas {
+  position: relative;
+  min-height: 245px;
+  margin-top: 12px;
+  padding: 12px 0 34px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, .62);
-  border: 1px solid rgba(20, 184, 166, .14);
+  background:
+    linear-gradient(to bottom, rgba(117, 133, 161, .16) 1px, transparent 1px) 0 0 / 100% 25%,
+    rgba(255, 255, 255, .58);
 }
 
-.waist-mini-chart svg {
+.waist-chart-canvas svg {
   display: block;
   width: 100%;
-  height: 94px;
+  height: 190px;
   overflow: visible;
 }
 
-.waist-mini-chart div {
+.waist-chart-labels {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 8px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
 }
 
-.waist-mini-chart strong {
-  color: var(--text2);
-  font-size: 10px;
+.waist-chart-labels div {
+  min-width: 0;
+  color: #74829c;
+  font-size: 11px;
+  text-align: center;
 }
 
-.waist-mini-chart.empty {
-  display: grid;
-  min-height: 86px;
-  place-items: center;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+.waist-chart-labels strong,
+.waist-chart-labels span {
+  display: block;
+  white-space: nowrap;
 }
 
-.achievement-badge.is-unlocked {
+.achievement-badge {
   position: relative;
-  border-color: rgba(20, 184, 166, .32) !important;
-  background:
-    radial-gradient(circle at 100% 0, rgba(245, 158, 11, .16), transparent 34%),
-    linear-gradient(145deg, rgba(236, 253, 245, .96), rgba(240, 246, 255, .94)) !important;
 }
 
 .achievement-badge.is-unlocked::after {
@@ -10071,23 +9935,80 @@ html[data-theme="light"] #pHome .week-chip {
   height: 24px;
   border-radius: 999px;
   color: #fff;
-  background: linear-gradient(145deg, #f59e0b, #22c55e);
-  box-shadow: 0 8px 18px rgba(34, 197, 94, .24);
-  font-size: 12px;
-  font-weight: 950;
-}
-
-.achievement-badge.is-unlocked .achievement-copy em {
-  color: #0f9f7a !important;
+  background: linear-gradient(135deg, #f4b740, #f97316);
+  box-shadow: 0 8px 18px rgba(249, 115, 22, .22);
+  font-size: 13px;
 }
 
 .achievement-badge.is-locked {
-  opacity: .78;
+  opacity: .82;
 }
 
-#pProgress .progress-metric-card,
-#pProgress .progress-insight-card {
+[data-theme="dark"] .waist-trend-panel {
+  background: rgba(20, 29, 40, .92);
+  border-color: rgba(45, 212, 191, .18);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .waist-chart-canvas {
   background:
-    linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,251,255,.92)),
-    var(--surface);
+    linear-gradient(to bottom, rgba(148, 163, 184, .12) 1px, transparent 1px) 0 0 / 100% 25%,
+    rgba(15, 23, 42, .36);
+}
+
+@media (max-width: 980px) {
+  #pDaily .workout-entry-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #pDaily .workout-entry-form .quick-picks,
+  #pDaily .workout-entry-form #saveWorkoutBtn,
+  #pDaily .workout-entry-form #workoutIntensityInput,
+  #pDaily .workout-entry-form #workoutDistanceInput,
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: 1 / 3 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #pDaily .workout-entry-form {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  #pDaily .workout-entry-form .quick-picks,
+  #pDaily .workout-entry-form #saveWorkoutBtn,
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: 1 / -1 !important;
+  }
+
+  .waist-chart-canvas {
+    overflow-x: auto;
+  }
+
+  .waist-chart-canvas svg {
+    min-width: 520px;
+  }
+
+  .waist-chart-labels {
+    min-width: 500px;
+  }
+}
+
+@media (max-width: 520px) {
+  #pDaily .workout-entry-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pDaily .workout-entry-form .quick-picks,
+  #pDaily .workout-entry-form #saveWorkoutBtn,
+  #pDaily .workout-entry-form #workoutIntensityInput,
+  #pDaily .workout-entry-form #workoutDistanceInput,
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: 1 !important;
+  }
 }
