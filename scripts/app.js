@@ -2217,6 +2217,106 @@ function getWeekInsights(current, range) {
   };
 }
 
+function getWeeklyCoachComment(current, range, insights, previous = null) {
+  const sleepPct = Math.round((Number(current.sleep || 0) / SLEEP_TARGET) * 100);
+  const workoutPct = Math.round((Number(current.workouts || 0) / WORKOUT_TARGET) * 100);
+  const walkingStats = getWalkingStatsForRange(range);
+  const hasRecords = insights.sleepDays || insights.workoutDays || walkingStats.distance > 0;
+  const sleepDiff = previous ? Number(current.sleep || 0) - Number(previous.sleep || 0) : 0;
+  const workoutDiff = previous ? Number(current.workouts || 0) - Number(previous.workouts || 0) : 0;
+
+  if (!hasRecords) {
+    return {
+      tone: 'neutral',
+      title: 'Hafta yorumu hazır bekliyor',
+      text: 'Bu hafta için uyku veya antrenman kaydı eklediğinde koç yorumu otomatik güncellenecek.',
+      action: 'Bugün küçük bir kayıtla haftayı başlat.',
+    };
+  }
+
+  if (sleepPct >= 100 && workoutPct >= 100) {
+    return {
+      tone: 'strong',
+      title: 'Çok güçlü ve dengeli hafta',
+      text: `Uyku hedefi tamam, antrenman hedefi tamam. ${walkingStats.distance > 0 ? `Yürüyüşte ${formatDistanceKm(walkingStats.distance)} km ek mesafe de var.` : 'Bu ritmi korumak öncelik olsun.'}`,
+      action: 'Bir sonraki hafta aynı düzeni tekrar etmeye odaklan.',
+    };
+  }
+
+  if (insights.sleepAvg >= 7 && workoutPct >= 75) {
+    return {
+      tone: 'good',
+      title: 'Ritim iyi kurulmuş',
+      text: `Kaydedilen uyku ortalaması ${insights.sleepAvg.toFixed(1)} saat. Antrenman tarafında hedefin %${Math.min(100, workoutPct)} seviyesine gelmişsin.`,
+      action: workoutPct >= 100 ? 'Toparlanmayı ihmal etme.' : 'Haftaya 1 kısa hareket günü daha eklemek fark yaratır.',
+    };
+  }
+
+  if (sleepPct < 65 && workoutPct >= 90) {
+    return {
+      tone: 'warning',
+      title: 'Hareket güçlü, toparlanma geride',
+      text: `Antrenman süresi iyi; uyku toplamı hedefin %${Math.min(100, sleepPct)} seviyesinde kalmış.`,
+      action: 'Bu hafta ana odak 7 saatlik uyku tabanını güçlendirmek olsun.',
+    };
+  }
+
+  if (sleepPct >= 85 && workoutPct < 65) {
+    return {
+      tone: 'warning',
+      title: 'Toparlanma iyi, hareket eksik',
+      text: `Uyku tarafı iyi gidiyor; antrenman süresi hedefin %${Math.min(100, workoutPct)} seviyesinde.`,
+      action: 'Bir yürüyüş veya kısa kuvvet seansı haftayı dengeleyebilir.',
+    };
+  }
+
+  if (previous && (sleepDiff > 0 || workoutDiff > 0)) {
+    const improved = [
+      sleepDiff > 0 ? `uyku +${sleepDiff.toFixed(1)} saat` : '',
+      workoutDiff > 0 ? `antrenman +${formatMinutes(workoutDiff)} dk` : '',
+    ].filter(Boolean).join(', ');
+
+    return {
+      tone: 'good',
+      title: 'Önceki haftaya göre artış var',
+      text: `${improved} ilerleme görünüyor. Küçük artışlar birikince ritim oluşuyor.`,
+      action: 'Bir sonraki hafta bu artışı sürdürülebilir tut.',
+    };
+  }
+
+  return {
+    tone: 'neutral',
+    title: 'Hafta takipte',
+    text: `Uyku hedefinin %${Math.min(100, sleepPct)} seviyesinde, antrenman hedefinin %${Math.min(100, workoutPct)} seviyesindesin.`,
+    action: 'En kolay kazanım: 1 uyku kaydı ve 20-30 dk hareket eklemek.',
+  };
+}
+
+function getWalkingWeekSummary(range) {
+  const entries = (state.workouts || [])
+    .filter(item =>
+      item.date >= range.start &&
+      item.date <= range.end &&
+      isWalkingWorkout(item.type) &&
+      getWorkoutDistanceFromNote(item.note) > 0
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const stats = getWalkingStatsForRange(range);
+  const best = entries.reduce((winner, item) =>
+    getWorkoutDistanceFromNote(item.note) > getWorkoutDistanceFromNote(winner?.note)
+      ? item
+      : winner, null);
+
+  return {
+    ...stats,
+    count: entries.length,
+    best,
+    label: stats.distance > 0
+      ? `${formatDistanceKm(stats.distance)} km toplam mesafe`
+      : 'Bu hafta yürüyüş mesafesi yok',
+  };
+}
+
 function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
   if (!weekly.length) return null;
   const sorted = [...weekly].sort((a, b) => a.start.localeCompare(b.start));
@@ -2311,6 +2411,15 @@ function renderProgressSummary() {
     ? `${formatDate(insights.bestWorkout.date)} · ${formatMinutes(insights.bestWorkout.duration)} dk`
     : 'Veri bekleniyor';
 
+  const coachComment = getWeeklyCoachComment(current, range, insights, prev);
+  const walkingSummary = getWalkingWeekSummary(range);
+  const walkingPaceLabel = walkingSummary.distance > 0
+    ? `${formatDecimal(walkingSummary.pace)} dk/km`
+    : 'Veri yok';
+  const bestWalkLabel = walkingSummary.best
+    ? `${formatDate(walkingSummary.best.date)} - ${formatDistanceKm(getWorkoutDistanceFromNote(walkingSummary.best.note))} km`
+    : 'Henüz mesafe yok';
+
   const periodTitle = `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`;
   const periodLabel = range.start === getWeekRange(today()).start ? 'Bu hafta' : 'Son aktif hafta';
   const sleepComparison = prev && previousDailyTotals.sleep.length
@@ -2324,6 +2433,23 @@ function renderProgressSummary() {
     <div class="progress-period">
       <span>${periodLabel}</span>
       <strong>${periodTitle}</strong>
+    </div>
+    <div class="weekly-coach-panel ${coachComment.tone}">
+      <div class="weekly-coach-main">
+        <span>Akıllı haftalık yorum</span>
+        <strong>${coachComment.title}</strong>
+        <p>${coachComment.text}</p>
+        <small>${coachComment.action}</small>
+      </div>
+      <div class="weekly-walk-summary">
+        <span>Yürüyüş özeti</span>
+        <strong>${walkingSummary.label}</strong>
+        <div>
+          <small>${walkingSummary.count} kayıt</small>
+          <small>${walkingPaceLabel}</small>
+          <small>${bestWalkLabel}</small>
+        </div>
+      </div>
     </div>
     <div class="progress-grid">
       <div class="progress-metric-card">
