@@ -1,13 +1,13 @@
 'use strict';
 
-const CACHE_NAME = 'fittracker-pro-v275';
+const CACHE_NAME = 'fittracker-pro-v275-1';
 
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/styles/main.css?v=175',
-  '/scripts/app.js?v=275',
-  '/manifest.json?v=275',
+  '/styles/main.css?v=176',
+  '/scripts/app.js?v=2751',
+  '/manifest.json?v=2751',
   '/icons/icon-192.png?v=229',
   '/icons/icon-512.png?v=229',
 ];
