@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=275.3" />
+  <link rel="manifest" href="/manifest.json?v=275.4" />
 
   <!-- Icons (Apple) -->
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=229" />
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=176.3" />
+  <link rel="stylesheet" href="/styles/main.css?v=176.4" />
 </head>
 <body>
 
@@ -255,11 +255,12 @@
       />
 
       <div class="quick-picks" aria-label="Hızlı süre seçimi">
-        <button type="button" data-workout-minutes="20">20dk</button>
         <button type="button" data-workout-minutes="30">30dk</button>
         <button type="button" data-workout-minutes="45">45dk</button>
         <button type="button" data-workout-minutes="60">60dk</button>
       </div>
+
+      <button class="btn" id="saveWorkoutBtn">Kaydet</button>
 
       <select
         id="workoutIntensityInput"
@@ -276,8 +277,6 @@
         placeholder="Not opsiyonel"
         style="flex:1;min-width:180px;padding:10px;border:1px solid var(--border);border-radius:8px"
       />
-
-      <button class="btn" id="saveWorkoutBtn">Kaydet</button>
     </div>
     <div class="workout-guidance" id="workoutGuidance"></div>
   </div>
@@ -536,6 +535,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=275.3" defer></script>
+  <script src="/scripts/app.js?v=275.4" defer></script>
 </body>
 </html>
