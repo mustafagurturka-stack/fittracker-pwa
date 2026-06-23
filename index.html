@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=275.2" />
+  <link rel="manifest" href="/manifest.json?v=275.3" />
 
   <!-- Icons (Apple) -->
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=229" />
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=176.2" />
+  <link rel="stylesheet" href="/styles/main.css?v=176.3" />
 </head>
 <body>
 
@@ -192,11 +192,9 @@
     />
 
     <div class="quick-picks" aria-label="Hızlı uyku seçimi">
-      <button type="button" data-sleep-hours="6">6s</button>
       <button type="button" data-sleep-hours="7">7s</button>
       <button type="button" data-sleep-hours="7.5">7.5s</button>
       <button type="button" data-sleep-hours="8">8s</button>
-      <button type="button" data-sleep-hours="9">9s</button>
     </div>
 
     <button class="btn" id="saveSleepBtn">Kaydet</button>
@@ -317,7 +315,7 @@
 
     <div class="card input-card">
       <div class="note-compose">
-        <textarea id="noteInput" rows="3" placeholder="Bugün nasıl geçti? Enerji, iştah, stres veya antrenman hissini yaz."></textarea>
+        <textarea id="noteInput" rows="2" placeholder="Bugün nasıl geçti? Enerji, iştah, stres veya antrenman hissini yaz."></textarea>
         <button class="btn" id="addNoteBtn">Notu Kaydet</button>
       </div>
       <div id="noteList"></div>
@@ -538,6 +536,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=275.2" defer></script>
+  <script src="/scripts/app.js?v=275.3" defer></script>
 </body>
 </html>
