@@ -648,7 +648,6 @@ function renderFallbackMeasurementChart(host, data) {
         </div>
       </div>
     </div>
-    ${renderWaistTrendPanel(waistData)}
   `;
 }
 
@@ -669,68 +668,6 @@ function renderWaistRhythm(step) {
   return Array.from({ length: 4 }, (_, index) =>
     `<i class="${index < step ? 'active' : ''}"></i>`
   ).join('');
-}
-
-function renderWaistTrendPanel(waistData) {
-  if (!waistData.length) {
-    return `
-      <div class="waist-trend-panel empty">
-        <div>
-          <span>Bel Trendi</span>
-          <strong>Ölçüm bekleniyor</strong>
-        </div>
-        <p>Bel grafiği başlangıç ve 4. tartı ölçümleri geldikçe kilo grafiğinin altında oluşur.</p>
-      </div>
-    `;
-  }
-
-  const first = waistData[0];
-  const last = waistData[waistData.length - 1];
-  const diff = Number(last.waist - first.waist);
-  const values = waistData.map(item => Number(item.waist));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(1, max - min);
-  const points = waistData.map((item, index) => {
-    const x = waistData.length === 1 ? 50 : 8 + (index / (waistData.length - 1)) * 84;
-    const y = 86 - ((Number(item.waist) - min) / range) * 64;
-    return { ...item, x, y };
-  });
-
-  return `
-    <div class="waist-trend-panel">
-      <div class="measurement-chart-top compact">
-        <div>
-          <span>Bel Trendi</span>
-          <strong>${Number(first.waist).toFixed(1)} → ${Number(last.waist).toFixed(1)} cm</strong>
-        </div>
-        <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} cm</div>
-      </div>
-      <div class="waist-chart-canvas">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Bel grafiği">
-          <polyline
-            points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
-            fill="none"
-            stroke="#14b8a6"
-            stroke-width="2.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          ${points.map(point => `
-            <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#14b8a6"></circle>
-          `).join('')}
-        </svg>
-        <div class="waist-chart-labels">
-          ${points.map(point => `
-            <div>
-              <strong>${Number(point.waist).toFixed(1)} cm</strong>
-              <span>${formatDate(point.date)}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `;
 }
 
 function renderMeasurementInsight(host, data, canvasHtml = '') {
@@ -787,7 +724,6 @@ function renderMeasurementInsight(host, data, canvasHtml = '') {
         <small>4 tartıda 1 bel ölçümü</small>
       </div>
     </div>
-    ${renderWaistTrendPanel(waistData)}
   `;
 }
 
