@@ -1778,15 +1778,15 @@ function renderWeightList() {
     const prevWaist = getWaistMeasurements()
       .filter(item => item.date < m.date)
       .at(-1);
-    const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist))
-      ? (parseFloat(m.waist) - parseFloat(prev.waist)).toFixed(1)
+    const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist)) && Number.isFinite(Number(prevWaist.waist))
+      ? (Number(m.waist) - Number(prevWaist.waist)).toFixed(1)
       : null;
 
     const weightDiffHtml = weightDiff
       ? `<span class="delta-pill ${weightDiff < 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
       : '<span class="delta-pill neutral">Başlangıç</span>';
 
-    const waistDiffHtml = waistDiff
+    const waistDiffHtml = waistDiff !== null
       ? `<span class="delta-pill ${waistDiff < 0 ? 'good' : 'bad'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
       : `<span class="delta-pill neutral">${isWaistWeek ? 'İlk bel' : '4. tartıda'}</span>`;
 
@@ -2266,6 +2266,55 @@ function getProgressCoachInsight(current, range, prev) {
   return { title, text, tone, bullets, walkingStats };
 }
 
+function getProgressCoachInsight(current, range, prev) {
+  const insights = getWeekInsights(current, range);
+  const sleepPct = Math.min(100, Math.round((Number(current.sleep || 0) / SLEEP_TARGET) * 100));
+  const workoutPct = Math.min(100, Math.round((Number(current.workouts || 0) / WORKOUT_TARGET) * 100));
+  const walkingStats = getWalkingStatsForRange(range);
+  const workoutDiff = prev ? Number(current.workouts || 0) - Number(prev.workouts || 0) : 0;
+  const sleepDiff = prev ? Number(current.sleep || 0) - Number(prev.sleep || 0) : 0;
+
+  let title = 'Ritim kuruluyor';
+  let tone = 'steady';
+  let text = 'Bu hafta için veri geldikçe yorum netleşecek. Uyku ve hareketi birlikte takip etmek en iyi resmi verir.';
+
+  if (sleepPct >= 100 && workoutPct >= 100) {
+    title = 'Hafta çok güçlü';
+    tone = 'strong';
+    text = 'Uyku ve antrenman hedefleri birlikte tamamlanmış. Bu tempo sürdürülebilirse gelişim çizgisi çok daha netleşir.';
+  } else if (insights.sleepAvg >= 7 && workoutPct >= 80) {
+    title = 'Dengeli gidiyorsun';
+    tone = 'strong';
+    text = 'Uyku hedefte, antrenman tarafı da güçlü. Bir sonraki adım bu düzeni haftadan haftaya korumak.';
+  } else if (insights.sleepAvg < 7 && workoutPct >= 80) {
+    title = 'Hareket iyi, uyku destek istiyor';
+    tone = 'focus';
+    text = 'Antrenman tarafı iyi görünüyor. Toparlanma için uyku ortalamasını 7 saate yaklaştırmak bu haftanın ana odağı olabilir.';
+  } else if (insights.sleepAvg >= 7 && workoutPct < 65) {
+    title = 'Uyku iyi, hareketi yükseltelim';
+    tone = 'focus';
+    text = 'Uyku tarafı toparlanmış. Antrenmanda 1-2 kısa ek seans bu haftayı daha dengeli hale getirebilir.';
+  } else if (insights.workoutDays || insights.sleepDays) {
+    title = 'Takip devam ediyor';
+    tone = 'steady';
+    text = 'Veri girişi başlamış. Bu hafta küçük ama düzenli kayıtlar, sonraki haftanın kıyasını daha anlamlı yapacak.';
+  }
+
+  const bullets = [
+    prev
+      ? `Önceki haftaya göre uyku ${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat`
+      : 'Önceki hafta kıyası için veri bekleniyor',
+    prev
+      ? `Antrenman farkı ${workoutDiff >= 0 ? '+' : ''}${formatMinutes(workoutDiff)} dk`
+      : `${insights.workoutDays} aktif gün kaydedildi`,
+    walkingStats.distance > 0
+      ? `Yürüyüş ${formatDistanceKm(walkingStats.distance)} km · ort. tempo ${formatDecimal(walkingStats.pace)} dk/km`
+      : 'Yürüyüş mesafesi girilirse km takibi açılır',
+  ];
+
+  return { title, text, tone, bullets, walkingStats };
+}
+
 function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
   if (!weekly.length) return null;
   const sorted = [...weekly].sort((a, b) => a.start.localeCompare(b.start));
@@ -2366,7 +2415,7 @@ function renderProgressSummary() {
     ? `${formatDistanceKm(walkingStats.distance)} km toplam`
     : 'Bu hafta yürüyüş mesafesi yok';
   const walkingPace = walkingStats.distance > 0
-    ? `${formatDecimal(walkingStats.pace)} dk/km`
+    ? `Ortalama tempo: ${formatDecimal(walkingStats.pace)} dk/km`
     : 'Tempo bekleniyor';
 
   const periodTitle = `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`;
