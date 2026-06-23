@@ -1,4647 +1,10014 @@
-'use strict';
+/* ── TOKENS ── */
+:root {
+  --bg:        #e8f0ff;
+  --surface:   #ffffff;
+  --surface2:  #f0f3fa;
+  --border:    #e2e8f4;
+  --text:      #0f1724;
+  --text2:     #4a5568;
+  --muted:     #8896b0;
+  --dim:       #c5cfe0;
 
-// SUPABASE
-const SUPABASE_URL = 'https://wqbnghfduryuwcjrffyd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_8ZycJCD6a6qdgYbfPqh6Sg_FaYY_XMb';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'fittracker-pro-auth',
-  },
-});
+  --blue:      #3b82f6;
+  --green:     #10b981;
+  --orange:    #f97316;
+  --red:       #ef4444;
+  --purple:    #8b5cf6;
+  --yellow:    #f59e0b;
+  --cyan:      #06b6d4;
 
-console.log('Supabase hazır:', db);
+  --brand-green: #22c55e;
+  --brand-green-dark: #16a34a;
+  --brand-green-soft: rgba(34,197,94,.12);
+  --brand-green-border: rgba(34,197,94,.22);
 
-// CONSTANTS
-const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
-const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
-const STORAGE_KEY = 'ft_state_v2';
-const START_DATE = '2026-05-31';
-const WEEKLY_MEASURE_DAY = 0;
-const SLEEP_TARGET = 49;
-const WORKOUT_TARGET = 180;
-const VERIFIED_WEEK_TOTALS = {
-  '2026-05-31': { sleep: 53.5, workouts: 265, sleepNights: 7 },
-  '2026-06-07': { sleep: 55, workouts: 202.5, sleepNights: 7 },
-};
+  --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.04);
+  --radius:    14px;
+  --radius-sm: 9px;
 
-const WORKOUT_CATALOG = {
-  Kuvvet: ['Full Body A', 'Full Body B', 'Full Body C', 'Full Body D', 'Core'],
-  Kardiyo: ['Yürüyüş', 'Bisiklet', 'GrowwithJo', 'Diğer Kardiyo'],
-};
-
-const LEGACY_WORKOUT_CATEGORY_MAP = {
-  'Core Temel': 'Kuvvet',
-  'Core / Tabata': 'Kuvvet',
-  'Karın Bölgesi': 'Kuvvet',
-  'Bel ve Stabilizasyon': 'Kuvvet',
-  'Plank Serisi': 'Kuvvet',
-  'Squat Odaklı': 'Kuvvet',
-  'Deadlift Odaklı': 'Kuvvet',
-  'Üst Vücut': 'Kuvvet',
-  'Alt Vücut': 'Kuvvet',
-  'Sabah Yağ Yakım': 'Kardiyo',
-  'GrowWithJo': 'Kardiyo',
-  'GrowWithJo Challenge': 'Kardiyo',
-  'GrowwithJo': 'Kardiyo',
-  'Squat Challenge': 'Kardiyo',
-  'Deadlift Challenge': 'Kardiyo',
-  'Core Challenge': 'Kardiyo',
-  'HIIT Challenge': 'Kardiyo',
-  '30 Gün Challenge': 'Kardiyo',
-  'Koşu': 'Kardiyo',
-  'Eliptik': 'Kardiyo',
-  'HIIT': 'Kardiyo',
-  'Zone 2 Kardiyo': 'Kardiyo',
-  'Esneme': 'Kardiyo',
-  'Mobility': 'Kardiyo',
-  'Yoga': 'Kardiyo',
-  'Foam Rolling': 'Kardiyo',
-  'Aktif Dinlenme': 'Kardiyo',
-};
-
-const MOTIVATIONS = [
-  'Bugün küçük bir adım at, yarın farkı hissedeceksin.',
-  'Mükemmel olmak zorunda değilsin; devam etmek yeterli.',
-  'Her kayıt, hedefe biraz daha yaklaştığının kanıtı.',
-  'Bugün kendine yatırım yaptığın bir gün olsun.',
-  'Disiplin, motivasyonun azaldığı günlerde seni taşır.',
-  'Uyku, hareket ve istikrar: değişimin üç anahtarı.',
-  'Vücudun emeğini hatırlar; bugün boşa gitmez.',
-  'Küçük kazanımlar büyük dönüşümlerin temelidir.',
-  'Bugün devam edersen, yarın daha güçlü başlarsın.',
-  'Hedef uzak görünse de sıradaki adım çok yakın.',
-];
-
-// STATE
-let state = {
-  theme: 'light',
-  userId: '',
-  userEmail: '',
-  onboarded: false,
-  name: '',
-  startDate: START_DATE,
-  startWeight: null,
-  startWaist: null,
-  measurements: [],
-  weights: [],
-  nutrition: [],
-  workouts: [],
-  notes: [],
-  sleep: [],
-  deletedRecords: {
-    measurements: [],
-    sleep: [],
-    workouts: [],
-    notes: [],
-  },
-  goalWeight: 85,
-  milestones: [95, 85],
-  preferences: {
-    measureReminder: true,
-    dailyReminder: false,
-  },
-  achievementState: {
-    seen: [],
-    initialized: false,
-  },
-  syncMeta: {
-    lastSuccess: '',
-    lastAttempt: '',
-    lastError: '',
-    pendingMeasurements: [],
-    pendingSleep: [],
-    pendingProfile: false,
-  },
-};
-
-let measurementChart = null;
-let sleepChart = null;
-let workoutChart = null;
-let authMode = 'signIn';
-let dailyView = 'week';
-let achievementSessionReady = false;
-let progressWeekStart = '';
-
-function withTimeout(promise, ms = 10000, label = 'İşlem') {
-  let timer;
-  const timeout = new Promise(resolve => {
-    timer = window.setTimeout(() => {
-      resolve({ timedOut: true, error: new Error(`${label} zaman aşımına uğradı`) });
-    }, ms);
-  });
-
-  return Promise.race([
-    Promise.resolve(promise).then(value => ({ timedOut: false, value })).catch(error => ({ timedOut: false, error })),
-    timeout,
-  ]).finally(() => window.clearTimeout(timer));
-}
-let activeSessionLoad = null;
-let cloudSyncInProgress = false;
-
-function ensureSyncMeta() {
-  if (!state.syncMeta || typeof state.syncMeta !== 'object') state.syncMeta = {};
-  state.syncMeta = {
-    lastSuccess: state.syncMeta.lastSuccess || '',
-    lastAttempt: state.syncMeta.lastAttempt || '',
-    lastError: state.syncMeta.lastError || '',
-    pendingMeasurements: Array.isArray(state.syncMeta.pendingMeasurements) ? state.syncMeta.pendingMeasurements : [],
-    pendingSleep: Array.isArray(state.syncMeta.pendingSleep) ? state.syncMeta.pendingSleep : [],
-    pendingProfile: Boolean(state.syncMeta.pendingProfile),
-  };
-  return state.syncMeta;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
 }
 
-function markPendingSync(type, key) {
-  if (!key) return;
-  const syncMeta = ensureSyncMeta();
-  const bucket = type === 'measurements' ? syncMeta.pendingMeasurements : syncMeta.pendingSleep;
-  if (!bucket.includes(key)) bucket.push(key);
+[data-theme="dark"] {
+  --bg:       #0f1117;
+  --surface:  #181c27;
+  --surface2: #1e2235;
+  --border:   #262d42;
+  --text:     #f0f4ff;
+  --text2:    #c8cfe0;
+  --muted:    #6b7694;
+  --dim:      #3a4260;
+  --shadow:   0 1px 4px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
 }
 
-function clearPendingSync(type, key) {
-  const syncMeta = ensureSyncMeta();
-  const bucketName = type === 'measurements' ? 'pendingMeasurements' : 'pendingSleep';
-  syncMeta[bucketName] = syncMeta[bucketName].filter(item => item !== key);
+/* ── RESET ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-function getPendingSyncCount() {
-  const syncMeta = ensureSyncMeta();
-  const localWorkouts = (state.workouts || []).filter(item => String(item?.id || '').startsWith('local-workout-')).length;
-  const localNotes = (state.notes || []).filter(item => String(item?.id || '').startsWith('local-note-')).length;
-  const deletionBuckets = Object.values(state.deletedRecords || {})
-    .reduce((total, bucket) => total + (Array.isArray(bucket) && bucket.length ? 1 : 0), 0);
-
-  return syncMeta.pendingMeasurements.length + syncMeta.pendingSleep.length + Number(syncMeta.pendingProfile) + localWorkouts + localNotes + deletionBuckets;
+/* ── BASE ── */
+html {
+  min-height: 100%;
+  background: var(--bg);
 }
 
-function formatSyncTimestamp(value) {
-  if (!value) return 'Henüz yok';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Henüz yok';
-  return date.toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100dvh;
+  padding-bottom: 88px;
+  transition: background .25s, color .25s;
+  overflow-x: hidden;
+  scroll-behavior: auto;
 }
 
-function getSyncErrorMessage(error) {
-  return String(error?.message || error?.details || error || 'Bilinmeyen senkron hatası');
+.week-chip {
+  margin: 16px 0 0;
+  width: 100%;
+  padding: 18px;
+  border-radius: 28px;
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(15,23,42,.06);
+  box-shadow: 0 14px 34px rgba(15,23,42,.06);
+  display: block;
 }
 
-async function runSyncStage(label, task) {
-  try {
-    return await task();
-  } catch (error) {
-    throw new Error(`${label}: ${getSyncErrorMessage(error)}`);
+.week-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.week-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.week-card-date {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+.week-card-pill {
+  font-size: 12px;
+  font-weight: 800;
+  color: #16a34a;
+  background: rgba(34,197,94,.12);
+  padding: 7px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.week-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.week-metric {
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(248,250,252,.9);
+  border: 1px solid rgba(15,23,42,.05);
+}
+
+.week-metric-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+
+.week-metric-top strong {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.week-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15,23,42,.07);
+  overflow: hidden;
+}
+
+.week-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.week-fill.sleep {
+  background: linear-gradient(90deg,#06b6d4,#3b82f6);
+}
+
+.week-fill.workout {
+  background: linear-gradient(90deg,#22c55e,#16a34a);
+}
+
+[data-theme="dark"] .week-chip {
+  background: rgba(24,28,39,.92);
+  border-color: rgba(255,255,255,.08);
+}
+
+[data-theme="dark"] .week-metric {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.06);
+}
+
+@media (max-width: 700px) {
+  .week-chip {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .week-card-head {
+    align-items: flex-start;
+  }
+
+  .week-metrics {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .week-metric {
+    padding: 13px;
   }
 }
 
-function recordSyncSuccess(type = '', key = '') {
-  const syncMeta = ensureSyncMeta();
-  if (type && key) clearPendingSync(type, key);
-  syncMeta.lastSuccess = new Date().toISOString();
-  syncMeta.lastError = '';
-  stateSave();
-  setSyncDot('ok');
-  renderSettings();
+/* v225: bright, energizing light theme */
+html[data-theme="light"] body .moti-card,
+html[data-theme="light"] #pHome .moti-card {
+  color: #1d3557 !important;
+  background-color: #e9f8f2 !important;
+  background-image:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, .9), transparent 30%),
+    radial-gradient(circle at 4% 110%, rgba(112, 210, 180, .22), transparent 38%),
+    linear-gradient(125deg, #dcf8ec 0%, #e5f1ff 55%, #fff1bd 100%) !important;
+  border: 1px solid rgba(72, 126, 145, .14) !important;
+  box-shadow: 0 15px 34px rgba(60, 102, 125, .12) !important;
 }
 
-function recordSyncError(error) {
-  const syncMeta = ensureSyncMeta();
-  syncMeta.lastError = getSyncErrorMessage(error);
-  stateSave();
-  setSyncDot('err');
-  renderSettings();
-}
-// HELPERS
-function today() {
-  return new Date().toISOString().slice(0, 10);
+html[data-theme="light"] body .moti-card .moti-text {
+  color: #1d3557 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
 }
 
-function getSuggestedMeasureDate() {
-  const latest = getSortedMeasurements().at(-1);
+html[data-theme="light"] body .moti-card .moti-emoji,
+html[data-theme="light"] body .moti-card .moti-icon {
+  color: #348b78 !important;
+  background: rgba(255, 255, 255, .7) !important;
+  border: 1px solid rgba(52, 139, 120, .12) !important;
+  box-shadow: 0 8px 20px rgba(52, 139, 120, .1) !important;
+}
 
-  if (latest?.date) {
-    const parts = parseIsoDateParts(latest.date);
-    if (parts) {
-      const next = new Date(parts.year, parts.month - 1, parts.day);
-      next.setDate(next.getDate() + 7);
-      return toLocalIsoDate(next);
-    }
+html[data-theme="light"] .hero-title span {
+  background: linear-gradient(90deg, #4f67e8, #27a786);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent !important;
+}
+
+html[data-theme="light"] .week-chip {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(241, 246, 255, .9)) !important;
+  border-color: rgba(82, 110, 245, .11) !important;
+}
+
+html[data-theme="light"] .quick-actions-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(82, 110, 245, .06), transparent 42%),
+    rgba(255, 255, 255, .88) !important;
+}
+
+html[data-theme="light"] .quick-btn.sleep {
+  color: #245f9f !important;
+  background: #e7f2ff !important;
+  border-color: #cfe4fb !important;
+}
+
+html[data-theme="light"] .quick-btn.workout {
+  color: #23755e !important;
+  background: #e3f7ef !important;
+  border-color: #c9ebdf !important;
+}
+
+html[data-theme="light"] .quick-btn.note {
+  color: #8a641a !important;
+  background: #fff4cf !important;
+  border-color: #f1dfaa !important;
+}
+
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, #4e68ea, #6380fa) !important;
+  box-shadow: 0 9px 20px rgba(78, 104, 234, .2) !important;
+}
+
+html[data-theme="light"] .week-fill.sleep,
+html[data-theme="light"] .prog-fill.sleep {
+  background: linear-gradient(90deg, #46b8d8, #5f7df2) !important;
+}
+
+html[data-theme="light"] .week-fill.workout,
+html[data-theme="light"] .prog-fill.workout {
+  background: linear-gradient(90deg, #45c49d, #24a777) !important;
+}
+
+html[data-theme="light"] .sec-title {
+  color: #66738b;
+}
+
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  background: linear-gradient(145deg, #4e67e6, #6985fb) !important;
+  box-shadow: 0 8px 18px rgba(78, 103, 230, .28) !important;
+}
+
+/* v226: synchronization center */
+.sync-now-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+}
+
+.sync-now-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sync-now-btn.is-syncing svg {
+  animation: syncRotate .8s linear infinite;
+}
+
+.sync-now-btn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  transform: none !important;
+}
+
+.sync-error-copy {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #b42318;
+  background: rgba(239, 68, 68, .08);
+  border: 1px solid rgba(239, 68, 68, .13);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.sync-error-copy[hidden] {
+  display: none !important;
+}
+
+#settingsPendingSync {
+  color: var(--blue);
+}
+
+@keyframes syncRotate {
+  to { transform: rotate(360deg); }
+}
+
+[data-theme="dark"] .sync-error-copy {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, .1);
+  border-color: rgba(239, 68, 68, .16);
+}
+
+/* ── LAYOUT ── */
+.app-shell {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0 auto;
+  position: relative;
+  background: var(--bg);
+}
+
+/* ── TOPNAV ── */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  padding-top: env(safe-area-inset-top);
+  height: calc(56px + env(safe-area-inset-top));
+  background: rgba(255,255,255,.9);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  transition: background .25s;
+}
+
+[data-theme="dark"] .topnav {
+  background: rgba(15,17,23,.9);
+}
+
+.nav-logo {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.4px;
+}
+
+.nav-logo span { color: var(--blue); }
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-logout-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: 700 12px var(--font-main);
+  cursor: pointer;
+  transition: border-color .2s, background .2s, color .2s;
+}
+
+.nav-logout-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-logout-btn:hover {
+  border-color: var(--red);
+  background: rgba(239,68,68,.08);
+  color: var(--red);
+}
+
+/* ── SYNC DOT ── */
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition: background .3s, box-shadow .3s;
+  flex-shrink: 0;
+}
+
+.sync-dot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.sync-dot.busy { background: var(--yellow); animation: blink 1s infinite; }
+.sync-dot.err  { background: var(--red); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── ICON BTN ── */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: none;
+  cursor: pointer;
+  font-size: 17px;
+  color: var(--text2);
+  transition: border-color .2s, background .2s;
+}
+
+.icon-btn:hover {
+  border-color: var(--blue);
+  background: rgba(59,130,246,.06);
+}
+
+/* ── STATUS BAR ── */
+.status-bar {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  padding: 5px 18px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: .2px;
+}
+
+.status-bar.ok    { background: rgba(16,185,129,.06); color: var(--green); border-bottom-color: rgba(16,185,129,.15); }
+.status-bar.error { background: rgba(239,68,68,.06);  color: var(--red);   border-bottom-color: rgba(239,68,68,.2); }
+
+/* ── PANELS ── */
+.panel { display: none; animation: fadeUp .3s ease; }
+.panel.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  transform: none;
+  width: 100%;
+  z-index: 200;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: stretch;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bn-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 0;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color .2s;
+  letter-spacing: .3px;
+}
+
+.bn-item .bn-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: currentColor;
+  transition: transform .2s;
+}
+
+.bn-item .bn-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bn-item.active { color: var(--blue); }
+.bn-item.active .bn-icon { transform: scale(1.15); }
+
+.bn-item .bn-icon {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.bn-icon::before,
+.bn-icon::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.icon-dashboard::before {
+  left: 3px;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 3px;
+  background: currentColor;
+  box-shadow: 11px 0 0 currentColor, 0 11px 0 currentColor, 11px 11px 0 currentColor;
+}
+
+.icon-scale {
+  border: 2px solid currentColor;
+  border-radius: 8px;
+}
+
+.icon-scale::before {
+  left: 6px;
+  top: 5px;
+  width: 8px;
+  height: 6px;
+  border: 2px solid currentColor;
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
+}
+
+.icon-scale::after {
+  left: 10px;
+  top: 10px;
+  width: 2px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.icon-log {
+  border: 2px solid currentColor;
+  border-radius: 6px;
+}
+
+.icon-log::before {
+  left: 5px;
+  top: 6px;
+  width: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 5px 0 currentColor, 0 10px 0 currentColor;
+}
+
+.icon-progress::before {
+  left: 3px;
+  top: 13px;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(-28deg);
+  transform-origin: center;
+}
+
+.icon-progress::after {
+  right: 3px;
+  top: 5px;
+  width: 8px;
+  height: 8px;
+  border-top: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+  transform: rotate(4deg);
+}
+
+.icon-profile::before {
+  left: 7px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.icon-profile::after {
+  left: 4px;
+  top: 14px;
+  width: 16px;
+  height: 8px;
+  border-radius: 10px 10px 5px 5px;
+  background: currentColor;
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 20px 16px 4px;
+}
+
+.hero-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.hero-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.hero-title span { color: var(--blue); }
+.hero-sub { font-size: 13px; color: var(--muted); }
+
+/* ── MOTI CARD ── */
+.moti-card {
+  margin: 18px 0 0;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 90% 20%, rgba(255,255,255,.22), transparent 28%),
+    linear-gradient(135deg,#16a34a,#22c55e);
+  border-radius: 28px;
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: white;
+  box-shadow: 0 18px 42px rgba(34,197,94,.22);
+}
+
+.moti-emoji {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.moti-emoji svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.moti-icon {
+  position: relative;
+}
+
+.moti-icon::before,
+.moti-icon::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.moti-icon::before {
+  left: 13px;
+  bottom: 12px;
+  width: 5px;
+  height: 13px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 9px -6px 0 currentColor, 18px -12px 0 currentColor;
+}
+
+.moti-icon::after {
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: .85;
+}
+
+.install-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(37, 99, 235, .1);
+  color: var(--blue);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.moti-text {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.moti-emoji { font-size: 26px; animation: bounce 2.5s ease infinite; }
+
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+
+.moti-text { flex: 1; font-size: 13px; line-height: 1.4; opacity: .95; }
+
+/* ── STATS GRID ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 14px 16px 0;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  transition: transform .2s;
+}
+
+.stat-card:hover { transform: translateY(-2px); }
+
+.stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.stat-icon { font-size: 20px; }
+
+.stat-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.sb-g { background: rgba(16,185,129,.12); color: var(--green); }
+.sb-b { background: rgba(59,130,246,.12);  color: var(--blue); }
+.sb-o { background: rgba(249,115,22,.12);  color: var(--orange); }
+.sb-p { background: rgba(139,92,246,.12);  color: var(--purple); }
+.sb-c { background: rgba(6,182,212,.12);   color: var(--cyan); }
+
+.stat-val {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.stat-unit { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+
+.stat-lbl {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+/* ── PROGRESS BAR ── */
+.prog-wrap { margin-top: 8px; }
+
+.prog-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.prog-track {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.prog-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s cubic-bezier(.34,1.2,.64,1);
+}
+
+/* ── SECTION ── */
+.section { margin: 16px 16px 0; }
+
+.sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sec-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+}
+
+/* ── CARD ── */
+.card {
+  border-radius:24px;
+  box-shadow:0 8px 30px rgba(15,23,42,.06);
+  transition:.25s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* ── BUTTONS ── */
+.btn {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity .2s, transform .2s;
+}
+
+.btn:hover { opacity: .85; transform: translateY(-1px); }
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+
+.btn.ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+.btn.green  { background: var(--green); }
+.btn.orange { background: var(--orange); }
+
+/* ── INSTALL BANNER ── */
+#installBanner {
+  display: none;
+  margin: 14px 16px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+#installBanner.visible { display: flex; }
+
+.install-text { flex: 1; font-size: 13px; color: var(--text2); }
+.install-text strong { color: var(--text); font-weight: 700; }
+
+/* ── OFFLINE NOTICE ── */
+#offlineNotice {
+  display: none;
+  position: fixed;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--red);
+  color: #fff;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: 8px 16px;
+  border-radius: 20px;
+  z-index: 300;
+  box-shadow: 0 4px 16px rgba(239,68,68,.35);
+  animation: fadeUp .3s ease;
+}
+
+#offlineNotice.visible { display: block; }
+
+/* ── PLACEHOLDER ROWS ── */
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.empty-state .empty-icon { font-size: 36px; margin-bottom: 8px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
-  const date = new Date();
-  const diff = (date.getDay() - WEEKLY_MEASURE_DAY + 7) % 7;
-  date.setDate(date.getDate() - diff);
-  return date.toISOString().slice(0, 10);
-}
-
-function getUserId() {
-  return state.userId;
-}
-
-function hasActiveUser() {
-  return Boolean(getUserId());
-}
-
-function canUseCloud() {
-  return Boolean(navigator.onLine && hasActiveUser());
-}
-
-function getStateStorageKey() {
-  return state.userId ? `${STORAGE_KEY}_${state.userId}` : `${STORAGE_KEY}_anonymous`;
-}
-
-function releaseMobileInputFocus() {
-  const active = document.activeElement;
-  if (active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName)) {
-    active.blur();
+  .stat-card {
+    min-height:140px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding: 12px;
   }
 
-  window.setTimeout(() => {
-    window.scrollTo({ top: window.scrollY, left: 0, behavior: 'instant' });
-  }, 60);
-}
-
-function getWorkoutCategory(type) {
-  return Object.entries(WORKOUT_CATALOG)
-    .find(([, items]) => items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
-}
-
-function updateWorkoutTypes() {
-  const categoryInput = document.getElementById('workoutCategoryInput');
-  const typeInput = document.getElementById('workoutTypeInput');
-  if (!categoryInput || !typeInput) return;
-
-  const items = WORKOUT_CATALOG[categoryInput.value] || WORKOUT_CATALOG.Kuvvet;
-  const current = typeInput.value;
-  typeInput.innerHTML = items
-    .map(item => `<option value="${item}">${item}</option>`)
-    .join('');
-
-  if (items.includes(current)) {
-    typeInput.value = current;
+  .stat-val {
+    font-size: 24px;
   }
 
-  updateWorkoutDistanceField();
-  updateWorkoutGuidance();
-}
-
-function isWalkingWorkout(type = '') {
-  return String(type).toLocaleLowerCase('tr-TR').includes('yürü');
-}
-
-function updateWorkoutDistanceField() {
-  const typeInput = document.getElementById('workoutTypeInput');
-  const distanceInput = document.getElementById('workoutDistanceInput');
-  if (!typeInput || !distanceInput) return;
-
-  const visible = isWalkingWorkout(typeInput.value);
-  distanceInput.hidden = !visible;
-  distanceInput.disabled = !visible;
-  if (!visible) distanceInput.value = '';
-}
-
-function getWorkoutGuidance(category = 'Kuvvet', type = '') {
-  const guide = {
-    Kuvvet: {
-      title: 'Kuvvet planı',
-      text: 'Full Body A/B/C/D rotasyonunu sürdür. Core seçeneğini kısa destek bölümü gibi girerek ana kuvvet gününe ekleyebilirsin.',
-    },
-    Kardiyo: {
-      title: 'Kardiyo planı',
-      text: 'Yürüyüş, bisiklet, GrowwithJo veya diğer kardiyo seanslarını burada tut. Tempoyu zorluk alanıyla ayırman yeterli.',
-    },
-  };
-
-  const selected = guide[category] || guide.Kuvvet;
-  const suffix = type ? ` Seçili program: ${type}.` : '';
-  return {
-    title: selected.title,
-    text: `${selected.text}${suffix}`,
-  };
-}
-
-function updateWorkoutGuidance() {
-  const el = document.getElementById('workoutGuidance');
-  if (!el) return;
-
-  const category = document.getElementById('workoutCategoryInput')?.value || 'Kuvvet';
-  const type = document.getElementById('workoutTypeInput')?.value || '';
-  const guidance = getWorkoutGuidance(category, type);
-
-  el.innerHTML = `
-    <strong>${guidance.title}</strong>
-    <span>${guidance.text}</span>
-  `;
-}
-
-function getWorkoutIntensityFromNote(note = '') {
-  const match = String(note).match(/Zorluk:\s*(Kolay|Orta|Zor)/i);
-  return match ? match[1] : 'Orta';
-}
-
-function getWorkoutDistanceFromNote(note = '') {
-  const match = String(note).match(/Mesafe:\s*([\d.,]+)\s*km/i);
-  if (!match) return 0;
-  return parseLocaleNumber(match[1]) || 0;
-}
-
-function setWorkoutDistanceInNote(note = '', distance = 0) {
-  const cleaned = String(note)
-    .replace(/\s*·?\s*Mesafe:\s*[\d.,]+\s*km/gi, '')
-    .trim();
-  if (!distance || distance <= 0) return cleaned;
-  return [cleaned, `Mesafe: ${formatDistanceKm(distance)} km`].filter(Boolean).join(' · ');
-}
-
-function getWalkingStatsForRange(range) {
-  const entries = (state.workouts || []).filter(item =>
-    item.date >= range.start &&
-    item.date <= range.end &&
-    isWalkingWorkout(item.type) &&
-    getWorkoutDistanceFromNote(item.note) > 0
-  );
-  const distance = entries.reduce((total, item) => total + getWorkoutDistanceFromNote(item.note), 0);
-  const duration = entries.reduce((total, item) => total + Number(item.duration || 0), 0);
-  return {
-    distance,
-    duration,
-    pace: distance > 0 ? duration / distance : 0,
-  };
-}
-
-function getWorkoutCategoryFromNote(note = '', type = '') {
-  const match = String(note).match(/Kategori:\s*([^·]+)/i);
-  return match ? match[1].trim() : getWorkoutCategory(type);
-}
-
-function getCleanWorkoutNote(note = '') {
-  return String(note)
-    .replace(/\s*·?\s*Mesafe:\s*[\d.,]+\s*km/gi, '')
-    .replace(/^Kategori:\s*[^·]+·\s*/i, '')
-    .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*·\s*/i, '')
-    .replace(/^Kategori:\s*[^·]+\s*/i, '')
-    .replace(/^Zorluk:\s*(Kolay|Orta|Zor)\s*/i, '')
-    .trim();
-}
-
-function formatDecimal(value, digits = 1) {
-  const number = Number(value || 0);
-  return Number.isInteger(number) ? String(number) : number.toFixed(digits);
-}
-
-function formatDistanceKm(value) {
-  const number = Number(value || 0);
-  if (!number) return '0';
-  return number
-    .toFixed(2)
-    .replace(/\.?0+$/, '');
-}
-
-function formatMinutes(value) {
-  return formatDecimal(Number(value || 0), 1);
-}
-
-function getShortWeekday(date) {
-  return new Date(`${date}T12:00:00`)
-    .toLocaleDateString('tr-TR', { weekday: 'short' });
-}
-
-function getSleepQuality(hours) {
-  const value = Number(hours || 0);
-  if (value >= 7 && value <= 9) return 'Hedefte';
-  if (value > 9) return 'Yüksek';
-  if (value >= 6) return 'Sınırda';
-  return 'Düşük';
-}
-
-function getWorkoutDayLabel(item) {
-  const category = Object.entries(item.categories || {})
-    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman';
-  return `${category} · ${Number(item.duration || 0)} dk`;
-}
-
-function todayDisplay() {
-  const d = new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
-function parseDisplayDate(value) {
-  if (!value) return null;
-
-  const normalized = value.trim().replaceAll('.', '/').replaceAll('-', '/');
-  const parts = normalized.split('/');
-
-  if (parts.length !== 3) return null;
-
-  const day = parts[0].padStart(2, '0');
-  const month = parts[1].padStart(2, '0');
-  const year = parts[2];
-
-  if (year.length !== 4) return null;
-
-  const date = new Date(`${year}-${month}-${day}`);
-
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== Number(year) ||
-    date.getMonth() + 1 !== Number(month) ||
-    date.getDate() !== Number(day)
-  ) {
-    return null;
-  }
-
-  return `${year}-${month}-${day}`;
-}
-
-function parseLocaleNumber(value) {
-  if (value === null || value === undefined) return NaN;
-  const normalized = String(value).trim().replace(',', '.');
-  return normalized ? Number(normalized) : NaN;
-}
-
-function parseOptionalNumber(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function parseIsoDateParts(value) {
-  const parts = String(value || '').split('-').map(Number);
-  if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
-  return { year: parts[0], month: parts[1], day: parts[2] };
-}
-
-function toLocalIsoDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function normalizeMeasurementDate(date) {
-  const parts = parseIsoDateParts(date);
-  const startParts = parseIsoDateParts(START_DATE);
-  if (!parts || !startParts) return null;
-
-  if (date >= START_DATE) return date;
-
-  const isStartDayWrongYear = parts.month === startParts.month && parts.day === startParts.day;
-  return isStartDayWrongYear ? START_DATE : null;
-}
-
-function isCloudRecordId(id) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || ''));
-}
-
-function ensureDeletedBucket(type) {
-  if (!state.deletedRecords) {
-    state.deletedRecords = { measurements: [], sleep: [], workouts: [], notes: [] };
-  }
-  if (!Array.isArray(state.deletedRecords[type])) {
-    state.deletedRecords[type] = [];
-  }
-  return state.deletedRecords[type];
-}
-
-function getRecordDeleteKeys(type, item = {}) {
-  if (type === 'measurements') return [`date:${item.date}`];
-  if (type === 'sleep') return [item.id, `date:${item.date}`].filter(Boolean);
-  if (type === 'workouts') {
-    return [
-      item.id,
-      `date:${item.date}|type:${item.type}|duration:${item.duration}|note:${item.note || ''}`,
-    ].filter(Boolean);
-  }
-  if (type === 'notes') return [item.id, `date:${item.date}|text:${item.text || ''}`].filter(Boolean);
-  return [];
-}
-
-function markRecordDeleted(type, item) {
-  const bucket = ensureDeletedBucket(type);
-  getRecordDeleteKeys(type, item).forEach(key => {
-    if (!bucket.includes(key)) bucket.push(key);
-  });
-}
-
-function unmarkRecordDeleted(type, item) {
-  const bucket = ensureDeletedBucket(type);
-  const keys = getRecordDeleteKeys(type, item);
-  state.deletedRecords[type] = bucket.filter(key => !keys.includes(key));
-}
-
-function isRecordDeleted(type, item) {
-  const bucket = ensureDeletedBucket(type);
-  return getRecordDeleteKeys(type, item).some(key => bucket.includes(key));
-}
-
-function formatDate(iso) {
-  const parts = parseIsoDateParts(iso);
-  const date = parts ? new Date(parts.year, parts.month - 1, parts.day) : new Date(iso);
-
-  return date.toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function setStatus(msg, cls = '') {
-  const bar = document.getElementById('statusBar');
-  const text = document.getElementById('statusText');
-  if (!bar || !text) return;
-
-  const shouldShow = cls === 'error' || !['Hazır', 'Senkron aktif'].includes(msg);
-  bar.className = `status-bar ${cls}${shouldShow ? ' visible' : ''}`;
-  text.textContent = msg;
-}
-
-function clearInitialLoadingStatus() {
-  const text = document.getElementById('statusText');
-  if (text && text.textContent.includes('Yükleniyor')) {
-    setStatus('Hazır', 'ok');
-  }
-}
-
-function setEmptyState(host, title, copy, actionLabel = '', actionPanel = null) {
-  if (!host) return;
-
-  host.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">+</div>
-      <strong>${title}</strong>
-      <p>${copy}</p>
-      ${actionLabel ? `<button class="btn green" type="button" data-empty-panel="${actionPanel}">${actionLabel}</button>` : ''}
-    </div>
-  `;
-
-  host.querySelectorAll('[data-empty-panel]').forEach(button => {
-    button.addEventListener('click', () => goPanel(Number(button.dataset.emptyPanel)));
-  });
-}
-
-function renderFallbackMeasurementChart(host, data) {
-  if (!host) return;
-
-  const first = data[0];
-  const last = data[data.length - 1];
-  const diff = last && first ? Number(last.weight - first.weight) : 0;
-  const waistData = data.filter(item =>
-    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
-  );
-  const lastWaist = waistData[waistData.length - 1];
-
-  const weights = data.map(item => Number(item.weight));
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-  const range = Math.max(1, max - min);
-  const points = data.map((item, index) => {
-    const x = data.length === 1 ? 50 : 8 + (index / (data.length - 1)) * 84;
-    const y = 88 - ((Number(item.weight) - min) / range) * 68;
-    return { ...item, x, y };
-  });
-
-  host.innerHTML = `
-    <div class="measurement-insight-grid">
-      <div class="weight-trend-panel">
-        <div class="measurement-chart-top compact">
-          <div>
-            <span>Kilo Trendi</span>
-            <strong>${first ? Number(first.weight).toFixed(1) : '—'} → ${last ? Number(last.weight).toFixed(1) : '—'} kg</strong>
-          </div>
-          <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg</div>
-        </div>
-        <div class="fallback-line-chart">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
-            <polyline
-              points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
-              fill="none"
-              stroke="#2563eb"
-              stroke-width="2.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            ${points.map(point => `
-              <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#2563eb"></circle>
-            `).join('')}
-          </svg>
-          <div class="fallback-chart-labels">
-            ${points.map(point => `
-              <div>
-                <strong>${Number(point.weight).toFixed(1)} kg</strong>
-                <span>${formatDate(point.date)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="waist-tracking-panel">
-        <span>Bel Takibi</span>
-        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
-        <p>Bel ölçümü başlangıçta ve her 4. tartıda takip edilir.</p>
-        <div class="waist-rhythm">
-          <i class="active"></i><i></i><i></i><i></i>
-        </div>
-      </div>
-    </div>
-    ${renderWaistTrendPanel(waistData)}
-  `;
-}
-
-function getWeightChartSuggestion(first, last, diff) {
-  if (!first || !last) return 'İlk iki ölçümden sonra trend netleşir.';
-  if (diff < 0) return `${formatDate(first.date)} başlangıcından beri düşüş var.`;
-  if (diff > 0) return 'Bu hafta artış var; uyku, su ve antrenman ritmini kontrol et.';
-  return 'Kilo aynı seviyede; trend için sonraki pazar ölçümünü bekle.';
-}
-
-function getWaistRhythmStep() {
-  const nextSequence = getMeasurementSequenceNumber(getSuggestedMeasureDate());
-  const remainder = ((nextSequence - 1) % 4) + 1;
-  return Math.max(1, Math.min(4, remainder));
-}
-
-function renderWaistRhythm(step) {
-  return Array.from({ length: 4 }, (_, index) =>
-    `<i class="${index < step ? 'active' : ''}"></i>`
-  ).join('');
-}
-
-function renderWaistTrendPanel(waistData) {
-  if (!waistData.length) {
-    return `
-      <div class="waist-trend-panel empty">
-        <div>
-          <span>Bel Trendi</span>
-          <strong>Ölçüm bekleniyor</strong>
-        </div>
-        <p>Bel grafiği başlangıç ve 4. tartı ölçümleri geldikçe kilo grafiğinin altında oluşur.</p>
-      </div>
-    `;
-  }
-
-  const first = waistData[0];
-  const last = waistData[waistData.length - 1];
-  const diff = Number(last.waist - first.waist);
-  const values = waistData.map(item => Number(item.waist));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(1, max - min);
-  const points = waistData.map((item, index) => {
-    const x = waistData.length === 1 ? 50 : 8 + (index / (waistData.length - 1)) * 84;
-    const y = 86 - ((Number(item.waist) - min) / range) * 64;
-    return { ...item, x, y };
-  });
-
-  return `
-    <div class="waist-trend-panel">
-      <div class="measurement-chart-top compact">
-        <div>
-          <span>Bel Trendi</span>
-          <strong>${Number(first.waist).toFixed(1)} → ${Number(last.waist).toFixed(1)} cm</strong>
-        </div>
-        <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} cm</div>
-      </div>
-      <div class="waist-chart-canvas">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Bel grafiği">
-          <polyline
-            points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
-            fill="none"
-            stroke="#14b8a6"
-            stroke-width="2.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          ${points.map(point => `
-            <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#14b8a6"></circle>
-          `).join('')}
-        </svg>
-        <div class="waist-chart-labels">
-          ${points.map(point => `
-            <div>
-              <strong>${Number(point.waist).toFixed(1)} cm</strong>
-              <span>${formatDate(point.date)}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderMeasurementInsight(host, data, canvasHtml = '') {
-  const waistData = data.filter(item =>
-    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
-  );
-  const first = data[0];
-  const last = data[data.length - 1];
-  const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
-  const waistDiff = waistData.length >= 2
-    ? Number(waistData[waistData.length - 1].waist - waistData[0].waist)
-    : null;
-  const lastWaist = waistData[waistData.length - 1];
-  const rhythmStep = getWaistRhythmStep();
-
-  host.innerHTML = `
-    <div class="measurement-insight-grid">
-      <div class="weight-trend-panel">
-        <div class="measurement-chart-top">
-          <div>
-            <span>Kilo Trendi</span>
-            <strong>${Number(first.weight).toFixed(1)} → ${Number(last.weight).toFixed(1)} kg</strong>
-          </div>
-          <div class="${weightDiff <= 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg</div>
-        </div>
-
-        <div class="measurement-detail-row">
-          <div>
-            <span>Başlangıç</span>
-            <strong>${formatDate(first.date)}</strong>
-          </div>
-          <div>
-            <span>Son ölçüm</span>
-            <strong>${formatDate(last.date)}</strong>
-          </div>
-          <div>
-            <span>Yorum</span>
-            <strong>${getWeightChartSuggestion(first, last, weightDiff)}</strong>
-          </div>
-        </div>
-
-        <div class="measurement-chart-canvas">
-          ${canvasHtml}
-        </div>
-      </div>
-
-      <div class="waist-tracking-panel">
-        <span>Bel Takibi</span>
-        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
-        <p>${waistDiff === null ? 'Yeni bel ölçümü 4. tartıda alınacak. Şimdilik başlangıç değeri referans olarak tutuluyor.' : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
-        <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
-          ${renderWaistRhythm(rhythmStep)}
-        </div>
-        <small>4 tartıda 1 bel ölçümü</small>
-      </div>
-    </div>
-    ${renderWaistTrendPanel(waistData)}
-  `;
-}
-
-function setSyncDot(cls) {
-  const dot = document.getElementById('syncDot');
-  if (!dot) return;
-  dot.className = 'sync-dot ' + cls;
-}
-
-function getSortedMeasurements() {
-  const byDate = new Map();
-
-  [...(state.measurements || [])]
-    .filter(item => item?.date && Number.isFinite(Number(item.weight)))
-    .forEach(item => {
-      const normalizedDate = normalizeMeasurementDate(item.date);
-      if (!normalizedDate) return;
-
-      const normalized = {
-        ...item,
-        date: normalizedDate,
-        weight: Number(item.weight),
-        waist: parseOptionalNumber(item.waist),
-      };
-
-      const existing = byDate.get(normalizedDate);
-      byDate.set(normalizedDate, {
-        ...existing,
-        ...normalized,
-        waist: normalized.waist ?? existing?.waist ?? null,
-      });
-    });
-
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-}
-
-function getMeasurementTrendData() {
-  const byDate = new Map(
-    getSortedMeasurements().map(item => [item.date, item])
-  );
-
-  if (Number.isFinite(Number(state.startWeight))) {
-    const existing = byDate.get(START_DATE);
-    byDate.set(START_DATE, {
-      ...existing,
-      date: START_DATE,
-      weight: Number(existing?.weight ?? state.startWeight),
-      waist: parseOptionalNumber(existing?.waist ?? state.startWaist),
-    });
-  }
-
-  return [...byDate.values()]
-    .filter(item => item.date >= START_DATE && Number.isFinite(Number(item.weight)))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
-function getChartMeasurementData() {
-  normalizeProfileState();
-
-  const data = getMeasurementTrendData();
-
-  if (data.length >= 2) return data;
-
-  const sorted = getSortedMeasurements();
-  if (sorted.length >= 2) return sorted;
-
-  const first = sorted[0];
-  const last = sorted[sorted.length - 1];
-  const startWeight = Number(state.startWeight ?? first?.weight);
-  const startWaist = parseOptionalNumber(state.startWaist ?? first?.waist);
-  const lastWeight = Number(last?.weight);
-
-  if (
-    Number.isFinite(startWeight) &&
-    last &&
-    Number.isFinite(lastWeight) &&
-    (last.date !== START_DATE || lastWeight !== startWeight)
-  ) {
-    return [
-      {
-        date: START_DATE,
-        weight: startWeight,
-        waist: startWaist,
-      },
-      {
-        ...last,
-        weight: lastWeight,
-        waist: parseOptionalNumber(last.waist),
-      },
-    ].sort((a, b) => a.date.localeCompare(b.date));
-  }
-
-  return data;
-}
-
-function getLatestWaistMeasurement() {
-  return getSortedMeasurements()
-    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date))
-    .at(-1);
-}
-
-function getWaistMeasurements() {
-  return getSortedMeasurements()
-    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date));
-}
-
-function getMeasurementSequenceNumber(date) {
-  const targetDate = date || getSuggestedMeasureDate();
-  const dates = new Set(
-    getSortedMeasurements()
-      .filter(item => item.date < targetDate)
-      .map(item => item.date)
-  );
-  return dates.size + 1;
-}
-
-function shouldTrackWaist(date) {
-  const sequence = getMeasurementSequenceNumber(date);
-  return sequence === 1 || sequence % 4 === 0;
-}
-
-function updateWaistHint() {
-  const dateInput = document.getElementById('measureDateInput');
-  const waistInput = document.getElementById('measureWaistInput');
-  const hint = document.getElementById('waistMeasureHint');
-  if (!hint) return;
-
-  const date = dateInput?.value || getSuggestedMeasureDate();
-  const existing = getSortedMeasurements().find(item => item.date === date);
-  const sequence = getMeasurementSequenceNumber(date);
-  const required = shouldTrackWaist(date);
-
-  if (waistInput) {
-    waistInput.disabled = !required;
-    waistInput.placeholder = required ? 'cm' : '4. tartıda';
-    if (!required) waistInput.value = '';
-  }
-
-  hint.textContent = required
-    ? sequence === 1
-      ? 'Başlangıç tartısı: bel ölçümünü de ekle.'
-      : `${sequence}. tartı: bu hafta bel ölçümünü de ekle.`
-    : `${sequence}. tartı: sadece kilo gir. Bel ölçümü 4. tartıda takip edilir.`;
-
-  if (existing) {
-    hint.textContent = `${formatDate(date)} tarihinde kayıt var. Kaydedersen bu ölçüm güncellenir.`;
-  }
-
-  hint.classList.toggle('important', required);
-}
-
-function syncMeasureFormDate(force = false) {
-  const dateInput = document.getElementById('measureDateInput');
-  if (!dateInput) return;
-
-  const suggested = getSuggestedMeasureDate();
-  const currentExists = getSortedMeasurements().some(item => item.date === dateInput.value);
-
-  if (force || !dateInput.value || currentExists) {
-    dateInput.value = suggested;
-  }
-
-  updateWaistHint();
-}
-
-function normalizeProfileState() {
-  state.startDate = START_DATE;
-  state.measurements = getSortedMeasurements();
-
-  const measurements = getSortedMeasurements();
-  const first = measurements[0];
-
-  if (!state.name || state.name === 'Sporcu') {
-    const heroName = document.getElementById('heroName')?.textContent?.trim();
-    if (heroName && heroName !== 'Sporcu') {
-      state.name = heroName;
-    }
-  }
-
-  if ((state.startWeight === null || state.startWeight === undefined) && first) {
-    state.startWeight = first.weight;
-  }
-
-  if ((state.startWaist === null || state.startWaist === undefined) && first) {
-    state.startWaist = first.waist;
-  }
-
-  if (!Array.isArray(state.milestones)) {
-    state.milestones = [];
-  }
-
-  state.milestones = state.milestones
-    .map(Number)
-    .filter(value => Number.isFinite(value));
-
-  if (!Number.isFinite(Number(state.goalWeight)) && state.milestones.length) {
-    state.goalWeight = state.milestones[state.milestones.length - 1];
+  .bottom-nav {
+    border-radius: 0;
   }
 }
 
-function hasTrackedData() {
-  return Boolean(
-    (Array.isArray(state.measurements) && state.measurements.length) ||
-    (Array.isArray(state.sleep) && state.sleep.length) ||
-    (Array.isArray(state.workouts) && state.workouts.length) ||
-    (Array.isArray(state.notes) && state.notes.length)
-  );
-}
-
-function getSessionDisplayName(session) {
-  const metadata = session?.user?.user_metadata || {};
-  const metadataName = metadata.name || metadata.full_name || metadata.display_name;
-  const savedName = localStorage.getItem('ft_last_name');
-  const email = session?.user?.email || state.userEmail || '';
-  const emailName = email
-    ? email
-      .split('@')[0]
-      .replace(/[._-]+/g, ' ')
-      .replace(/\b\w/g, char => char.toUpperCase())
-      .trim()
-    : '';
-
-  return [state.name, savedName, metadataName, emailName, 'Sporcu']
-    .map(value => String(value || '').trim())
-    .find(value => value && value !== 'Sporcu') || 'Sporcu';
-}
-
-function recoverOnboardingFromData() {
-  if (!hasTrackedData()) return false;
-
-  normalizeProfileState();
-  state.onboarded = true;
-  state.startDate = state.startDate || START_DATE;
-
-  if (!Number.isFinite(Number(state.goalWeight))) {
-    const lastGoal = Array.isArray(state.milestones) && state.milestones.length
-      ? state.milestones[state.milestones.length - 1]
-      : 85;
-    state.goalWeight = Number(lastGoal);
+@media (max-width: 700px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 12px 12px 0;
   }
 
-  return true;
-}
+  .stat-card {
+    padding: 12px 14px;
+    min-height: auto;
+  }
 
-// PERSISTENCE
-function stateSave() {
-  try {
-    localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
-  } catch (e) {
-    console.error('State kaydedilemedi:', e);
-    setSyncDot('err');
-    setStatus('Kayıt hatası: ' + e.message, 'error');
+  .stat-val {
+    font-size: 26px;
+  }
+
+  .moti-card,
+  .week-chip {
+    position:relative;
+    overflow:hidden;
+    background:
+    radial-gradient(circle at top right, rgba(255,255,255,.18), transparent 30%),
+    linear-gradient(135deg,#16a34a,#22c55e);
+    color:white;
+    border:none;
+    border-radius:28px;
+    box-shadow:0 18px 40px rgba(34,197,94,.18);
   }
 }
 
-function stateLoad() {
-  try {
-    const raw = localStorage.getItem(getStateStorageKey());
-    if (!raw) return;
+@media (max-width: 700px) {
+  #dashboardGoalCard > div {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin: 12px !important;
+  }
 
-    const savedState = JSON.parse(raw);
-
-    state = {
-      ...state,
-      ...savedState,
-      userId: savedState.userId || '',
-      userEmail: savedState.userEmail || '',
-      onboarded: Boolean(savedState.onboarded),
-      name: savedState.name || '',
-      startDate: savedState.startDate || START_DATE,
-      startWeight: savedState.startWeight ?? null,
-      startWaist: savedState.startWaist ?? null,
-      goalWeight: Number(savedState.goalWeight || 85),
-      milestones: Array.isArray(savedState.milestones) ? savedState.milestones : [95, 85],
-      preferences: {
-        measureReminder: savedState.preferences?.measureReminder ?? true,
-        dailyReminder: savedState.preferences?.dailyReminder ?? false,
-      },
-      achievementState: {
-        seen: Array.isArray(savedState.achievementState?.seen) ? savedState.achievementState.seen : [],
-        initialized: Boolean(savedState.achievementState?.initialized),
-      },
-      syncMeta: {
-        lastSuccess: savedState.syncMeta?.lastSuccess || '',
-        lastAttempt: savedState.syncMeta?.lastAttempt || '',
-        lastError: savedState.syncMeta?.lastError || '',
-        pendingMeasurements: Array.isArray(savedState.syncMeta?.pendingMeasurements) ? savedState.syncMeta.pendingMeasurements : [],
-        pendingSleep: Array.isArray(savedState.syncMeta?.pendingSleep) ? savedState.syncMeta.pendingSleep : [],
-        pendingProfile: Boolean(savedState.syncMeta?.pendingProfile),
-      },
-      measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
-      weights: Array.isArray(savedState.weights) ? savedState.weights : [],
-      nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
-      workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
-      notes: Array.isArray(savedState.notes) ? savedState.notes : [],
-      sleep: Array.isArray(savedState.sleep) ? savedState.sleep : [],
-      deletedRecords: {
-        measurements: Array.isArray(savedState.deletedRecords?.measurements) ? savedState.deletedRecords.measurements : [],
-        sleep: Array.isArray(savedState.deletedRecords?.sleep) ? savedState.deletedRecords.sleep : [],
-        workouts: Array.isArray(savedState.deletedRecords?.workouts) ? savedState.deletedRecords.workouts : [],
-        notes: Array.isArray(savedState.deletedRecords?.notes) ? savedState.deletedRecords.notes : [],
-      },
-    };
-    ensureSyncMeta();
-    normalizeProfileState();
-  } catch (e) {
-    console.warn('State yüklenemedi:', e);
+  #dashboardGoalCard .card {
+    padding: 14px !important;
+    min-height: 150px !important;
   }
 }
 
-// THEME
-function applyTheme() {
-  document.documentElement.setAttribute('data-theme', state.theme);
+.dashboard-wrap{
+  width:100%;
+  max-width:1180px;
+  margin:0 auto;
+  padding-bottom:120px;
+}
 
-  const themeBtn = document.getElementById('themeBtn');
-  const themeMeta = document.getElementById('themeColorMeta');
-
-  if (themeBtn) {
-    themeBtn.innerHTML = state.theme === 'dark'
-      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
-      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>';
-  }
-
-  if (themeMeta) {
-    themeMeta.content = state.theme === 'dark' ? '#0d111b' : '#e9eef7';
+@media (max-width:700px){
+  .dashboard-wrap{
+    padding-bottom:140px;
   }
 }
 
-function toggleTheme() {
-  state.theme = state.theme === 'dark' ? 'light' : 'dark';
-  applyTheme();
-  stateSave();
+.moti-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(120deg,
+      transparent 0%,
+      rgba(255,255,255,.06) 40%,
+      transparent 80%);
+  pointer-events:none;
 }
 
-// NAVIGATION
-function goPanel(idx) {
-  PANELS.forEach((id, i) => {
-    const panel = document.getElementById(id);
-    if (panel) panel.classList.toggle('active', i === idx);
-  });
+/* v65 — Dashboard premium grid */
+.dashboard-wrap {
+  max-width: 1120px;
+  padding: 0 18px 140px;
+}
 
-  BN_IDS.forEach((id, i) => {
-    const btn = document.getElementById(id);
-    if (btn) {
-      const isActive = i === idx;
-      btn.classList.toggle('active', isActive);
-      if (isActive) btn.setAttribute('aria-current', 'page');
-      else btn.removeAttribute('aria-current');
-    }
-  });
+#dashboardGoalCard > div {
+  display: grid !important;
+  grid-template-columns: 1.6fr 1fr !important;
+  gap: 16px !important;
+  margin: 18px 0 !important;
+}
 
-  if (idx === 4) {
-    normalizeProfileState();
-    renderSettings();
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 16px 0 0;
+}
+
+.stat-card {
+  min-height: 150px;
+  border-radius: 24px;
+  padding: 18px;
+}
+
+.moti-card,
+.week-chip {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding: 0 14px 170px;
   }
 
-  requestAnimationFrame(() => {
-    if (idx === 3) {
-      normalizeProfileState();
-      renderProgressSummary();
-      renderMeasurementChart();
-      renderProgressCharts();
-      renderProgressList();
-    }
-
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-
-    const appShell = document.querySelector('.app-shell');
-    if (appShell) appShell.scrollTop = 0;
-
-    const panels = document.getElementById('panels');
-    if (panels) panels.scrollTop = 0;
-
-    const activePanel = document.querySelector('.panel.active');
-    if (activePanel) activePanel.scrollTop = 0;
-  });
-}
-
-// RENDER
-function renderHero() {
-  const dateEl = document.getElementById('heroDate');
-  const nameEl = document.getElementById('heroName');
-
-  if (dateEl) {
-    dateEl.textContent = new Date()
-      .toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
-      .toUpperCase();
+  #dashboardGoalCard > div {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin: 14px 0 !important;
   }
 
-  if (nameEl) {
-    nameEl.textContent = state.name || 'Sporcu';
-  }
-}
-
-function renderMoti() {
-  const el = document.getElementById('motiText');
-  if (!el) return;
-
-  const now = new Date();
-  const localDay = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
-  const idx = localDay % MOTIVATIONS.length;
-  el.textContent = MOTIVATIONS[idx];
-}
-
-function getAchievementMetrics() {
-  const measurements = getSortedMeasurements();
-  const firstWeight = Number(measurements[0]?.weight ?? state.startWeight ?? 0);
-  const lastWeight = Number(measurements.at(-1)?.weight ?? firstWeight);
-  const weightLoss = Math.max(0, firstWeight - lastWeight);
-  const firstGoal = Number((state.milestones || [])[0]);
-  const walkingDistance = (state.workouts || [])
-    .reduce((total, item) => total + getWorkoutDistanceFromNote(item.note), 0);
-  const activityCount = (state.sleep || []).length + (state.workouts || []).length + (state.notes || []).length;
-  const weeks = new Map();
-
-  [...(state.sleep || []), ...(state.workouts || [])].forEach(item => {
-    if (!item?.date) return;
-    const start = getWeekRange(item.date).start;
-    if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
-    const bucket = weeks.get(start);
-    if ((state.sleep || []).includes(item)) bucket.sleep.add(item.date);
-    else bucket.workouts.add(item.date);
-  });
-
-  VERIFIED_WEEK_TOTALS && Object.entries(VERIFIED_WEEK_TOTALS).forEach(([start, values]) => {
-    if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
-    const bucket = weeks.get(start);
-    if (values.sleepNights >= 7) {
-      for (let day = 0; day < 7; day += 1) bucket.sleep.add(shiftIsoDate(start, day));
-    }
-  });
-
-  const maxActiveDays = Math.max(0, ...[...weeks.values()].map(week => week.workouts.size));
-  const maxSleepDays = Math.max(0, ...[...weeks.values()].map(week => week.sleep.size));
-  const activeWeekStarts = [...weeks.entries()]
-    .filter(([, week]) => week.sleep.size || week.workouts.size)
-    .map(([start]) => start)
-    .sort();
-  let currentStreak = 0;
-  let bestStreak = 0;
-  let previous = '';
-  activeWeekStarts.forEach(start => {
-    currentStreak = previous && shiftIsoDate(previous, 7) === start ? currentStreak + 1 : 1;
-    bestStreak = Math.max(bestStreak, currentStreak);
-    previous = start;
-  });
-
-  return {
-    activityCount,
-    maxActiveDays,
-    maxSleepDays,
-    walkingDistance,
-    weightLoss,
-    firstGoalReached: Number.isFinite(firstGoal) && lastWeight > 0 && lastWeight <= firstGoal,
-    bestStreak,
-  };
-}
-
-function getAchievements() {
-  const metrics = getAchievementMetrics();
-  return [
-    { id: 'first-step', icon: '01', title: 'İlk Adım', detail: 'İlk günlük kaydını tamamla', current: metrics.activityCount, target: 1 },
-    { id: 'active-3', icon: '3G', title: 'Ritim Kuruldu', detail: 'Bir haftada 3 aktif gün', current: metrics.maxActiveDays, target: 3 },
-    { id: 'active-5', icon: '5G', title: 'Güçlü Hafta', detail: 'Bir haftada 5 aktif gün', current: metrics.maxActiveDays, target: 5 },
-    { id: 'sleep-7', icon: '7U', title: 'Uyku Ustası', detail: '7 gecelik uyku kaydı', current: metrics.maxSleepDays, target: 7 },
-    { id: 'walk-5', icon: '5K', title: 'Yol Başladı', detail: 'Toplam 5 km yürüyüş', current: metrics.walkingDistance, target: 5, unit: 'km' },
-    { id: 'walk-25', icon: '25', title: 'Mesafe Avcısı', detail: 'Toplam 25 km yürüyüş', current: metrics.walkingDistance, target: 25, unit: 'km' },
-    { id: 'loss-5', icon: '5-', title: 'Dönüşüm', detail: 'Toplam 5 kg ilerleme', current: metrics.weightLoss, target: 5, unit: 'kg' },
-    { id: 'goal-1', icon: 'H1', title: 'İlk Hedef', detail: 'İlk kilo hedefine ulaş', current: metrics.firstGoalReached ? 1 : 0, target: 1 },
-    { id: 'streak-3', icon: '3H', title: 'İstikrar', detail: '3 hafta üst üste kayıt', current: metrics.bestStreak, target: 3 },
-  ].map(item => ({
-    ...item,
-    unlocked: Number(item.current) >= Number(item.target),
-    progress: Math.min(100, Math.round((Number(item.current || 0) / Number(item.target || 1)) * 100)),
-  }));
-}
-
-function formatAchievementProgress(item) {
-  const current = item.unit === 'km'
-    ? formatDistanceKm(item.current)
-    : item.unit
-      ? formatDecimal(item.current)
-      : Math.floor(item.current);
-  return `${current} / ${item.target}${item.unit ? ` ${item.unit}` : ''}`;
-}
-
-function showAchievementToast(items) {
-  document.querySelector('.achievement-toast')?.remove();
-  const toast = document.createElement('div');
-  toast.className = 'achievement-toast';
-  const title = items.length > 1 ? `${items.length} yeni başarı` : items[0].title;
-  toast.innerHTML = `
-    <span class="achievement-toast-icon">${items.length > 1 ? items.length : items[0].icon}</span>
-    <div><strong>${title}</strong><small>Rozet vitrinin güncellendi.</small></div>
-  `;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  window.setTimeout(() => {
-    toast.classList.remove('show');
-    window.setTimeout(() => toast.remove(), 300);
-  }, 3400);
-}
-
-function updateAchievementState(achievements) {
-  if (!state.achievementState || typeof state.achievementState !== 'object') {
-    state.achievementState = { seen: [], initialized: false };
-  }
-  const unlocked = achievements.filter(item => item.unlocked);
-  const seen = new Set(state.achievementState.seen || []);
-  const newlyUnlocked = unlocked.filter(item => !seen.has(item.id));
-
-  if (!achievementSessionReady) {
-    unlocked.forEach(item => seen.add(item.id));
-    state.achievementState.seen = [...seen];
-    state.achievementState.initialized = true;
-    achievementSessionReady = true;
-    stateSave();
-    return;
+  #dashboardGoalCard .card {
+    min-height: 170px !important;
+    padding: 14px !important;
   }
 
-  if (newlyUnlocked.length) {
-    newlyUnlocked.forEach(item => seen.add(item.id));
-    state.achievementState.seen = [...seen];
-    stateSave();
-    showAchievementToast(newlyUnlocked);
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 12px 0 0;
+  }
+
+  .stat-card {
+    min-height: 132px;
+    padding: 14px;
   }
 }
 
-function renderAchievements() {
-  const showcase = document.getElementById('achievementShowcase');
-  const dashboard = document.getElementById('dashboardAchievement');
-  const achievements = getAchievements();
-  const unlocked = achievements.filter(item => item.unlocked);
-  const next = achievements
-    .filter(item => !item.unlocked)
-    .sort((a, b) => b.progress - a.progress)[0];
-
-  if (dashboard) {
-    dashboard.innerHTML = `
-      <div class="dashboard-achievement-card">
-        <span class="achievement-ring">${unlocked.length}</span>
-        <div>
-          <strong>${unlocked.length} / ${achievements.length} başarı tamamlandı</strong>
-          <small>${next ? `Sıradaki: ${next.title} · ${formatAchievementProgress(next)}` : 'Tüm başarılar tamamlandı.'}</small>
-        </div>
-        <button type="button" onclick="goPanel(4)">Rozetler</button>
-      </div>
-    `;
-  }
-
-  if (showcase) {
-    showcase.innerHTML = `
-      <div class="achievement-showcase-head">
-        <div>
-          <span>Başarılar</span>
-          <strong>${unlocked.length} rozet kazanıldı</strong>
-        </div>
-        ${next ? `<small>Sıradaki hedef: ${next.title} · yeni rozet hedef tamamlanınca açılır</small>` : '<small>Tüm rozetler açıldı</small>'}
-      </div>
-      <div class="achievement-grid">
-        ${achievements.map(item => `
-          <article class="achievement-badge ${item.unlocked ? 'is-unlocked' : 'is-locked'}">
-            <span class="achievement-icon">${item.icon}</span>
-            <div class="achievement-copy">
-              <strong>${item.title}</strong>
-              <small>${item.detail}</small>
-              <div class="achievement-progress"><i style="width:${item.progress}%"></i></div>
-              <em>${item.unlocked ? '★ Tamamlandı' : formatAchievementProgress(item)}</em>
-            </div>
-          </article>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  updateAchievementState(achievements);
+/* v66 — Dashboard responsive polish */
+.dashboard-wrap {
+  max-width: 1280px;
 }
 
-function renderDashboardWeekLabel() {
-  const el = document.getElementById('dashboardWeekLabel');
-  if (!el) return;
+@media (max-width: 700px) {
+  #dashboardGoalCard > div {
+    grid-template-columns: 1fr !important;
+  }
 
-  const range = getDashboardWeekRange();
+  #dashboardGoalCard .card {
+    min-height: auto !important;
+  }
 
-  const sleepTotal = getCurrentWeekSleepTotal();
-  const sleepPct = Math.min(100, Math.round((sleepTotal / SLEEP_TARGET) * 100));
-
-  const workoutTotal = getCurrentWeekWorkoutTotal();
-  const workoutPct = Math.min(100, Math.round((workoutTotal / WORKOUT_TARGET) * 100));
-  const dailyTotals = getWeekDailyTotals(range);
-  const sleepDays = VERIFIED_WEEK_TOTALS[range.start]?.sleepNights || dailyTotals.sleep.length;
-  const workoutDays = dailyTotals.workouts.length;
-  const walkingStats = getWalkingStatsForRange(range);
-  const walkingDistance = walkingStats.distance;
-  const walkingPace = walkingStats.pace;
-  const sleepAverage = sleepDays ? sleepTotal / sleepDays : 0;
-  const weekStatus = sleepPct >= 100 && workoutPct >= 100
-    ? 'Hedef üstü'
-    : sleepAverage >= 7 && workoutPct >= 70
-      ? 'İyi gidiyorsun'
-      : sleepDays || workoutDays
-        ? 'Takipte'
-        : 'Başla';
-  const sleepInsight = sleepDays
-    ? `Kayıtlı gün ort. ${sleepAverage.toFixed(1)} saat`
-    : 'Uyku kaydı bekleniyor';
-  const workoutInsight = workoutDays
-    ? `${workoutDays} aktif gün`
-    : 'Antrenman kaydı bekleniyor';
-  const balanceInsight = sleepAverage >= 7 && workoutPct >= 100
-    ? 'Uyku ve hareket güçlü'
-    : sleepAverage >= 7
-      ? 'Uyku hedefte'
-      : workoutPct >= 100
-        ? 'Hareket güçlü'
-        : 'Ritim kuruluyor';
-
-  el.innerHTML = `
-    <div class="week-card-head">
-      <div>
-        <div class="week-card-title">${getDashboardWeekTitle()}</div>
-        <div class="week-card-date">${getDashboardWeekContext() || `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`}</div>
-      </div>
-
-      <div class="week-card-pill">
-        ${weekStatus}
-      </div>
-    </div>
-
-    <div class="week-metrics">
-      <div class="week-metric">
-        <div class="week-metric-top">
-          <span>Uyku</span>
-          <strong>${sleepTotal.toFixed(1)} / ${SLEEP_TARGET} saat</strong>
-        </div>
-        <div class="week-track">
-          <div class="week-fill sleep" style="width:${sleepPct}%"></div>
-        </div>
-      </div>
-
-      <div class="week-metric">
-        <div class="week-metric-top">
-          <span>Antrenman</span>
-          <strong>${workoutTotal} / ${WORKOUT_TARGET} dk</strong>
-        </div>
-        <div class="week-track">
-          <div class="week-fill workout" style="width:${workoutPct}%"></div>
-        </div>
-      </div>
-
-      ${walkingDistance > 0
-        ? `<div class="week-metric walking-distance-metric">
-            <div class="week-metric-top">
-              <span>Yürüyüş mesafesi</span>
-              <strong>${formatDistanceKm(walkingDistance)} km</strong>
-            </div>
-            <small>${formatDecimal(walkingPace)} dk/km ortalama tempo</small>
-          </div>`
-        : ''}
-    </div>
-
-    <div class="week-mini-insights${walkingDistance > 0 ? ' has-distance' : ''}">
-      <span>Uyku <strong>${sleepInsight}</strong></span>
-      <span>Antrenman <strong>${workoutInsight}</strong></span>
-      <span>Durum <strong>${balanceInsight}</strong></span>
-      ${walkingDistance > 0
-        ? `<span>Yürüyüş <strong>${formatDistanceKm(walkingDistance)} km · ${formatDecimal(walkingPace)} dk/km</strong></span>`
-        : ''}
-    </div>
-  `;
+  body {
+    padding-bottom: calc(130px + env(safe-area-inset-bottom));
+  }
 }
 
-function renderDashboardGoalCard() {
-  const el = document.getElementById('dashboardGoalCard');
-  if (!el) return;
+/* v66 — Dark mode dashboard cards */
+[data-theme="dark"] #dashboardGoalCard .card:first-child {
+  background: linear-gradient(135deg, rgba(34,197,94,.12), rgba(16,185,129,.08)) !important;
+  border-color: rgba(34,197,94,.22) !important;
+  color: var(--text) !important;
+}
 
-  const data = getMeasurementTrendData();
+[data-theme="dark"] .week-chip {
+  background: rgba(24,28,39,.92) !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
 
-  if (!data.length) {
-    setEmptyState(
-      el,
-      'Haftalık rapor henüz oluşmadı',
-      'Uyku, antrenman ve ölçüm kayıtları geldikçe haftalık özetler burada listelenir.'
+[data-theme="dark"] .week-chip-top {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .moti-card {
+  box-shadow: 0 18px 42px rgba(34,197,94,.12);
+}
+
+/* v67 — Quick actions */
+.quick-actions-card {
+  margin: 18px 0 0;
+  padding: 18px;
+  border-radius: 28px;
+  background: rgba(255,255,255,.86);
+  border: 1px solid rgba(15,23,42,.06);
+  box-shadow: 0 12px 34px rgba(15,23,42,.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.quick-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.quick-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quick-btn {
+  border: none;
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-weight: 800;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.quick-btn.sleep {
+  background: rgba(6,182,212,.12);
+  color: var(--cyan);
+}
+
+.quick-btn.workout {
+  background: rgba(139,92,246,.12);
+  color: var(--purple);
+}
+
+.quick-btn.note {
+  background: rgba(34,197,94,.12);
+  color: var(--green);
+}
+
+[data-theme="dark"] .quick-actions-card {
+  background: rgba(24,28,39,.92);
+  border-color: rgba(255,255,255,.08);
+}
+
+@media (max-width: 700px) {
+  .quick-actions-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    margin-top: 14px;
+  }
+
+  .quick-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .quick-btn {
+    width: 100%;
+    padding: 13px 14px;
+  }
+}
+
+/* v70 — App/Web theme consistency */
+html,
+body,
+.app-shell {
+  background: var(--bg) !important;
+}
+
+#panels {
+  background: var(--bg);
+  min-height: calc(100dvh - 56px);
+}
+
+[data-theme="light"] {
+  --bg: #eef4ff;
+  --surface: #ffffff;
+  --surface2: #f5f8ff;
+  --border: #dfe8f5;
+  --text: #0f1724;
+  --text2: #43516a;
+  --muted: #7f8da8;
+}
+
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --surface: #181c27;
+  --surface2: #121826;
+  --border: #283044;
+  --text: #f2f6ff;
+  --text2: #c7d0e6;
+  --muted: #8490aa;
+}
+
+.hero {
+  padding-top: 18px;
+  padding-bottom: 0;
+}
+
+.hero-title {
+  margin-bottom: 0;
+}
+
+.dashboard-wrap {
+  padding-bottom: 96px !important;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding-bottom: 112px !important;
+  }
+
+  body {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #panels {
+    min-height: calc(100dvh - 96px);
+  }
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: #151a26;
+  border-top-color: #283044;
+}
+
+[data-theme="dark"] .quick-actions-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .card {
+  background: #181c27;
+  border-color: #283044;
+}
+
+/* v71 — Unified green system */
+.moti-card {
+  background:
+    radial-gradient(circle at 90% 20%, rgba(255,255,255,.22), transparent 28%),
+    linear-gradient(135deg,var(--brand-green-dark),var(--brand-green)) !important;
+}
+
+.week-card-pill,
+.stat-badge.sb-g {
+  color: var(--brand-green-dark) !important;
+  background: var(--brand-green-soft) !important;
+}
+
+.week-fill.workout,
+#dashboardGoalCard .card:first-child .prog-fill,
+#dashboardGoalCard .card:first-child div[style*="background:linear-gradient"],
+#dashboardGoalCard .card:nth-child(2) div[style*="background:linear-gradient"] {
+  background: linear-gradient(90deg,var(--brand-green),var(--brand-green-dark)) !important;
+}
+
+/* v71 — Scroll / safe area fix */
+html,
+body {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  padding-bottom: 0 !important;
+}
+
+#panels {
+  min-height: auto !important;
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+
+.dashboard-wrap {
+  padding-bottom: 24px !important;
+}
+
+@media (max-width: 700px) {
+  #panels {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .dashboard-wrap {
+    padding-bottom: 16px !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* v72 — Premium Dashboard Reset */
+
+:root {
+  --bg: #f3f7ff;
+  --surface: #ffffff;
+  --surface2: #f7faff;
+  --border: #e5edf8;
+  --text: #101828;
+  --text2: #475467;
+  --muted: #8a98ad;
+
+  --brand: #22c55e;
+  --brand2: #16a34a;
+  --brand-soft: #eafaf1;
+}
+
+[data-theme="dark"] {
+  --bg: #0b0f17;
+  --surface: #151b26;
+  --surface2: #101621;
+  --border: #273244;
+  --text: #f5f7fb;
+  --text2: #c8d1e1;
+  --muted: #7f8aa3;
+
+  --brand-soft: rgba(34,197,94,.12);
+}
+
+html,
+body,
+.app-shell,
+#panels {
+  background: var(--bg) !important;
+}
+
+body {
+  padding-bottom: 0 !important;
+  overflow-x: hidden;
+}
+
+#panels {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  min-height: auto !important;
+}
+
+.dashboard-wrap {
+  width: 100%;
+  max-width: 1180px !important;
+  margin: 0 auto !important;
+  padding: 0 18px 18px !important;
+}
+
+.hero {
+  padding: 18px 0 0 !important;
+}
+
+.hero-title {
+  font-size: 26px;
+  line-height: 1.15;
+  margin: 0 !important;
+}
+
+.hero-title span {
+  color: #2f80ed;
+}
+
+.hero-date {
+  margin-bottom: 6px;
+}
+
+.moti-card {
+  margin: 20px 0 0 !important;
+  padding: 16px 18px !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, #22c55e, #4ade80) !important;
+  box-shadow: 0 16px 36px rgba(34,197,94,.18) !important;
+}
+
+.moti-emoji {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  border-radius: 16px !important;
+  font-size: 22px !important;
+}
+
+.moti-text {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+.week-chip {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .quick-actions-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+#dashboardGoalCard .card:first-child {
+  background: var(--brand-soft) !important;
+  border-color: rgba(34,197,94,.22) !important;
+}
+
+#dashboardGoalCard > div {
+  margin: 18px 0 !important;
+}
+
+.stats-grid {
+  margin: 16px 0 0 !important;
+}
+
+.stat-card,
+.card,
+.quick-actions-card {
+  border-radius: 24px !important;
+  box-shadow: 0 10px 30px rgba(16,24,40,.06) !important;
+}
+
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .quick-actions-card {
+  box-shadow: none !important;
+}
+
+.quick-actions-card {
+  margin: 18px 0 0 !important;
+}
+
+.bottom-nav {
+  background: var(--surface) !important;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: #151b26 !important;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding: 0 14px 8px !important;
+  }
+
+  #panels {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .hero {
+    padding-top: 16px !important;
+  }
+
+  .hero-title {
+    font-size: 23px !important;
+  }
+
+  .moti-card {
+    padding: 14px 15px !important;
+    border-radius: 22px !important;
+  }
+
+  .week-chip {
+    border-radius: 22px !important;
+  }
+
+  #dashboardGoalCard > div {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin: 14px 0 !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* v73 — Simplified dashboard grid */
+.stats-grid {
+  grid-template-columns: 1fr !important;
+}
+
+@media (min-width: 701px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .stats-grid .stat-card {
+    max-width: 100%;
+  }
+}
+
+/* v76 — Premium dashboard layout */
+.stats-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  margin: 16px 0 0 !important;
+}
+
+.stat-card-blue {
+  background: linear-gradient(135deg,#eff6ff,#ffffff) !important;
+  border-color: rgba(59,130,246,.18) !important;
+}
+
+.stat-card-amber {
+  background: linear-gradient(135deg,#fff7ed,#ffffff) !important;
+  border-color: rgba(249,115,22,.18) !important;
+}
+
+#dashboardGoalCard .card:first-child {
+  background: linear-gradient(135deg,#ecfdf5,#ffffff) !important;
+  border-color: rgba(34,197,94,.22) !important;
+}
+
+.week-chip {
+  margin-top: 16px !important;
+  background: linear-gradient(135deg,#ffffff,#f8fafc) !important;
+}
+
+.moti-card {
+  background: linear-gradient(135deg,#22c55e,#86efac) !important;
+  box-shadow: 0 14px 34px rgba(34,197,94,.16) !important;
+}
+
+[data-theme="dark"] .stat-card-blue,
+[data-theme="dark"] .stat-card-amber,
+[data-theme="dark"] #dashboardGoalCard .card:first-child,
+[data-theme="dark"] .week-chip {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+@media (max-width:700px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  .stat-card {
+    min-height: 132px !important;
+  }
+}
+
+/* v77 — Final dashboard order + premium soft cards */
+
+.goal-hero-card {
+  margin: 18px 0 0;
+  padding: 22px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #ecfdf5, #ffffff);
+  border: 1px solid rgba(34,197,94,.20);
+  box-shadow: 0 14px 36px rgba(16,24,40,.07);
+}
+
+.goal-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  letter-spacing: .5px;
+}
+
+.goal-value {
+  font-size: 34px;
+  font-weight: 800;
+  margin-top: 10px;
+  color: var(--text);
+}
+
+.goal-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.goal-track {
+  height: 8px;
+  background: rgba(34,197,94,.14);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 18px;
+}
+
+.goal-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 999px;
+}
+
+.goal-percent {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  margin: 18px 0 0 !important;
+}
+
+.stat-card {
+  min-height: 150px !important;
+  border-radius: 26px !important;
+  padding: 20px !important;
+}
+
+.stat-card-blue {
+  background: linear-gradient(135deg, #eff6ff, #ffffff) !important;
+  border-color: rgba(59,130,246,.18) !important;
+}
+
+.stat-card-amber {
+  background: linear-gradient(135deg, #fff7ed, #ffffff) !important;
+  border-color: rgba(249,115,22,.18) !important;
+}
+
+[data-theme="dark"] .goal-hero-card,
+[data-theme="dark"] .stat-card-blue,
+[data-theme="dark"] .stat-card-amber {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+@media (max-width: 700px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  .goal-hero-card {
+    padding: 18px !important;
+    border-radius: 24px !important;
+  }
+
+  .goal-value {
+    font-size: 30px !important;
+  }
+
+  .stat-card {
+    min-height: 132px !important;
+    padding: 16px !important;
+  }
+}
+
+/* v78 — Simplified premium dashboard */
+
+.stats-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.stat-card {
+  min-height: 132px !important;
+}
+
+.stat-card-blue {
+  background:
+    radial-gradient(circle at top right, rgba(59,130,246,.10), transparent 30%),
+    linear-gradient(135deg,#f8fbff,#ffffff) !important;
+
+  border: 1px solid rgba(59,130,246,.10) !important;
+}
+
+[data-theme="dark"] .stat-card-blue {
+  background:
+    linear-gradient(135deg,#182131,#151b26) !important;
+
+  border-color: #273244 !important;
+}
+
+.stat-card-blue .stat-val {
+  font-size: 34px !important;
+}
+
+.stat-card-blue .stat-unit {
+  font-size: 15px !important;
+}
+
+.week-chip {
+  margin-top: 18px !important;
+}
+
+.quick-actions-card {
+  margin-top: 18px !important;
+}
+
+
+  }
+
+  .stat-card-blue {
+    min-height: 128px !important;
+    padding: 18px !important;
+  }
+
+  .week-chip {
+    padding: 16px !important;
+  }
+
+  .week-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  .quick-actions-card {
+    padding: 16px !important;
+  }
+}
+
+/* v80 — Premium soft dashboard polish */
+
+.moti-card {
+  background:
+    radial-gradient(circle at 92% 20%, rgba(255,255,255,.28), transparent 30%),
+    linear-gradient(135deg, #86efac, #4ade80) !important;
+  color: #064e3b !important;
+  box-shadow: 0 14px 34px rgba(34,197,94,.12) !important;
+}
+
+.moti-emoji {
+  background: rgba(255,255,255,.42) !important;
+}
+
+.moti-text {
+  color: #064e3b !important;
+  font-weight: 800 !important;
+}
+
+.goal-hero-card {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  align-items: center;
+  gap: 24px;
+  background:
+    radial-gradient(circle at 92% 20%, rgba(34,197,94,.10), transparent 32%),
+    linear-gradient(135deg, #f0fdf4, #ffffff) !important;
+  border-color: rgba(34,197,94,.16) !important;
+}
+
+.goal-label {
+  grid-column: 1 / -1;
+}
+
+.goal-value {
+  font-size: 38px !important;
+  justify-self: start;
+}
+
+.goal-sub,
+.goal-percent {
+  color: #64748b !important;
+}
+
+.goal-track {
+  width: 100%;
+  align-self: center;
+}
+
+.stat-card-blue {
+  background:
+    radial-gradient(circle at 92% 12%, rgba(59,130,246,.13), transparent 30%),
+    linear-gradient(135deg, #f8fbff, #ffffff) !important;
+  border-color: rgba(59,130,246,.14) !important;
+}
+
+.stat-card-blue .stat-icon {
+  opacity: .85;
+}
+
+.stat-card-blue .stat-val {
+  color: #0f172a !important;
+}
+
+.week-chip {
+  background:
+    radial-gradient(circle at 92% 14%, rgba(34,197,94,.07), transparent 32%),
+    linear-gradient(135deg, #ffffff, #f9fbff) !important;
+}
+
+.week-metric {
+  background: #f8fafc !important;
+  border-color: rgba(15,23,42,.06) !important;
+}
+
+.quick-actions-card {
+  background:
+    linear-gradient(135deg, #ffffff, #fbfdff) !important;
+  border-color: rgba(15,23,42,.06) !important;
+}
+
+/* Dark mode soft fix */
+[data-theme="dark"] .moti-card {
+  background:
+    radial-gradient(circle at 92% 20%, rgba(74,222,128,.16), transparent 32%),
+    linear-gradient(135deg, #14532d, #166534) !important;
+  color: #dcfce7 !important;
+}
+
+[data-theme="dark"] .moti-text {
+  color: #dcfce7 !important;
+}
+
+[data-theme="dark"] .goal-hero-card,
+[data-theme="dark"] .stat-card-blue,
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .quick-actions-card {
+  background: #151b26 !important;
+  border-color: #273244 !important;
+}
+
+[data-theme="dark"] .week-metric {
+  background: #1b2230 !important;
+}
+
+[data-theme="dark"] .stat-card-blue .stat-val {
+  color: var(--text) !important;
+}
+
+@media (max-width: 700px) {
+  .goal-hero-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .goal-label {
+    grid-column: auto;
+  }
+
+  .goal-value {
+    font-size: 32px !important;
+  }
+}
+
+/* v81 — Premium depth system */
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(34,197,94,.04), transparent 24%),
+    radial-gradient(circle at top right, rgba(59,130,246,.04), transparent 24%),
+    var(--bg) !important;
+}
+
+/* HERO CARD */
+
+.goal-hero-card {
+  overflow: hidden;
+  position: relative;
+
+  background:
+    radial-gradient(circle at 85% 18%, rgba(255,255,255,.65), transparent 24%),
+    linear-gradient(135deg,#f3fff7,#f8fffb) !important;
+
+  border: 1px solid rgba(34,197,94,.14) !important;
+
+  box-shadow:
+    0 18px 50px rgba(15,23,42,.04),
+    inset 0 1px 0 rgba(255,255,255,.7) !important;
+}
+
+.goal-hero-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      120deg,
+      transparent 0%,
+      rgba(255,255,255,.16) 40%,
+      transparent 70%
     );
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-
-  const milestones = state.milestones || [95, 90, 85];
-  let currentGoal = milestones.find(goal => last.weight > goal);
-  if (!currentGoal) currentGoal = milestones[milestones.length - 1];
-
-  const completed = first.weight - last.weight;
-
-  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
-  const finalKgLeft = Math.max(0, Number(last.weight - state.goalWeight).toFixed(1));
-
-  const firstNeeded = first.weight - currentGoal;
-  const firstPct = firstNeeded > 0
-    ? Math.min(100, Math.round((completed / firstNeeded) * 100))
-    : 100;
-
-  const finalNeeded = first.weight - state.goalWeight;
-  const finalPct = finalNeeded > 0
-    ? Math.min(100, Math.round((completed / finalNeeded) * 100))
-    : 100;
-
-  el.innerHTML = `
-    <div class="goal-hero-card">
-      <div class="goal-card-layout">
-
-        <div class="goal-left">
-          <div class="goal-label">ŞU ANKİ ARA HEDEF</div>
-
-          <div class="goal-big">
-            <span>${currentGoal}</span>
-            <small>kg</small>
-          </div>
-
-          <div class="goal-caption">İlk hedef</div>
-
-          <div class="goal-mini-card">
-            <div class="goal-progress-row">
-              <span>İlk hedef ilerlemesi</span>
-              <strong>%${firstPct}</strong>
-            </div>
-            <div class="goal-track">
-              <div class="goal-fill" style="width:${firstPct}%"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="goal-right">
-          <div class="goal-info-card">
-            <span>İlk hedefe kalan</span>
-            <strong>${kgLeft} kg</strong>
-          </div>
-
-          <div class="goal-info-card">
-            <span>Final hedefe kalan</span>
-            <strong>${finalKgLeft} kg</strong>
-          </div>
-
-          <div class="goal-mini-card goal-final-card">
-            <div class="goal-progress-row">
-              <span>Final ilerleme</span>
-              <strong>%${finalPct}</strong>
-            </div>
-            <div class="goal-track final">
-              <div class="goal-fill final" style="width:${finalPct}%"></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  `;
-}
-
-function renderStats() {
-  const el = document.getElementById('dashboardProgressCard');
-  if (!el) return;
-
-  const data = getMeasurementTrendData();
-
-  if (!data.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        İlk ölçümünü eklediğinde kilo ve bel kartları burada görünecek.
-      </div>
-    `;
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-  const waistMeasurements = getWaistMeasurements();
-  const firstWaist = waistMeasurements[0];
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
-  const weightDiff = Number(last.weight - first.weight);
-  const waistDiff = waistMeasurements.length >= 2 ? Number(lastWaist.waist - firstWaist.waist) : null;
-  const startDateText = formatDate(first.date);
-
-  el.innerHTML = `
-    <div class="dashboard-measure-grid">
-      <div class="progress-summary-card">
-        <div class="progress-summary-main">
-          <div class="progress-summary-label">Son Kilo</div>
-          <div class="progress-summary-value">${last.weight} <span>kg</span></div>
-        </div>
-        <div class="progress-summary-side">
-          <div class="progress-summary-diff ${weightDiff <= 0 ? 'good' : 'bad'}">
-            ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
-          </div>
-          <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
-        </div>
-      </div>
-
-      <div class="progress-summary-card">
-        <div class="progress-summary-main">
-          <div class="progress-summary-label">Son Bel Ölçümü</div>
-          <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
-        </div>
-        <div class="progress-summary-side">
-          <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
-            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
-          </div>
-          <div class="progress-summary-small">${waistMeasurements.length ? 'Sonraki bel 4. tartıda' : 'Her 4. tartıda'}</div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderMeasurementChart() {
-  const host = document.getElementById('measurementChartHost');
-  if (!host) return;
-
-  normalizeProfileState();
-  const data = getChartMeasurementData();
-
-  if (measurementChart) {
-    measurementChart.destroy();
-    measurementChart = null;
-  }
-
-  if (data.length < 2) {
-    host.innerHTML = '';
-    setEmptyState(
-      host,
-      'Grafik için iki ölçüm gerekli',
-      'Başlangıç kilosu ve en az bir sonraki kilo ölçümü olduğunda trend burada görünür.',
-      'Ölçüm Ekle',
-      1
-    );
-    return;
-  }
-
-  if (typeof Chart === 'undefined') {
-    renderFallbackMeasurementChart(host, data);
-    return;
-  }
-
-  renderMeasurementInsight(host, data, '<canvas id="measurementChart"></canvas>');
-  const canvas = document.getElementById('measurementChart');
-  if (!canvas) return;
-
-  canvas.style.display = 'block';
-
-  measurementChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: data.map(item => formatDate(item.date)),
-      datasets: [
-        {
-          label: 'Kilo (kg)',
-          data: data.map(item => item.weight),
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,.08)',
-          fill: true,
-          tension: 0.42,
-          borderWidth: 3,
-          pointRadius: 5,
-          pointHoverRadius: 6,
-          pointBorderWidth: 3,
-          pointBorderColor: '#ffffff',
-          pointBackgroundColor: '#2563eb'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: context => `${context.parsed.y} kg`
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            display: false
-          }
-        },
-        y: {
-          position: 'left',
-          beginAtZero: false,
-          suggestedMin: Math.min(...data.map(item => Number(item.weight))) - 1,
-          suggestedMax: Math.max(...data.map(item => Number(item.weight))) + 1,
-          grid: {
-            color: 'rgba(113,128,150,.18)'
-          },
-          ticks: {
-            callback: value => `${value} kg`
-          }
-        }
-      }
-    }
-  });
-}
-
-function renderWeightSummary() {
-  const el = document.getElementById('weightSummary');
-  if (!el) return;
-
-  const data = getSortedMeasurements();
-
-  if (!data.length) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-  const waistMeasurements = getWaistMeasurements();
-  const firstWaist = waistMeasurements[0];
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
-
-  const weightDiff = last.weight - first.weight;
-  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
-
-  const milestones = state.milestones || [95, 90, 85, 80, 75];
-
-  let currentGoal = milestones.find(goal => last.weight > goal);
-
-  if (!currentGoal) {
-    currentGoal = milestones[milestones.length - 1];
-  }
-
-  const kgLeft = Math.max(0, (last.weight - currentGoal).toFixed(1));
-
-  const startWeight = first.weight;
-  const totalNeeded = startWeight - currentGoal;
-  const completed = startWeight - last.weight;
-
-  const progressPct = totalNeeded > 0
-    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
-    : 100;
-
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          SON KİLO
-        </div>
-
-        <div style="font-size:24px;font-weight:900;margin-top:6px">
-          ${last.weight} kg
-        </div>
-      </div>
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          TOPLAM DEĞİŞİM
-        </div>
-
-        <div style="
-          font-size:24px;
-          font-weight:900;
-          margin-top:6px;
-          color:${weightDiff <= 0 ? 'var(--green)' : 'var(--red)'}
-        ">
-          ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
-        </div>
-      </div>
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          İLK ARA HEDEF
-        </div>
-
-        <div style="font-size:24px;font-weight:900;margin-top:6px">
-          ${currentGoal} kg
-        </div>
-
-        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          İlk hedefe kalan: ${kgLeft} kg · Final hedef: ${state.goalWeight} kg
-        </div>
-
-        <div style="
-          height:8px;
-          background:var(--border);
-          border-radius:999px;
-          overflow:hidden;
-          margin-top:10px
-        ">
-          <div style="
-            height:100%;
-            width:${progressPct}%;
-            background:linear-gradient(90deg,#3b82f6,#06b6d4);
-            border-radius:999px
-          "></div>
-        </div>
-
-        <div style="font-size:12px;color:var(--muted);margin-top:6px">
-          %${progressPct} tamamlandı
-        </div>
-      </div>
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          BEL DEĞİŞİMİ
-        </div>
-
-        <div style="
-          font-size:24px;
-          font-weight:900;
-          margin-top:6px;
-          color:${waistDiff === null || waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
-        ">
-          ${waistDiff === null ? 'Sonraki ölçüm 4. tartıda' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
-        </div>
-      </div>
-
-    </div>
-  `;
-}
-
-function renderWeightList() {
-  const list = document.getElementById('weightList');
-  const empty = document.getElementById('weightEmpty');
-  if (!list || !empty) return;
-
-  const data = getSortedMeasurements().sort((a, b) => b.date.localeCompare(a.date));
-
-  if (!data.length) {
-    empty.style.display = 'block';
-    list.innerHTML = '';
-    return;
-  }
-
-  empty.style.display = 'none';
-
-  list.innerHTML = data.map((m, index) => {
-    const prev = data[index + 1];
-
-    const weightDiff = prev && m.weight != null && prev.weight != null
-      ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
-      : null;
-
-    const isWaistWeek = shouldTrackWaist(m.date);
-    const prevWaist = getWaistMeasurements()
-      .filter(item => item.date < m.date)
-      .at(-1);
-    const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist)) && Number.isFinite(Number(prevWaist.waist))
-      ? (parseFloat(m.waist) - parseFloat(prevWaist.waist)).toFixed(1)
-      : null;
-
-    const weightDiffHtml = weightDiff
-      ? `<span class="delta-pill ${weightDiff < 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
-      : '<span class="delta-pill neutral">Başlangıç</span>';
-
-    const waistDiffHtml = waistDiff
-      ? `<span class="delta-pill ${waistDiff < 0 ? 'good' : 'bad'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
-      : `<span class="delta-pill neutral">${isWaistWeek ? 'İlk bel' : '4. tartıda'}</span>`;
-
-    const waistText = isWaistWeek && Number.isFinite(Number(m.waist))
-      ? `${m.waist} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
-      : `<span style="font-size:12px;color:var(--muted)">Bel: aylık takip</span>`;
-
-    return `
-      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
-        <div style="flex:1">
-          <div style="font-weight:700">
-            ${m.weight ?? '?'} <span style="font-size:12px;color:var(--muted)">kg</span>
-            ·
-            ${waistText}
-          </div>
-          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-            ${formatDate(m.date)}
-          </div>
-        </div>
-
-        <div style="font-family:var(--font-mono);font-size:11px;text-align:right">
-          <div>${weightDiffHtml}</div>
-          <div>${waistDiffHtml}</div>
-        </div>
-
-        <button onclick="deleteWeight(${index})"
-          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-          aria-label="Sil">×</button>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderNotes() {
-  const list = document.getElementById('noteList');
-  if (!list) return;
-
-  const notes = (Array.isArray(state.notes) ? state.notes : [])
-    .map((note, stateIndex) => ({ ...note, stateIndex }))
-    .filter(note => note.date === today());
-
-  if (!notes.length) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">+</div>
-        Bugün için not yok.
-      </div>
-    `;
-    return;
-  }
-
-  list.innerHTML = notes.map(note => `
-    <div class="daily-row">
-      <div>
-        <div class="daily-row-title">${note.text}</div>
-        <div class="daily-row-meta">Bugün</div>
-      </div>
-      <button onclick="deleteNote(${note.stateIndex})" class="row-delete" aria-label="Sil">×</button>
-    </div>
-  `).join('');
-}
-function getWeekRange(dateValue) {
-  const parts = String(dateValue || '').split('-').map(Number);
-  const date = parts.length === 3 && parts.every(Number.isFinite)
-    ? new Date(parts[0], parts[1] - 1, parts[2])
-    : new Date(dateValue);
-
-  const sunday = new Date(date);
-  sunday.setDate(date.getDate() - date.getDay());
-
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
-
-  return {
-    start: toLocalIsoDate(sunday),
-    end: toLocalIsoDate(saturday),
-  };
-}
-
-function shiftIsoDate(dateValue, days) {
-  const parts = parseIsoDateParts(dateValue);
-  if (!parts) return dateValue;
-  return toLocalIsoDate(new Date(parts.year, parts.month - 1, parts.day + days));
-}
-
-function getSleepRangeForReportWeek(range) {
-  return {
-    start: range.start,
-    end: range.end,
-  };
-}
-
-function getDashboardWeekRange() {
-  const dates = [
-    ...(state.sleep || []).map(item => item.date),
-    ...(state.workouts || []).map(item => item.date),
-  ].filter(Boolean);
-
-  if (!dates.length) {
-    return getWeekRange(today());
-  }
-
-  const latestDate = dates.sort((a, b) => b.localeCompare(a))[0];
-  return getWeekRange(latestDate);
-}
-
-function getDashboardWeekTitle() {
-  const range = getDashboardWeekRange();
-  const current = getWeekRange(today());
-  return range.start === current.start ? 'Bu Hafta' : 'Son Aktif Hafta';
-}
-
-function getDashboardWeekContext() {
-  const range = getDashboardWeekRange();
-  const current = getWeekRange(today());
-  if (range.start === current.start) return '';
-  return `Bu hafta henüz kayıt yok · ${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))} gösteriliyor`;
-}
-
-function getDailyViewRange() {
-  if (dailyView === 'today') {
-    const date = today();
-    return { start: date, end: date, title: 'Bugün', targetMode: 'today' };
-  }
-
-  if (dailyView === 'all') {
-    return { start: null, end: null, title: 'Tüm Geçmiş', targetMode: 'all' };
-  }
-
-  return { ...getDashboardWeekRange(), title: getDashboardWeekTitle(), targetMode: 'week' };
-}
-
-function itemMatchesDailyView(item) {
-  const range = getDailyViewRange();
-  if (!item?.date) return false;
-  if (!range.start || !range.end) return true;
-  return item.date >= range.start && item.date <= range.end;
-}
-
-function itemMatchesSleepDailyView(item) {
-  const range = getDailyViewRange();
-  if (!item?.date) return false;
-  if (!range.start || !range.end) return true;
-  if (range.targetMode !== 'week') return item.date >= range.start && item.date <= range.end;
-
-  const sleepRange = getSleepRangeForReportWeek(range);
-  return item.date >= sleepRange.start && item.date <= sleepRange.end;
-}
-
-function renderDailyViewControls() {
-  const range = getDailyViewRange();
-  const grid = document.getElementById('dailyGrid');
-  if (grid) grid.dataset.view = dailyView;
-
-  document.querySelectorAll('[data-daily-view]').forEach(btn => {
-    const isActive = btn.dataset.dailyView === dailyView;
-    btn.classList.toggle('active', isActive);
-    btn.setAttribute('aria-pressed', String(isActive));
-
-    if (btn.dataset.dailyView === 'week') {
-      btn.textContent = getDashboardWeekTitle();
-    }
-  });
-
-  return range;
-}
-
-function getCurrentWeekSleepTotal() {
-  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
-  const range = getDashboardWeekRange();
-  const sleepRange = getSleepRangeForReportWeek(range);
-  const verified = VERIFIED_WEEK_TOTALS[range.start];
-  if (verified) return verified.sleep;
-
-  return sleep
-    .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
-    .reduce((total, item) => total + Number(item.hours || 0), 0);
-}
-
-function renderSleepSummary() {
-  const el = document.getElementById('sleepSummary');
-  if (!el) return;
-
-  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
-  const range = getDailyViewRange();
-  const todayTotal = sleep
-    .filter(item => item.date === today())
-    .reduce((total, item) => total + Number(item.hours || 0), 0);
-  const viewTotal = sleep
-    .filter(itemMatchesSleepDailyView)
-    .reduce((total, item) => total + Number(item.hours || 0), 0);
-  const viewValue = range.targetMode === 'week'
-    ? `${viewTotal.toFixed(1)} / ${SLEEP_TARGET} saat`
-    : `${viewTotal.toFixed(1)} saat`;
-
-  el.innerHTML = `
-    <div class="daily-stat-line">
-      <span>Bugün</span>
-      <strong>${todayTotal.toFixed(1)} saat</strong>
-    </div>
-    <div class="daily-stat-line muted">
-      <span>${range.title}</span>
-      <strong>${viewValue}</strong>
-    </div>
-  `;
-}
-function renderSleepList() {
-  const list = document.getElementById('sleepList');
-  if (!list) return;
-
-  const range = getDailyViewRange();
-  const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
-  const sleep = sorted
-    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(itemMatchesSleepDailyView);
-
-  if (!sleep.length) {
-    list.innerHTML = `<div class="empty-state compact">${range.title} için uyku kaydı yok.</div>`;
-    return;
-  }
-
-  list.innerHTML = sleep.map(item => `
-    <div class="daily-row">
-      <div>
-        <div class="daily-row-title">${formatDecimal(item.hours)} saat</div>
-        <div class="daily-row-meta">${item.date === today() ? 'Bugün' : formatDate(item.date)} · ${getSleepQuality(item.hours)}</div>
-      </div>
-      <button onclick="deleteSleep(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
-    </div>
-  `).join('');
-}
-function getCurrentWeekWorkoutTotal() {
-  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
-  const range = getDashboardWeekRange();
-  const verified = VERIFIED_WEEK_TOTALS[range.start];
-  if (verified) return verified.workouts;
-
-  return workouts
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .reduce((total, item) => total + Number(item.duration || 0), 0);
-}
-
-function renderWorkoutSummary() {
-  const el = document.getElementById('workoutSummary');
-  if (!el) return;
-
-  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
-  const range = getDailyViewRange();
-  const todayTotal = workouts
-    .filter(item => item.date === today())
-    .reduce((total, item) => total + Number(item.duration || 0), 0);
-  const viewTotal = workouts
-    .filter(itemMatchesDailyView)
-    .reduce((total, item) => total + Number(item.duration || 0), 0);
-  const viewValue = range.targetMode === 'week'
-    ? `${viewTotal} / ${WORKOUT_TARGET} dk`
-    : `${viewTotal} dk`;
-
-  el.innerHTML = `
-    <div class="daily-stat-line">
-      <span>Bugün</span>
-      <strong>${todayTotal} dk</strong>
-    </div>
-    <div class="daily-stat-line muted">
-      <span>${range.title}</span>
-      <strong>${viewValue}</strong>
-    </div>
-  `;
-}
-function renderWorkoutList() {
-  const list = document.getElementById('workoutList');
-  if (!list) return;
-
-  const range = getDailyViewRange();
-  const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
-  const workouts = sorted
-    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(itemMatchesDailyView);
-
-  if (!workouts.length) {
-    list.innerHTML = `<div class="empty-state compact">${range.title} için antrenman kaydı yok.</div>`;
-    return;
-  }
-
-  list.innerHTML = workouts.map(item => {
-    const distance = getWorkoutDistanceFromNote(item.note);
-    return `
-    <div class="daily-row">
-      <div>
-        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
-        <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
-      </div>
-      <div class="row-actions">
-        <button onclick="editWorkout(${item.sortedIndex})" class="row-edit" aria-label="Düzenle">Düzenle</button>
-        <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
-      </div>
-    </div>
-  `;
-  }).join('');
-}
-function getWeeklyProgressData() {
-  const weeks = {};
-
-  (state.sleep || []).forEach(item => {
-    const range = getWeekRange(item.date);
-    const key = `${range.start}_${range.end}`;
-
-    if (!weeks[key]) {
-      weeks[key] = {
-        start: range.start,
-        end: range.end,
-        sleep: 0,
-        workouts: 0,
-      };
-    }
-
-    weeks[key].sleep += Number(item.hours || 0);
-  });
-
-  (state.workouts || []).forEach(item => {
-    const range = getWeekRange(item.date);
-    const key = `${range.start}_${range.end}`;
-
-    if (!weeks[key]) {
-      weeks[key] = {
-        start: range.start,
-        end: range.end,
-        sleep: 0,
-        workouts: 0,
-      };
-    }
-
-    weeks[key].workouts += Number(item.duration || 0);
-  });
-
-  Object.values(weeks).forEach(week => {
-    const verified = VERIFIED_WEEK_TOTALS[week.start];
-    week.recordedSleep = week.sleep;
-    week.recordedWorkouts = week.workouts;
-    week.verified = Boolean(verified);
-    if (verified) {
-      week.sleep = verified.sleep;
-      week.workouts = verified.workouts;
-      week.sleepNights = verified.sleepNights;
-    }
-  });
-
-  return Object.values(weeks)
-    .sort((a, b) => a.start.localeCompare(b.start));
-}
-
-function getWorkoutCategoriesForRange(range) {
-  const categories = {};
-
-  (state.workouts || [])
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .forEach(item => {
-      const category = getWorkoutCategoryFromNote(item.note, item.type);
-      categories[category] = (categories[category] || 0) + Number(item.duration || 0);
-    });
-
-  return Object.entries(categories)
-    .sort((a, b) => b[1] - a[1]);
-}
-
-function getCurrentWeekWorkoutCategories() {
-  return getWorkoutCategoriesForRange(getDashboardWeekRange());
-}
-
-function getVerifiedAdjustment(week, field) {
-  if (!week?.verified) return 0;
-  const recordedField = field === 'sleep' ? 'recordedSleep' : 'recordedWorkouts';
-  return Number((Number(week[field] || 0) - Number(week[recordedField] || 0)).toFixed(1));
-}
-
-function getWeekDailyTotals(range) {
-  const sleepByDay = {};
-  const workoutByDay = {};
-  const sleepRange = getSleepRangeForReportWeek(range);
-
-  (state.sleep || [])
-    .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
-    .forEach(item => {
-      sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
-    });
-
-  (state.workouts || [])
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .forEach(item => {
-      if (!workoutByDay[item.date]) {
-        workoutByDay[item.date] = {
-          date: item.date,
-          duration: 0,
-          categories: {},
-        };
-      }
-
-      const category = getWorkoutCategoryFromNote(item.note, item.type);
-      workoutByDay[item.date].duration += Number(item.duration || 0);
-      workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
-    });
-
-  return {
-    sleep: Object.entries(sleepByDay)
-      .map(([date, hours]) => ({ date, hours: Number(hours.toFixed(1)) }))
-      .sort((a, b) => a.date.localeCompare(b.date)),
-    workouts: Object.values(workoutByDay)
-      .sort((a, b) => a.date.localeCompare(b.date)),
-  };
-}
-
-function getWeekInsights(current, range) {
-  const totals = getWeekDailyTotals(range);
-  const sleepDays = current.sleepNights || totals.sleep.length;
-  const sleepAvg = sleepDays ? current.sleep / sleepDays : 0;
-  const bestSleep = totals.sleep.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
-  const bestWorkout = totals.workouts.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
-  const categories = getWorkoutCategoriesForRange(range);
-  const topCategory = categories[0];
-
-  return {
-    sleepAvg,
-    sleepDays,
-    bestSleep,
-    workoutDays: totals.workouts.length,
-    bestWorkout,
-    topCategory,
-  };
-}
-
-function getProgressCoachInsight(current, range, prev) {
-  const insights = getWeekInsights(current, range);
-  const sleepPct = Math.min(100, Math.round((Number(current.sleep || 0) / SLEEP_TARGET) * 100));
-  const workoutPct = Math.min(100, Math.round((Number(current.workouts || 0) / WORKOUT_TARGET) * 100));
-  const walkingStats = getWalkingStatsForRange(range);
-  const workoutDiff = prev ? Number(current.workouts || 0) - Number(prev.workouts || 0) : 0;
-  const sleepDiff = prev ? Number(current.sleep || 0) - Number(prev.sleep || 0) : 0;
-
-  let title = 'Ritim kuruluyor';
-  let tone = 'steady';
-  let text = 'Bu hafta için veri geldikçe yorum netleşecek. Uyku ve hareketi birlikte takip etmek en iyi resmi verir.';
-
-  if (sleepPct >= 100 && workoutPct >= 100) {
-    title = 'Hafta çok güçlü';
-    tone = 'strong';
-    text = 'Uyku ve antrenman hedefleri birlikte tamamlanmış. Bu tempo sürdürülebilirse gelişim çizgisi çok daha netleşir.';
-  } else if (insights.sleepAvg >= 7 && workoutPct >= 80) {
-    title = 'Dengeli gidiyorsun';
-    tone = 'strong';
-    text = 'Uyku hedefte, antrenman tarafı da güçlü. Bir sonraki adım bu düzeni haftadan haftaya korumak.';
-  } else if (insights.sleepAvg < 7 && workoutPct >= 80) {
-    title = 'Hareket iyi, uyku destek istiyor';
-    tone = 'focus';
-    text = 'Antrenman tarafı iyi görünüyor. Toparlanma için uyku ortalamasını 7 saate yaklaştırmak bu haftanın ana odağı olabilir.';
-  } else if (insights.sleepAvg >= 7 && workoutPct < 65) {
-    title = 'Uyku iyi, hareketi yükseltelim';
-    tone = 'focus';
-    text = 'Uyku tarafı toparlanmış. Antrenmanda 1-2 kısa ek seans bu haftayı daha dengeli hale getirebilir.';
-  } else if (insights.workoutDays || insights.sleepDays) {
-    title = 'Takip devam ediyor';
-    tone = 'steady';
-    text = 'Veri girişi başlamış. Bu hafta küçük ama düzenli kayıtlar, sonraki haftanın kıyasını daha anlamlı yapacak.';
-  }
-
-  const bullets = [
-    prev
-      ? `Önceki haftaya göre uyku ${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat`
-      : 'Önceki hafta kıyası için veri bekleniyor',
-    prev
-      ? `Antrenman farkı ${workoutDiff >= 0 ? '+' : ''}${formatMinutes(workoutDiff)} dk`
-      : `${insights.workoutDays} aktif gün kaydedildi`,
-    walkingStats.distance > 0
-      ? `Yürüyüş ${formatDistanceKm(walkingStats.distance)} km · ${formatDecimal(walkingStats.pace)} dk/km`
-      : 'Yürüyüş mesafesi girilirse km takibi açılır',
-  ];
-
-  return { title, text, tone, bullets, walkingStats };
-}
-
-function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
-  if (!weekly.length) return null;
-  const sorted = [...weekly].sort((a, b) => a.start.localeCompare(b.start));
-  const selected = sorted.find(item => item.start === progressWeekStart);
-  if (selected) return selected;
-  const latest = sorted[sorted.length - 1];
-  progressWeekStart = latest.start;
-  return latest;
-}
-
-function renderProgressWeekPicker(weekly = getWeeklyProgressData()) {
-  const el = document.getElementById('progressWeekPicker');
-  if (!el) return;
-
-  if (!weekly.length) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const sorted = [...weekly].sort((a, b) => b.start.localeCompare(a.start));
-  const selected = getSelectedProgressWeek(sorted);
-
-  el.innerHTML = `
-    <div class="progress-week-picker">
-      <div>
-        <span>Görüntülenen hafta</span>
-        <strong>${formatDate(selected.start)} - ${formatDate(shiftIsoDate(selected.end, 1))}</strong>
-      </div>
-      <select id="progressWeekSelect" aria-label="İlerleme haftası seç">
-        ${sorted.map(item => `
-          <option value="${item.start}" ${item.start === selected.start ? 'selected' : ''}>
-            ${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}
-          </option>
-        `).join('')}
-      </select>
-    </div>
-  `;
-
-  document.getElementById('progressWeekSelect')?.addEventListener('change', event => {
-    progressWeekStart = event.target.value;
-    renderProgressSummary();
-    renderProgressCharts();
-    renderProgressWeekPicker();
-  });
-}
-
-function renderProgressSummary() {
-  const el = document.getElementById('progressSummary');
-  if (!el) return;
-
-  const weekly = getWeeklyProgressData();
-  const current = getSelectedProgressWeek(weekly) || { sleep: 0, workouts: 0 };
-  const range = current.start ? current : getDashboardWeekRange();
-  const rangeStart = parseIsoDateParts(range.start);
-  const dayBeforeRange = new Date(rangeStart.year, rangeStart.month - 1, rangeStart.day - 1);
-  const previousRange = getWeekRange(toLocalIsoDate(dayBeforeRange));
-  const prev = weekly.find(item => item.start === previousRange.start);
-  const previousDailyTotals = getWeekDailyTotals(previousRange);
-  const measurements = getSortedMeasurements();
-  const first = measurements[0];
-  const last = measurements[measurements.length - 1];
-  const previousMeasure = measurements[measurements.length - 2];
-  const waistMeasurements = getWaistMeasurements();
-  const firstWaist = waistMeasurements[0];
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
-  const previousWaist = waistMeasurements[waistMeasurements.length - 2];
-
-  const sleepPct = Math.min(100, Math.round((current.sleep / SLEEP_TARGET) * 100));
-  const workoutPct = Math.min(100, Math.round((current.workouts / WORKOUT_TARGET) * 100));
-  const sleepDiff = prev ? current.sleep - prev.sleep : 0;
-  const workoutDiff = prev ? current.workouts - prev.workouts : 0;
-  const weightDiff = first && last ? last.weight - first.weight : 0;
-  const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
-  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
-  const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
-  const categories = getWorkoutCategoriesForRange(range);
-  const categoryText = categories.length
-    ? categories.map(([category, minutes]) => `${category}: ${formatMinutes(minutes)} dk`).join(' · ')
-    : 'Bu hafta kategori verisi yok';
-  const workoutAdjustment = getVerifiedAdjustment(current, 'workouts');
-  const categoryAndAdjustmentText = workoutAdjustment
-    ? `${categoryText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
-    : categoryText;
-  const insights = getWeekInsights(current, range);
-  const topCategoryLabel = insights.topCategory
-    ? `${insights.topCategory[0]} · ${formatMinutes(insights.topCategory[1])} dk`
-    : 'Veri bekleniyor';
-  const bestSleepLabel = insights.bestSleep
-    ? `${formatDate(insights.bestSleep.date)} · ${insights.bestSleep.hours} saat`
-    : 'Veri bekleniyor';
-  const bestWorkoutLabel = insights.bestWorkout
-    ? `${formatDate(insights.bestWorkout.date)} · ${formatMinutes(insights.bestWorkout.duration)} dk`
-    : 'Veri bekleniyor';
-
-  const periodTitle = `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`;
-  const periodLabel = range.start === getWeekRange(today()).start ? 'Bu hafta' : 'Son aktif hafta';
-  const sleepComparison = prev && previousDailyTotals.sleep.length
-    ? `${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / önceki hafta`
-    : 'Önceki hafta kaydı yok';
-  const workoutComparison = prev && previousDailyTotals.workouts.length
-    ? `${workoutDiff >= 0 ? '+' : ''}${formatMinutes(workoutDiff)} dk / önceki hafta`
-    : 'Önceki hafta kaydı yok';
-
-  el.innerHTML = `
-    <div class="progress-period">
-      <span>${periodLabel}</span>
-      <strong>${periodTitle}</strong>
-    </div>
-    <div class="progress-grid">
-      <div class="progress-metric-card">
-        <span>Uyku</span>
-        <strong>${current.sleep.toFixed(1)} saat</strong>
-        <div class="metric-track"><i style="width:${sleepPct}%"></i></div>
-        <small>${sleepComparison}</small>
-      </div>
-
-      <div class="progress-metric-card">
-          <span>Antrenman</span>
-        <strong>${formatMinutes(current.workouts)} dk</strong>
-        <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
-        <small>${workoutComparison}</small>
-        <small>${categoryAndAdjustmentText}</small>
-      </div>
-
-      <div class="progress-metric-card">
-        <span>Kilo</span>
-        <strong>${last ? `${last.weight} kg` : '—'}</strong>
-        <small>Toplam: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg · Son: ${lastWeightDiff > 0 ? '+' : ''}${lastWeightDiff.toFixed(1)} kg</small>
-      </div>
-
-      <div class="progress-metric-card">
-        <span>Bel</span>
-        <strong>${lastWaist ? `${lastWaist.waist} cm` : '—'}</strong>
-        <small>${waistDiff === null ? 'Her 4. tartıda takip edilir' : `Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff === null ? '—' : `${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm`}`}</small>
-      </div>
-    </div>
-
-    <div class="progress-insight-grid">
-      <div class="progress-insight-card">
-        <span>Kayıtlı gün ortalaması</span>
-        <strong>${insights.sleepAvg.toFixed(1)} saat/gün</strong>
-        <small>${insights.sleepDays || 0} kayıtlı gün üzerinden</small>
-      </div>
-      <div class="progress-insight-card">
-        <span>En iyi uyku</span>
-        <strong>${bestSleepLabel}</strong>
-        <small>Haftanın en yüksek uyku kaydı</small>
-      </div>
-      <div class="progress-insight-card">
-        <span>Antrenman yapılan gün</span>
-        <strong>${insights.workoutDays} gün</strong>
-        <small>Bu hafta antrenman yapılan gün</small>
-      </div>
-      <div class="progress-insight-card">
-        <span>Öne çıkan kategori</span>
-        <strong>${topCategoryLabel}</strong>
-        <small>${bestWorkoutLabel}</small>
-      </div>
-    </div>
-  `;
-}
-function renderProgressCharts() {
-  const weekly = getWeeklyProgressData();
-
-  const latestWeek = getSelectedProgressWeek(weekly);
-
-  const sleepWrap = document.getElementById('sleepBars');
-  const workoutWrap = document.getElementById('workoutBars');
-
-  if (!latestWeek) {
-    setEmptyState(
-      sleepWrap,
-      'Uyku grafiği için kayıt bekleniyor',
-      'İlk uyku kaydını eklediğinde haftalık uyku düzenin burada görünür.',
-      'Uyku Ekle',
-      2
-    );
-    setEmptyState(
-      workoutWrap,
-      'Antrenman grafiği için kayıt bekleniyor',
-      'İlk antrenmanı eklediğinde süre ve yoğunluk dağılımı burada görünür.',
-      'Antrenman Ekle',
-      2
-    );
-    return;
-  }
-
-  if (sleepWrap) {
-    const sleepData = getWeekDailyTotals(latestWeek).sleep;
-    const sleepAvg = sleepData.length ? latestWeek.sleep / sleepData.length : 0;
-    const bestSleep = sleepData.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
-
-    if (!sleepData.length) {
-      setEmptyState(
-        sleepWrap,
-        'Bu hafta uyku kaydı yok',
-        'Bir uyku kaydı eklediğinde günlük uyku düzenin burada grafik olarak görünecek.',
-        'Uyku Ekle',
-        2
-      );
-    } else {
-    sleepWrap.innerHTML = `
-      <div class="chart-mini-head enhanced">
-        <div>
-          <strong>Günlük uyku dağılımı</strong>
-          <span>Hedef aralık: 7-9 saat. Kayıtlı gün ortalaması ${sleepAvg.toFixed(1)} saat/gün</span>
-        </div>
-        <em>${latestWeek.sleep.toFixed(1)} / ${SLEEP_TARGET} saat</em>
-      </div>
-      <div class="chart-stat-row">
-        <div><span>Kayıtlı gün ort.</span><strong>${sleepAvg.toFixed(1)} saat</strong></div>
-        <div><span>En iyi gün</span><strong>${bestSleep ? `${getShortWeekday(bestSleep.date)} · ${formatDecimal(bestSleep.hours)} saat` : '—'}</strong></div>
-        <div><span>Durum</span><strong>${sleepAvg >= 7 ? 'Hedefte' : 'Eksik'}</strong></div>
-      </div>
-      <div class="bar-chart sleep-chart enhanced" style="--target-line: ${Math.min(100, (7 / 10) * 100)}%">
-        ${sleepData.map(item => {
-          const h = Math.min(140, Math.max(18, item.hours * 14));
-          const quality = getSleepQuality(item.hours);
-
-          return `
-            <div class="bar-item">
-              <div class="bar-fill sleep" style="height:${h}px" title="${formatDecimal(item.hours)} saat · ${quality}">
-                <span>${formatDecimal(item.hours)} saat</span>
-              </div>
-              <div class="bar-label">
-                ${getShortWeekday(item.date)}
-              </div>
-              <div class="bar-value">${quality}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-    }
-  }
-
-  if (workoutWrap) {
-    const workoutData = getWeekDailyTotals(latestWeek).workouts;
-    const categories = getWorkoutCategoriesForRange(latestWeek);
-    const walkingStats = getWalkingStatsForRange(latestWeek);
-    const recordedCategoryText = categories.length
-      ? categories.map(([category, duration]) => `${category}: ${formatMinutes(duration)} dk`).join(' · ')
-      : 'Kategori verisi bekleniyor';
-    const distanceText = walkingStats.distance > 0
-      ? ` · Yürüyüş: ${formatDistanceKm(walkingStats.distance)} km`
-      : '';
-    const workoutAdjustment = getVerifiedAdjustment(latestWeek, 'workouts');
-    const categoryText = workoutAdjustment
-      ? `${recordedCategoryText}${distanceText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
-      : `${recordedCategoryText}${distanceText}`;
-    const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
-    const workoutDays = workoutData.length;
-
-    if (!workoutData.length) {
-      setEmptyState(
-        workoutWrap,
-        'Bu hafta antrenman kaydı yok',
-        'Antrenman eklediğinde süre, kategori ve haftalık dağılım burada görünür.',
-        'Antrenman Ekle',
-        2
-      );
-    } else {
-    workoutWrap.innerHTML = `
-      <div class="chart-mini-head enhanced">
-        <div>
-          <strong>Günlük antrenman dağılımı</strong>
-          <span>${categoryText}</span>
-        </div>
-        <em>${workoutDays} antrenman günü</em>
-      </div>
-      <div class="chart-stat-row">
-        <div><span>Antrenman yapılan gün</span><strong>${workoutDays} gün</strong></div>
-        <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
-        <div><span>Odak</span><strong>${categories[0] ? categories[0][0] : '—'}</strong></div>
-      </div>
-      <div class="bar-chart workout-chart enhanced">
-        ${workoutData.map(item => {
-          const h = Math.min(140, Math.max(18, item.duration * 1.35));
-          const category = Object.entries(item.categories)
-            .sort((a, b) => b[1] - a[1])
-            .map(([name, duration]) => `${name}: ${formatMinutes(duration)} dk`)
-            .join(' · ');
-
-          return `
-            <div class="bar-item">
-              <div class="bar-fill workout" style="height:${h}px" title="${category}">
-                <span>${formatMinutes(item.duration)} dk</span>
-              </div>
-              <div class="bar-label">
-                ${getShortWeekday(item.date)}
-              </div>
-              <div class="bar-value">${Object.entries(item.categories)
-                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman'}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-    }
-  }
-}
-function renderProgressList() {
-  const el = document.getElementById('progressList');
-  if (!el) return;
-
-  const data = getWeeklyProgressData()
-    .sort((a, b) => b.start.localeCompare(a.start));
-
-  if (!data.length) {
-    setEmptyState(
-      el,
-      'Haftalık rapor henüz yok',
-      'Uyku ve antrenman kayıtları geldikçe haftalık özetler burada görünür.'
-    );
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="weekly-report-list">
-      ${data.map(item => {
-        const sleepPct = Math.min(100, Math.round((item.sleep / SLEEP_TARGET) * 100));
-        const workoutPct = Math.min(100, Math.round((item.workouts / WORKOUT_TARGET) * 100));
-        const isStrong = sleepPct >= 90 && workoutPct >= 90;
-        const isLight = sleepPct < 65 || workoutPct < 65;
-        const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
-        const categories = getWorkoutCategoriesForRange(item);
-        const categorySummary = categories.length
-          ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${formatMinutes(minutes)} dk`).join(' · ')
-          : 'Kategori bekleniyor';
-        const walkingStats = getWalkingStatsForRange(item);
-        const activitySummary = walkingStats.distance > 0
-          ? `${categorySummary} · Yürüyüş ${formatDistanceKm(walkingStats.distance)} km`
-          : categorySummary;
-        const workoutDays = new Set(
-          state.workouts
-            .filter(workout => workout.date >= item.start && workout.date <= item.end)
-            .map(workout => workout.date)
-        ).size;
-        const workoutRecords = state.workouts
-          .filter(workout => workout.date >= item.start && workout.date <= item.end).length;
-        const sleepDays = item.sleepNights || getWeekDailyTotals(item).sleep.length;
-        const workoutAdjustment = getVerifiedAdjustment(item, 'workouts');
-        const verifiedNote = item.verified
-          ? `Not defteri doğrulandı${workoutAdjustment ? ` · süre farkı ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk` : ''}`
-          : '';
-        const workoutMetric = workoutDays
-          ? `${formatMinutes(item.workouts)} dk · ${workoutDays} gün · ${workoutRecords} kayıt`
-          : 'Kayıt yok';
-
-        return `
-          <div class="weekly-report-row">
-            <div>
-              <strong>${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}</strong>
-              <span>${status}</span>
-              <small>${activitySummary}</small>
-              ${verifiedNote ? `<small>${verifiedNote}</small>` : ''}
-            </div>
-            <div class="weekly-report-metrics">
-              <div>
-                <span>Uyku</span>
-                <strong>${item.sleep.toFixed(1)} saat</strong>
-                <small>${sleepDays}/7 gece${item.verified ? ' · doğrulandı' : ''}</small>
-                <i><b style="width:${sleepPct}%"></b></i>
-              </div>
-              <div>
-                <span>Antrenman</span>
-                <strong>${workoutMetric}</strong>
-                <i><b style="width:${workoutPct}%"></b></i>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
-
-function renderSettings() {
-  normalizeProfileState();
-
-  const nameEl = document.getElementById('settingsName');
-  const startEl = document.getElementById('settingsStartDate');
-  const emailEl = document.getElementById('settingsEmail');
-  const startWeightEl = document.getElementById('settingsStartWeight');
-  const currentWeightEl = document.getElementById('settingsCurrentWeight');
-  const currentWaistEl = document.getElementById('settingsCurrentWaist');
-  const firstGoalEl = document.getElementById('settingsFirstGoal');
-  const finalGoalEl = document.getElementById('settingsFinalGoal');
-  const syncEl = document.getElementById('settingsSyncState');
-  const lastSyncEl = document.getElementById('settingsLastSync');
-  const pendingSyncEl = document.getElementById('settingsPendingSync');
-  const syncErrorEl = document.getElementById('settingsSyncError');
-  const syncNowBtn = document.getElementById('syncNowBtn');
-  const profileThemeToggle = document.getElementById('profileThemeToggle');
-  const measureReminderToggle = document.getElementById('measureReminderToggle');
-  const dailyReminderToggle = document.getElementById('dailyReminderToggle');
-
-  const measurements = getSortedMeasurements();
-  const firstMeasurement = measurements[0];
-  const lastMeasurement = measurements[measurements.length - 1];
-  const lastWaistMeasurement = getLatestWaistMeasurement();
-  const goals = (state.milestones || [])
-    .map(Number)
-    .filter(value => Number.isFinite(value));
-  const firstGoal = goals[0];
-  const finalGoal = Number.isFinite(Number(state.goalWeight))
-    ? Number(state.goalWeight)
-    : goals[goals.length - 1];
-
-  if (nameEl) nameEl.textContent = state.name || 'Sporcu';
-  if (startEl) startEl.textContent = formatDate(state.startDate || START_DATE);
-  if (emailEl) emailEl.textContent = state.userEmail || '—';
-  if (startWeightEl) {
-    const startWeight = state.startWeight ?? firstMeasurement?.weight;
-    startWeightEl.textContent = Number.isFinite(Number(startWeight)) ? `${Number(startWeight).toFixed(1)} kg` : '— kg';
-  }
-  if (currentWeightEl) {
-    currentWeightEl.textContent = lastMeasurement?.weight ? `${Number(lastMeasurement.weight).toFixed(1)} kg` : '— kg';
-  }
-  if (currentWaistEl) {
-    currentWaistEl.textContent = lastWaistMeasurement?.waist ? `${Number(lastWaistMeasurement.waist).toFixed(1)} cm` : 'Aylık takip';
-  }
-  if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
-  if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
-  const syncMeta = ensureSyncMeta();
-  const pendingCount = getPendingSyncCount();
-  if (syncEl) {
-    syncEl.textContent = cloudSyncInProgress
-      ? 'Senkronize ediliyor'
-      : !navigator.onLine
-        ? 'Çevrimdışı kayıt'
-        : syncMeta.lastError
-          ? 'Kontrol gerekli'
-          : 'Cloud hazır';
-    syncEl.className = 'sync-state-badge';
-    syncEl.classList.add(
-      cloudSyncInProgress
-        ? 'is-syncing'
-        : !navigator.onLine
-          ? 'is-offline'
-          : syncMeta.lastError
-            ? 'is-error'
-            : pendingCount
-              ? 'is-pending'
-              : 'is-ready'
-    );
-  }
-  if (lastSyncEl) lastSyncEl.textContent = formatSyncTimestamp(syncMeta.lastSuccess);
-  if (pendingSyncEl) pendingSyncEl.textContent = `${pendingCount} değişiklik`;
-  if (syncErrorEl) {
-    syncErrorEl.hidden = !syncMeta.lastError;
-    syncErrorEl.textContent = syncMeta.lastError ? `Son hata: ${syncMeta.lastError}` : '';
-  }
-  if (syncNowBtn) {
-    syncNowBtn.disabled = cloudSyncInProgress || !navigator.onLine || !hasActiveUser();
-    syncNowBtn.classList.toggle('is-syncing', cloudSyncInProgress);
-    const label = syncNowBtn.querySelector('span');
-    if (label) label.textContent = cloudSyncInProgress ? 'Senkronize Ediliyor' : 'Şimdi Senkronize Et';
-  }
-  if (profileThemeToggle) profileThemeToggle.checked = state.theme === 'dark';
-  if (measureReminderToggle) measureReminderToggle.checked = Boolean(state.preferences?.measureReminder);
-  if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
-}
-
-function renderAll() {
-  normalizeProfileState();
-
-  [
-    renderHero,
-    renderMoti,
-    renderDashboardWeekLabel,
-    renderAchievements,
-    renderDashboardGoalCard,
-    renderStats,
-    renderMeasurementChart,
-    renderWeightSummary,
-    renderWeightList,
-    renderNotes,
-    renderDailyViewControls,
-    renderSleepSummary,
-    renderSleepList,
-    renderWorkoutSummary,
-    renderWorkoutList,
-    updateWorkoutGuidance,
-    renderProgressSummary,
-    renderProgressWeekPicker,
-    renderProgressCharts,
-    renderProgressList,
-    renderSettings,
-    syncMeasureFormDate,
-    applyTheme,
-    clearInitialLoadingStatus,
-  ].forEach(renderFn => {
-    try {
-      renderFn();
-    } catch (error) {
-      console.error('Render hatası:', renderFn.name, error);
-    }
-  });
-}
-
-// SUPABASE
-function getProfileCloudPayload() {
-  return {
-    user_id: getUserId(),
-    name: String(state.name || '').trim(),
-    start_date: state.startDate || START_DATE,
-    start_weight: parseOptionalNumber(state.startWeight),
-    start_waist: parseOptionalNumber(state.startWaist),
-    first_goal: parseOptionalNumber((state.milestones || [])[0]),
-    goal_weight: parseOptionalNumber(state.goalWeight),
-    preferences: {
-      measureReminder: state.preferences?.measureReminder ?? true,
-      dailyReminder: state.preferences?.dailyReminder ?? false,
-    },
-    updated_at: new Date().toISOString(),
-  };
-}
-
-async function saveProfileToSupabase() {
-  const { error } = await db
-    .from('app_profiles')
-    .upsert(getProfileCloudPayload(), { onConflict: 'user_id' });
-
-  if (error) throw error;
-  ensureSyncMeta().pendingProfile = false;
-  stateSave();
-}
-
-async function loadProfileFromSupabase() {
-  const { data, error } = await db
-    .from('app_profiles')
-    .select('*')
-    .eq('user_id', getUserId())
-    .maybeSingle();
-
-  if (error) throw error;
-
-  if (!data) {
-    ensureSyncMeta().pendingProfile = true;
-    stateSave();
-    return;
-  }
-
-  state.name = data.name || state.name;
-  state.startDate = data.start_date || state.startDate || START_DATE;
-  state.startWeight = parseOptionalNumber(data.start_weight);
-  state.startWaist = parseOptionalNumber(data.start_waist);
-
-  const firstGoal = parseOptionalNumber(data.first_goal);
-  const finalGoal = parseOptionalNumber(data.goal_weight);
-  if (firstGoal !== null && finalGoal !== null) {
-    state.goalWeight = finalGoal;
-    state.milestones = [firstGoal, finalGoal];
-  }
-
-  if (data.preferences && typeof data.preferences === 'object') {
-    state.preferences = {
-      measureReminder: data.preferences.measureReminder ?? true,
-      dailyReminder: data.preferences.dailyReminder ?? false,
-    };
-  }
-
-  ensureSyncMeta().pendingProfile = false;
-  stateSave();
-  renderAll();
-}
-
-async function loadMeasurementsFromSupabase() {
-  const localMeasurements = [...(state.measurements || [])];
-  const { data, error } = await db
-    .from('measurements')
-    .select('*')
-    .eq('user_id', getUserId())
-    .order('date', { ascending: false });
-
-  if (error) {
-    console.error('Supabase load hatası:', error);
-    setStatus('Cloud veri yüklenemedi', 'error');
-    throw error;
-  }
-
-  const cloudMeasurements = (data || []).map(item => ({
-    date: item.date,
-    weight: parseFloat(item.weight),
-    waist: parseOptionalNumber(item.waist),
-  })).filter(item => !isRecordDeleted('measurements', item));
-
-  const localOnlyMeasurements = localMeasurements.filter(local =>
-    !isRecordDeleted('measurements', local) &&
-    !cloudMeasurements.some(cloud => cloud.date === local.date)
-  );
-
-  localOnlyMeasurements.forEach(item => markPendingSync('measurements', item.date));
-
-  state.measurements = [...cloudMeasurements, ...localOnlyMeasurements]
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  stateSave();
-  renderAll();
-  console.log('Supabase verileri yüklendi:', data);
-}
-
-async function loadSleepFromSupabase() {
-  const localSleep = Array.isArray(state.sleep) ? [...state.sleep] : [];
-
-  const { data, error } = await db
-    .from('sleep_logs')
-    .select('*')
-    .eq('user_id', getUserId())
-    .order('date', { ascending: false });
-
-  if (error) {
-    console.error('Sleep load hatası:', error);
-    setStatus('Uyku verileri yüklenemedi', 'error');
-    throw error;
-  }
-
-  const cloudSleep = (data || []).map(item => ({
-    id: item.id,
-    date: item.date,
-    hours: parseFloat(item.hours),
-  })).filter(item => !isRecordDeleted('sleep', item));
-
-  const localOnlySleep = localSleep.filter(local =>
-    !isRecordDeleted('sleep', local) &&
-    !cloudSleep.some(cloud => cloud.date === local.date)
-  );
-
-  localOnlySleep.forEach(item => markPendingSync('sleep', item.date));
-
-  state.sleep = [...cloudSleep, ...localOnlySleep]
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  stateSave();
-  renderAll();
-}
-
-async function loadWorkoutsFromSupabase() {
-  const localWorkouts = Array.isArray(state.workouts) ? [...state.workouts] : [];
-
-  const { data, error } = await db
-    .from('workout_logs')
-    .select('*')
-    .eq('user_id', getUserId())
-    .order('date', { ascending: false });
-
-  if (error) {
-    console.error('Workout load hatası:', error);
-    setStatus('Antrenman verileri yüklenemedi', 'error');
-    throw error;
-  }
-
-  const cloudWorkouts = (data || []).map(item => ({
-    id: item.id,
-    date: item.date,
-    type: item.type,
-    duration: Number(item.duration),
-    note: item.note || '',
-  })).filter(item => !isRecordDeleted('workouts', item));
-
-  const localOnlyWorkouts = localWorkouts.filter(local =>
-    !isRecordDeleted('workouts', local) &&
-    !isCloudRecordId(local.id) &&
-    !cloudWorkouts.some(cloud => cloud.id === local.id)
-  );
-
-  state.workouts = [...cloudWorkouts, ...localOnlyWorkouts]
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  stateSave();
-  renderAll();
-}
-
-async function loadNotesFromSupabase() {
-  const localNotes = Array.isArray(state.notes) ? [...state.notes] : [];
-
-  const { data, error } = await db
-    .from('notes')
-    .select('*')
-    .eq('user_id', getUserId())
-    .order('date', { ascending: false });
-
-  if (error) {
-    console.error('Notes load hatası:', error);
-    setStatus('Notlar yüklenemedi', 'error');
-    throw error;
-  }
-
-  const cloudNotes = (data || []).map(item => ({
-    id: item.id,
-    date: item.date,
-    text: item.text,
-  })).filter(item => !isRecordDeleted('notes', item));
-
-  const localOnlyNotes = localNotes.filter(local =>
-    !isRecordDeleted('notes', local) &&
-    !isCloudRecordId(local.id) &&
-    !cloudNotes.some(cloud => cloud.id === local.id)
-  );
-
-  state.notes = [...cloudNotes, ...localOnlyNotes]
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  stateSave();
-  renderAll();
-}
-
-
-async function flushPendingDeletes() {
-  const userId = getUserId();
-  const buckets = state.deletedRecords || {};
-
-  const runDelete = async query => {
-    const { error } = await query;
-    if (error) throw new Error(`Silme işlemi: ${getSyncErrorMessage(error)}`);
-  };
-
-  for (const key of buckets.measurements || []) {
-    if (!key.startsWith('date:')) continue;
-    const date = key.slice(5);
-    await runDelete(db.from('measurements').delete().eq('user_id', userId).eq('date', date));
-    clearPendingSync('measurements', date);
-  }
-
-  for (const key of buckets.sleep || []) {
-    if (isCloudRecordId(key)) {
-      await runDelete(db.from('sleep_logs').delete().eq('user_id', userId).eq('id', key));
-    } else if (key.startsWith('date:')) {
-      const date = key.slice(5);
-      await runDelete(db.from('sleep_logs').delete().eq('user_id', userId).eq('date', date));
-      clearPendingSync('sleep', date);
-    }
-  }
-
-  for (const key of buckets.workouts || []) {
-    if (isCloudRecordId(key)) {
-      await runDelete(db.from('workout_logs').delete().eq('user_id', userId).eq('id', key));
-    }
-  }
-
-  for (const key of buckets.notes || []) {
-    if (isCloudRecordId(key)) {
-      await runDelete(db.from('notes').delete().eq('user_id', userId).eq('id', key));
-    }
-  }
-
-  state.deletedRecords = { measurements: [], sleep: [], workouts: [], notes: [] };
-}
-
-async function pushLocalPendingToSupabase() {
-  if (!canUseCloud()) return { ok: false, error: new Error('Çevrimdışı') };
-
-  const syncMeta = ensureSyncMeta();
-  if (syncMeta.pendingProfile) {
-    await runSyncStage('Profil ve hedefleri gonderme', saveProfileToSupabase);
-  }
-  const pendingMeasurementDates = new Set(syncMeta.pendingMeasurements);
-  const measurements = getSortedMeasurements()
-    .filter(item => pendingMeasurementDates.has(item.date));
-  for (const item of measurements) {
-    if (isRecordDeleted('measurements', item)) continue;
-    const { error } = await runSyncStage('Ölçüm gönderme', () => saveMeasurementToSupabase({
-      user_id: getUserId(),
-      date: item.date,
-      weight: Number(item.weight),
-      waist: parseOptionalNumber(item.waist),
-    }));
-    if (error) throw new Error(`Ölçüm gönderme: ${getSyncErrorMessage(error)}`);
-    clearPendingSync('measurements', item.date);
-  }
-
-  const pendingSleepDates = new Set(syncMeta.pendingSleep);
-  const sleepItems = (Array.isArray(state.sleep) ? state.sleep : [])
-    .filter(item => pendingSleepDates.has(item.date));
-  for (const item of sleepItems) {
-    if (isRecordDeleted('sleep', item)) continue;
-    const { error } = await runSyncStage('Uyku kaydı gönderme', () => saveSleepToSupabase({
-      user_id: getUserId(),
-      date: item.date,
-      hours: Number(item.hours || 0),
-    }));
-    if (error) throw new Error(`Uyku kaydı gönderme: ${getSyncErrorMessage(error)}`);
-    clearPendingSync('sleep', item.date);
-  }
-
-  const localWorkouts = (Array.isArray(state.workouts) ? state.workouts : [])
-    .filter(item => item?.id && String(item.id).startsWith('local-workout-') && !isRecordDeleted('workouts', item));
-
-  for (const item of localWorkouts) {
-    const { data, error } = await db
-      .from('workout_logs')
-      .insert([{
-        user_id: getUserId(),
-        date: item.date,
-        type: item.type,
-        duration: Number(item.duration || 0),
-        note: item.note || '',
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (data?.id) item.id = data.id;
-  }
-
-  const localNotes = (Array.isArray(state.notes) ? state.notes : [])
-    .filter(item => item?.id && String(item.id).startsWith('local-note-') && !isRecordDeleted('notes', item));
-
-  for (const item of localNotes) {
-    const { data, error } = await db
-      .from('notes')
-      .insert([{
-        user_id: getUserId(),
-        date: item.date,
-        text: item.text,
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (data?.id) item.id = data.id;
-  }
-
-  await flushPendingDeletes();
-  stateSave();
-  return { ok: true };
-}
-
-async function loadAllCloudData({ force = false } = {}) {
-  if (!hasActiveUser() || !navigator.onLine) return { ok: false, results: [] };
-  if (!force && !state.onboarded) return { ok: false, results: [] };
-  if (cloudSyncInProgress) return { ok: false, busy: true, results: [] };
-
-  cloudSyncInProgress = true;
-  const syncMeta = ensureSyncMeta();
-  syncMeta.lastAttempt = new Date().toISOString();
-  syncMeta.lastError = '';
-  setSyncDot('busy');
-  renderSettings();
-
-  try {
-    const results = await Promise.allSettled([
-      runSyncStage('Profil ve hedefleri okuma', loadProfileFromSupabase),
-      runSyncStage('Ölçümleri okuma', loadMeasurementsFromSupabase),
-      runSyncStage('Uyku kayıtlarını okuma', loadSleepFromSupabase),
-      runSyncStage('Antrenmanları okuma', loadWorkoutsFromSupabase),
-      runSyncStage('Notları okuma', loadNotesFromSupabase),
-    ]);
-
-    const rejected = results.find(result => result.status === 'rejected');
-    if (rejected) throw rejected.reason;
-
-    recoverOnboardingFromData();
-    normalizeProfileState();
-    await runSyncStage('Bekleyen kayıtları gönderme', pushLocalPendingToSupabase);
-
-    syncMeta.lastSuccess = new Date().toISOString();
-    syncMeta.lastError = '';
-    stateSave();
-    setStatus('Senkron tamamlandı', 'ok');
-    setSyncDot('ok');
-    renderAll();
-    return { ok: true, results };
-  } catch (error) {
-    syncMeta.lastError = getSyncErrorMessage(error);
-    stateSave();
-    setStatus('Senkron tamamlanamadı - yerel kayıtlar korunuyor', 'error');
-    setSyncDot('err');
-    renderSettings();
-    console.warn('Cloud sync failed:', error);
-    return { ok: false, error, results: [] };
-  } finally {
-    cloudSyncInProgress = false;
-    renderSettings();
-  }
-}
-
-async function saveMeasurementToSupabase(payload) {
-  const { data: existingRows, error: lookupError } = await db
-    .from('measurements')
-    .select('id')
-    .eq('user_id', payload.user_id)
-    .eq('date', payload.date)
-    .limit(1);
-
-  if (lookupError) return { error: lookupError };
-
-  if (existingRows && existingRows.length) {
-    return db
-      .from('measurements')
-      .update({
-        weight: payload.weight,
-        waist: payload.waist,
-      })
-      .eq('id', existingRows[0].id);
-  }
-
-  return db
-    .from('measurements')
-    .insert([payload]);
-}
-
-function saveMeasurementLocally(payload) {
-  if (!Array.isArray(state.measurements)) state.measurements = [];
-  unmarkRecordDeleted('measurements', payload);
-  markPendingSync('measurements', payload.date);
-
-  const nextMeasurement = {
-    date: payload.date,
-    weight: payload.weight,
-    waist: payload.waist,
-  };
-
-  const existingIndex = state.measurements.findIndex(item => item.date === payload.date);
-
-  if (existingIndex >= 0) {
-    state.measurements[existingIndex] = {
-      ...state.measurements[existingIndex],
-      ...nextMeasurement,
-    };
-  } else {
-    state.measurements.push(nextMeasurement);
-  }
-
-  state.measurements = getSortedMeasurements();
-  stateSave();
-  renderAll();
-}
-
-async function saveSleepToSupabase(payload) {
-  const { data: existingRows, error: lookupError } = await db
-    .from('sleep_logs')
-    .select('id')
-    .eq('user_id', payload.user_id)
-    .eq('date', payload.date)
-    .limit(1);
-
-  if (lookupError) return { error: lookupError };
-
-  if (existingRows && existingRows.length) {
-    return db
-      .from('sleep_logs')
-      .update({ hours: payload.hours })
-      .eq('id', existingRows[0].id);
-  }
-
-  return db
-    .from('sleep_logs')
-    .insert([payload]);
-}
-
-function saveSleepLocally(payload) {
-  if (!Array.isArray(state.sleep)) state.sleep = [];
-  unmarkRecordDeleted('sleep', payload);
-  markPendingSync('sleep', payload.date);
-
-  const nextSleep = {
-    id: payload.id || `local-sleep-${payload.date}`,
-    date: payload.date,
-    hours: payload.hours,
-  };
-
-  const existingIndex = state.sleep.findIndex(item => item.date === payload.date);
-
-  if (existingIndex >= 0) {
-    state.sleep[existingIndex] = {
-      ...state.sleep[existingIndex],
-      ...nextSleep,
-    };
-  } else {
-    state.sleep.push(nextSleep);
-  }
-
-  state.sleep = [...state.sleep].sort((a, b) => b.date.localeCompare(a.date));
-  stateSave();
-  renderAll();
-}
-
-function saveWorkoutLocally(payload) {
-  if (!Array.isArray(state.workouts)) state.workouts = [];
-  unmarkRecordDeleted('workouts', payload);
-
-  const id = payload.id || `local-workout-${Date.now()}`;
-  state.workouts.push({
-    id,
-    date: payload.date,
-    type: payload.type,
-    duration: payload.duration,
-    note: payload.note || '',
-  });
-
-  state.workouts = [...state.workouts].sort((a, b) => b.date.localeCompare(a.date));
-  stateSave();
-  renderAll();
-  return id;
-}
-
-function saveNoteLocally(payload) {
-  if (!Array.isArray(state.notes)) state.notes = [];
-  unmarkRecordDeleted('notes', payload);
-
-  const id = payload.id || `local-note-${Date.now()}`;
-  state.notes.push({
-    id,
-    date: payload.date,
-    text: payload.text,
-  });
-
-  state.notes = [...state.notes].sort((a, b) => b.date.localeCompare(a.date));
-  stateSave();
-  renderAll();
-  return id;
-}
-
-// ACTIONS
-async function saveMeasurementFromForm() {
-  const dateInput = document.getElementById('measureDateInput');
-  const weightInput = document.getElementById('measureWeightInput');
-  const waistInput = document.getElementById('measureWaistInput');
-
-  if (!dateInput || !weightInput || !waistInput) return;
-
-  const date = dateInput.value || getSuggestedMeasureDate();
-  const weight = parseLocaleNumber(weightInput.value);
-  const waistRaw = waistInput.value.trim();
-  const isWaistWeek = shouldTrackWaist(date);
-  const waist = isWaistWeek && waistRaw ? parseLocaleNumber(waistRaw) : null;
-
-  if (!date || Number.isNaN(weight) || weight <= 0) {
-    alert('Geçerli bir kilo gir.');
-    return;
-  }
-
-  if (date < START_DATE) {
-    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
-    return;
-  }
-
-  if (waist !== null && (Number.isNaN(waist) || waist <= 0)) {
-    alert('Geçerli bir bel ölçümü gir.');
-    return;
-  }
-
-  if (isWaistWeek && waist === null) {
-    alert(getMeasurementSequenceNumber(date) === 1
-      ? 'Başlangıç tartısında bel ölçümünü de ekle.'
-      : 'Bu 4. tartı günü. Lütfen bel ölçümünü de ekle.');
-    return;
-  }
-
-  if (new Date(date).getDay() !== WEEKLY_MEASURE_DAY) {
-    const ok = confirm('Ölçümler pazar günü alınacak şekilde planlandı. Yine de bu tarihe kayıt eklemek ister misin?');
-    if (!ok) return;
-  }
-
-  const payload = {
-    user_id: getUserId(),
-    date,
-    weight: parseFloat(weight.toFixed(1)),
-    waist: waist === null ? null : parseFloat(waist.toFixed(1)),
-  };
-
-  saveMeasurementLocally(payload);
-  setStatus('Ölçüm kaydedildi ✓', 'ok');
-
-  weightInput.value = '';
-  waistInput.value = '';
-  dateInput.value = getSuggestedMeasureDate();
-  updateWaistHint();
-
-  if (!canUseCloud()) return;
-
-  const { error } = await saveMeasurementToSupabase(payload);
-
-  if (error) {
-    console.error('Measurement save error:', error);
-    recordSyncError(error);
-    setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
-  } else {
-    recordSyncSuccess('measurements', payload.date);
-    await loadMeasurementsFromSupabase();
-  }
-}
-
-async function addMeasurement() {
-  if (document.getElementById('measureDateInput')) {
-    await saveMeasurementFromForm();
-    return;
-  }
-
-  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
-  if (!dateInput) return;
-
-  const date = parseDisplayDate(dateInput);
-  if (!date) {
-    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
-    return;
-  }
-
-  if (date < START_DATE) {
-    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
-    return;
-  }
-
-  if (!Array.isArray(state.measurements)) state.measurements = [];
-
-  const alreadyExists = state.measurements.some(item => item.date === date);
-
-  if (alreadyExists) {
-    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
-    return;
-  }
-
-  const weightInput = prompt('Kilonu gir (kg):');
-  const weight = parseLocaleNumber(weightInput);
-  if (!weightInput || Number.isNaN(weight)) return;
-
-  const waistInput = prompt(
-    shouldTrackWaist(date)
-      ? 'Bu 4. tartı günü. Bel ölçünü gir (cm):'
-      : 'Bel ölçünü gir (cm, opsiyonel):'
-  );
-  const waist = waistInput ? parseLocaleNumber(waistInput) : null;
-  if (shouldTrackWaist(date) && (!waistInput || Number.isNaN(waist))) return;
-  if (waistInput && Number.isNaN(waist)) return;
-
-  const measurement = {
-    date,
-    weight: parseFloat(weight.toFixed(1)),
-    waist: waistInput ? parseFloat(waist.toFixed(1)) : null,
-    user_id: getUserId(),
-  };
-
-  saveMeasurementLocally(measurement);
-  setStatus('Ölçüm eklendi ✓', 'ok');
-
-  if (!canUseCloud()) return;
-
-  const { error } = await saveMeasurementToSupabase(measurement);
-
-  if (error) {
-    console.error('Supabase insert hatası:', error);
-    recordSyncError(error);
-    setStatus('Ölçüm yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
-  } else {
-    recordSyncSuccess('measurements', measurement.date);
-    await loadMeasurementsFromSupabase();
-  }
-}
-
-async function deleteWeight(sortedIdx) {
-  if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
-
-  const sorted = [...(state.measurements || [])]
-    .map((item, originalIndex) => ({ ...item, originalIndex }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  const target = sorted[sortedIdx];
-
-  if (!target) return;
-
-  markRecordDeleted('measurements', target);
-  state.measurements = (state.measurements || []).filter((_, index) => index !== target.originalIndex);
-  stateSave();
-  renderAll();
-  setStatus('Ölçüm silindi ✓', 'ok');
-
-  if (!canUseCloud()) return;
-
-  const { error } = await db
-    .from('measurements')
-    .delete()
-    .eq('user_id', getUserId())
-    .eq('date', target.date);
-
-  if (error) {
-    console.error('Supabase delete hatası:', error);
-    recordSyncError(error);
-    setStatus('Ölçüm cihazdan silindi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-  unmarkRecordDeleted('measurements', target);
-  recordSyncSuccess();
-}
-
-async function deleteNote(index) {
-  if (!confirm('Bu notu silmek istediğinden emin misin?')) return;
-
-  const target = state.notes[index];
-  if (!target) return;
-
-  markRecordDeleted('notes', target);
-  state.notes = (state.notes || []).filter((_, itemIndex) => itemIndex !== index);
-  stateSave();
-  renderAll();
-  setStatus('Not silindi ✓', 'ok');
-
-  if (!isCloudRecordId(target.id)) return;
-  if (!canUseCloud()) return;
-
-  const { error } = await db
-    .from('notes')
-    .delete()
-    .eq('id', target.id);
-
-  if (error) {
-    console.error('Note silme hatası:', error);
-    recordSyncError(error);
-    setStatus('Not cihazdan silindi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-  unmarkRecordDeleted('notes', target);
-  recordSyncSuccess();
-}
-
-async function deleteSleep(sortedIdx) {
-  if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
-
-  const sorted = [...(state.sleep || [])]
-    .map((item, originalIndex) => ({ ...item, originalIndex }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const target = sorted[sortedIdx];
-  if (!target) return;
-
-  markRecordDeleted('sleep', target);
-  state.sleep = (state.sleep || []).filter((_, index) => index !== target.originalIndex);
-  stateSave();
-  renderAll();
-  setStatus('Uyku kaydı silindi ✓', 'ok');
-
-  if (!isCloudRecordId(target.id)) return;
-  if (!canUseCloud()) return;
-
-  const { error } = await db
-    .from('sleep_logs')
-    .delete()
-    .eq('id', target.id);
-
-  if (error) {
-    console.error('Sleep silme hatası:', error);
-    recordSyncError(error);
-    setStatus('Uyku cihazdan silindi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-  unmarkRecordDeleted('sleep', target);
-  recordSyncSuccess();
-}
-
-async function addNote() {
-  const noteInput = document.getElementById('noteInput');
-  const text = noteInput ? noteInput.value : prompt('Not gir:');
-  if (!text || !text.trim()) return;
-
-  const payload = {
-    user_id: getUserId(),
-    date: today(),
-    text: text.trim(),
-  };
-
-  const localId = saveNoteLocally(payload);
-  setStatus('Not eklendi ✓', 'ok');
-  if (noteInput) noteInput.value = '';
-
-  if (!canUseCloud()) return;
-
-  const { data, error } = await db
-    .from('notes')
-    .insert([payload])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Note kayıt hatası:', error);
-    recordSyncError(error);
-    setStatus('Not yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-
-  const localNote = state.notes.find(item => item.id === localId);
-  if (localNote && data?.id) localNote.id = data.id;
-  recordSyncSuccess();
-
-  await loadNotesFromSupabase();
-}
-
-async function saveSleep() {
-  const dateInput = document.getElementById('sleepDateInput');
-  const hourInput = document.getElementById('sleepInput');
-
-  if (!dateInput || !hourInput) return;
-
-  const date = dateInput.value || today();
-  const hours = parseLocaleNumber(hourInput.value);
-
-  if (!hours || hours <= 0) {
-    alert('Geçerli bir uyku saati gir');
-    return;
-  }
-
-  const payload = {
-    user_id: getUserId(),
-    date,
-    hours: parseFloat(hours.toFixed(1)),
-  };
-
-  saveSleepLocally(payload);
-  setStatus('Uyku kaydedildi ✓', 'ok');
-  hourInput.value = '';
-  document.querySelectorAll('[data-sleep-hours]').forEach(btn => btn.classList.remove('is-selected'));
-  releaseMobileInputFocus();
-  dateInput.value = today();
-
-  if (!canUseCloud()) return;
-
-  const { error } = await saveSleepToSupabase(payload);
-
-  if (error) {
-    console.error('Sleep kayıt hatası:', error);
-    recordSyncError(error);
-    setStatus('Uyku yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-
-  recordSyncSuccess('sleep', payload.date);
-  await loadSleepFromSupabase();
-}
-
-async function saveWorkout() {
-  const dateInput = document.getElementById('workoutDateInput');
-  const categoryInput = document.getElementById('workoutCategoryInput');
-  const typeInput = document.getElementById('workoutTypeInput');
-  const durationInput = document.getElementById('workoutDurationInput');
-  const distanceInput = document.getElementById('workoutDistanceInput');
-  const intensityInput = document.getElementById('workoutIntensityInput');
-  const noteInput = document.getElementById('workoutNoteInput');
-
-  if (!dateInput || !typeInput || !durationInput) return;
-
-  const date = dateInput.value || today();
-  const type = typeInput.value;
-  const category = categoryInput ? categoryInput.value : getWorkoutCategory(type);
-  const intensity = intensityInput ? intensityInput.value : 'Orta';
-  const duration = parseLocaleNumber(durationInput.value);
-  const distance = isWalkingWorkout(type) && distanceInput?.value
-    ? parseLocaleNumber(distanceInput.value)
-    : 0;
-  const freeNote = noteInput ? noteInput.value.trim() : '';
-  const note = [`Kategori: ${category}`, `Zorluk: ${intensity}`, freeNote]
-    .filter(Boolean)
-    .join(' · ');
-
-  if (!duration || duration <= 0) {
-    alert('Geçerli bir antrenman süresi gir');
-    return;
-  }
-
-  if (distanceInput?.value && (!distance || distance <= 0)) {
-    alert('Geçerli bir yürüyüş mesafesi gir');
-    return;
-  }
-
-  const payload = {
-    user_id: getUserId(),
-    date,
-    type,
-    duration: parseFloat(duration.toFixed(1)),
-    note: setWorkoutDistanceInNote(note, distance),
-  };
-
-  const localId = saveWorkoutLocally(payload);
-  setStatus('Antrenman kaydedildi ✓', 'ok');
-  durationInput.value = '';
-  if (distanceInput) distanceInput.value = '';
-  document.querySelectorAll('[data-workout-minutes]').forEach(btn => btn.classList.remove('is-selected'));
-  releaseMobileInputFocus();
-  if (noteInput) noteInput.value = '';
-  dateInput.value = today();
-
-  if (!canUseCloud()) return;
-
-  const { data, error } = await db
-    .from('workout_logs')
-    .insert([payload])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Workout kayıt hatası:', error);
-    recordSyncError(error);
-    setStatus('Antrenman yerel kaydedildi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-
-  const localWorkout = state.workouts.find(item => item.id === localId);
-  if (localWorkout && data?.id) localWorkout.id = data.id;
-  recordSyncSuccess();
-
-  await loadWorkoutsFromSupabase();
-}
-
-async function editWorkout(sortedIdx) {
-  const sorted = [...(state.workouts || [])]
-    .map((item, originalIndex) => ({ ...item, originalIndex }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const target = sorted[sortedIdx];
-  if (!target) return;
-
-  const durationInput = prompt('Antrenman süresini gir (dk):', formatMinutes(target.duration));
-  if (durationInput === null) return;
-
-  const duration = parseLocaleNumber(durationInput);
-  if (!duration || duration <= 0) {
-    alert('Geçerli bir antrenman süresi gir.');
-    return;
-  }
-
-  const normalizedDuration = parseFloat(duration.toFixed(1));
-  let updatedNote = target.note || '';
-  if (isWalkingWorkout(target.type)) {
-    const currentDistance = getWorkoutDistanceFromNote(target.note);
-    const distanceInput = prompt('Yürüyüş mesafesini gir (km, boş bırakabilirsin):', currentDistance || '');
-    if (distanceInput === null) return;
-    const distance = distanceInput ? parseLocaleNumber(distanceInput) : 0;
-    if (distanceInput && (!distance || distance <= 0)) {
-      alert('Geçerli bir yürüyüş mesafesi gir.');
-      return;
-    }
-    updatedNote = setWorkoutDistanceInNote(target.note, distance);
-  }
-  state.workouts[target.originalIndex] = {
-    ...state.workouts[target.originalIndex],
-    duration: normalizedDuration,
-    note: updatedNote,
-  };
-  stateSave();
-  renderAll();
-
-  if (!isCloudRecordId(target.id) || !canUseCloud()) {
-    setStatus('Antrenman süresi cihazda güncellendi', 'ok');
-    return;
-  }
-
-  const { error } = await db
-    .from('workout_logs')
-    .update({ duration: normalizedDuration, note: updatedNote })
-    .eq('user_id', getUserId())
-    .eq('id', target.id);
-
-  if (error) {
-    recordSyncError(error);
-    setStatus('Süre cihazda güncellendi - cloud güncellemesi başarısız', 'error');
-    return;
-  }
-
-  recordSyncSuccess();
-  setStatus('Antrenman süresi güncellendi ✓', 'ok');
-}
-
-async function deleteWorkout(sortedIdx) {
-  if (!confirm('Bu antrenman kaydını silmek istediğinden emin misin?')) return;
-
-  const sorted = [...(state.workouts || [])]
-    .map((item, originalIndex) => ({ ...item, originalIndex }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const target = sorted[sortedIdx];
-  if (!target) return;
-
-  markRecordDeleted('workouts', target);
-  state.workouts = (state.workouts || []).filter((_, index) => index !== target.originalIndex);
-  stateSave();
-  renderAll();
-  setStatus('Antrenman kaydı silindi ✓', 'ok');
-
-  if (!isCloudRecordId(target.id)) return;
-  if (!canUseCloud()) return;
-
-  const { error } = await db
-    .from('workout_logs')
-    .delete()
-    .eq('id', target.id);
-
-  if (error) {
-    console.error('Workout silme hatası:', error);
-    recordSyncError(error);
-    setStatus('Antrenman cihazdan silindi - cloud izni kontrol edilecek', 'ok');
-    return;
-  }
-  unmarkRecordDeleted('workouts', target);
-  recordSyncSuccess();
-}
-
-function editName() {
-  const newName = prompt('İsmini gir:', state.name || '');
-  if (!newName) return;
-
-  state.name = newName.trim();
-  ensureSyncMeta().pendingProfile = true;
-  stateSave();
-  renderAll();
-  if (canUseCloud()) {
-    saveProfileToSupabase().catch(recordSyncError);
-  }
-  setStatus('İsim güncellendi ✓', 'ok');
-}
-
-function editGoals() {
-  const firstGoalCurrent = (state.milestones || [])[0] || '';
-  const finalGoalCurrent = state.goalWeight || '';
-  const firstMeasurement = getSortedMeasurements()[0];
-  const startWeightCurrent = state.startWeight ?? firstMeasurement?.weight ?? '';
-  const startWaistCurrent = state.startWaist ?? firstMeasurement?.waist ?? '';
-
-  const startWeightInput = prompt('Başlangıç kilonu gir (kg):', startWeightCurrent);
-  if (startWeightInput === null) return;
-
-  const startWaistInput = prompt('Başlangıç bel ölçünü gir (cm):', startWaistCurrent);
-  if (startWaistInput === null) return;
-
-  const firstGoalInput = prompt('İlk hedef kilonu gir (kg):', firstGoalCurrent);
-  if (firstGoalInput === null) return;
-
-  const finalGoalInput = prompt('Final hedef kilonu gir (kg):', finalGoalCurrent);
-  if (finalGoalInput === null) return;
-
-  const startWeight = parseLocaleNumber(startWeightInput);
-  const startWaist = parseLocaleNumber(startWaistInput);
-  const firstGoal = parseLocaleNumber(firstGoalInput);
-  const finalGoal = parseLocaleNumber(finalGoalInput);
-
-  if ([startWeight, startWaist, firstGoal, finalGoal].some(value => Number.isNaN(value))) {
-    alert('Lütfen tüm hedef alanlarına geçerli sayı gir.');
-    return;
-  }
-
-  state.startWeight = parseFloat(startWeight.toFixed(1));
-  state.startWaist = parseFloat(startWaist.toFixed(1));
-  state.goalWeight = parseFloat(finalGoal.toFixed(1));
-  state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
-  ensureSyncMeta().pendingProfile = true;
-
-  if (!state.measurements?.length) {
-    state.measurements = [{
-      date: state.startDate || START_DATE,
-      weight: state.startWeight,
-      waist: state.startWaist,
-    }];
-  } else {
-    const sorted = [...state.measurements].sort((a, b) => a.date.localeCompare(b.date));
-    sorted[0] = {
-      ...sorted[0],
-      weight: state.startWeight,
-      waist: state.startWaist,
-    };
-    state.measurements = sorted;
-  }
-
-  const firstDate = getSortedMeasurements()[0]?.date;
-  if (firstDate) markPendingSync('measurements', firstDate);
-
-  stateSave();
-  renderAll();
-  if (canUseCloud()) {
-    saveProfileToSupabase().catch(recordSyncError);
-  }
-  setStatus('Hedefler güncellendi ✓', 'ok');
-}
-
-function updatePreference(key, value) {
-  state.preferences = {
-    measureReminder: true,
-    dailyReminder: false,
-    ...(state.preferences || {}),
-    [key]: Boolean(value),
-  };
-  ensureSyncMeta().pendingProfile = true;
-  stateSave();
-  renderSettings();
-  if (canUseCloud()) {
-    saveProfileToSupabase().catch(recordSyncError);
-  }
-}
-
-function showAuth() {
-  if (document.getElementById('authModal')) return;
-
-  const modal = document.createElement('div');
-  modal.id = 'authModal';
-  modal.className = 'onboarding-modal';
-  modal.innerHTML = `
-    <div class="onboarding-card auth-card">
-      <div class="onboarding-kicker">FitTracker hesabı</div>
-      <h2 id="authTitle">Giriş yap</h2>
-      <p id="authCopy">Web ve iPhone PWA aynı hesapla senkron çalışır.</p>
-
-      <div class="auth-tabs">
-        <button class="active" id="authSignInTab" type="button">Giriş</button>
-        <button id="authSignUpTab" type="button">Kayıt</button>
-      </div>
-
-      <div class="onboarding-grid single">
-        <label>
-          E-posta
-          <input id="authEmail" type="email" autocomplete="email" placeholder="ornek@mail.com" />
-        </label>
-        <label>
-          Şifre
-          <input id="authPassword" type="password" autocomplete="current-password" placeholder="En az 6 karakter" />
-        </label>
-      </div>
-
-      <button class="btn onboarding-submit" id="authSubmit">Giriş yap</button>
-      <button class="auth-secondary" id="authResetPassword" type="button">Şifremi unuttum</button>
-      <div class="auth-message" id="authMessage"></div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-  document.getElementById('authSignInTab')?.addEventListener('click', () => setAuthMode('signIn'));
-  document.getElementById('authSignUpTab')?.addEventListener('click', () => setAuthMode('signUp'));
-  document.getElementById('authSubmit')?.addEventListener('click', submitAuth);
-  document.getElementById('authResetPassword')?.addEventListener('click', resetPassword);
-}
-
-function setAuthMode(mode) {
-  authMode = mode;
-  const signInTab = document.getElementById('authSignInTab');
-  const signUpTab = document.getElementById('authSignUpTab');
-  const title = document.getElementById('authTitle');
-  const copy = document.getElementById('authCopy');
-  const submit = document.getElementById('authSubmit');
-
-  signInTab?.classList.toggle('active', mode === 'signIn');
-  signUpTab?.classList.toggle('active', mode === 'signUp');
-
-  if (title) title.textContent = mode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur';
-  if (copy) copy.textContent = mode === 'signIn'
-    ? 'Web ve iPhone PWA aynı hesapla senkron çalışır.'
-    : 'Bir hesap oluştur, sonra iPhone’da aynı hesapla giriş yap.';
-  if (submit) submit.textContent = mode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur';
-}
-
-function setAuthMessage(message, isError = false) {
-  const el = document.getElementById('authMessage');
-  if (!el) return;
-  el.textContent = getFriendlyAuthMessage(message);
-  el.classList.toggle('error', isError);
-}
-
-function getFriendlyAuthMessage(message = '') {
-  const text = String(message);
-
-  if (/invalid login credentials/i.test(text)) {
-    return 'E-posta veya şifre hatalı. Daha önce kayıt olduysan tekrar kayıt olma; aynı bilgilerle giriş yapmayı dene veya şifre sıfırla.';
-  }
-
-  if (/email not confirmed/i.test(text)) {
-    return 'E-posta henüz onaylanmamış görünüyor. Gelen kutundaki doğrulama linkine tıkla, sonra giriş yap.';
-  }
-
-  if (/user already registered|already registered/i.test(text)) {
-    return 'Bu e-posta ile hesap zaten var. Kayıt yerine Giriş sekmesini kullan.';
-  }
-
-  if (/password/i.test(text) && /6|six|short/i.test(text)) {
-    return 'Şifre en az 6 karakter olmalı.';
-  }
-
-  return text;
-}
-
-async function submitAuth() {
-  const email = document.getElementById('authEmail')?.value.trim();
-  const password = document.getElementById('authPassword')?.value || '';
-  const submitBtn = document.getElementById('authSubmit');
-
-  if (!email || password.length < 6) {
-    setAuthMessage('E-posta ve en az 6 karakterli şifre gir.', true);
-    return;
-  }
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.dataset.originalText = submitBtn.textContent;
-    submitBtn.textContent = 'İşleniyor...';
-  }
-
-  setAuthMessage('İşleniyor...');
-
-  try {
-    const authPromise = authMode === 'signIn'
-      ? db.auth.signInWithPassword({ email, password })
-      : db.auth.signUp({ email, password });
-
-    const authResult = await withTimeout(authPromise, 12000, 'Giriş');
-
-    if (authResult.timedOut) {
-      const { data } = await db.auth.getSession();
-      if (data?.session) {
-        await continueWithSession(data.session, { skipCloudWait: true });
-        return;
-      }
-      setAuthMessage('Giriş isteği uzun sürdü. İnternet bağlantını kontrol edip tekrar dene.', true);
-      return;
-    }
-
-    if (authResult.error) {
-      setAuthMessage(authResult.error.message || 'Giriş sırasında hata oluştu.', true);
-      return;
-    }
-
-    const result = authResult.value;
-
-    if (result?.error) {
-      setAuthMessage(result.error.message, true);
-      return;
-    }
-
-    let session = result?.data?.session;
-
-    if (!session) {
-      const sessionResult = await withTimeout(db.auth.getSession(), 3500, 'Oturum alma');
-      session = sessionResult?.value?.data?.session;
-    }
-
-    if (!session) {
-      setAuthMessage(
-        authMode === 'signUp'
-          ? 'Kayıt tamamlandı. E-posta doğrulaması açıksa gelen kutunu kontrol et.'
-          : 'Giriş tamamlandıysa birkaç saniye içinde açılmazsa sayfayı yenile.',
-        false
-      );
-      return;
-    }
-
-    await continueWithSession(session, { skipCloudWait: true });
-  } catch (error) {
-    console.error('Auth işlem hatası:', error);
-    setAuthMessage(error?.message || 'Giriş sırasında beklenmeyen hata oluştu.', true);
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = submitBtn.dataset.originalText || (authMode === 'signIn' ? 'Giriş yap' : 'Hesap oluştur');
-    }
-  }
-}
-
-async function resetPassword() {
-  const email = document.getElementById('authEmail')?.value.trim();
-  if (!email) {
-    setAuthMessage('Şifre sıfırlamak için e-posta gir.', true);
-    return;
-  }
-
-  const { error } = await db.auth.resetPasswordForEmail(email);
-  setAuthMessage(error ? error.message : 'Şifre sıfırlama bağlantısı gönderildi.', Boolean(error));
-}
-
-async function signOut() {
-  activeSessionLoad = null;
-  try {
-    await db.auth.signOut({ scope: 'local' });
-  } catch (error) {
-    console.warn('Çıkış yapılırken hata:', error);
-  }
-
-  try {
-    localStorage.removeItem('fittracker-pro-auth');
-    Object.keys(localStorage)
-      .filter(key => key.includes('supabase') || key.includes('auth-token'))
-      .forEach(key => localStorage.removeItem(key));
-  } catch (error) {
-    console.warn('Auth cache temizlenemedi:', error);
-  }
-
-  state = {
-    ...state,
-    userId: '',
-    userEmail: '',
-    onboarded: false,
-    name: '',
-    measurements: [],
-    workouts: [],
-    notes: [],
-    sleep: [],
-    deletedRecords: {
-      measurements: [],
-      sleep: [],
-      workouts: [],
-      notes: [],
-    },
-    syncMeta: {
-      lastSuccess: '',
-      lastAttempt: '',
-      lastError: '',
-      pendingMeasurements: [],
-      pendingSleep: [],
-    },
-  };
-  document.getElementById('authModal')?.remove();
-  document.getElementById('onboardingModal')?.remove();
-  renderAll();
-  setStatus('Giriş bekleniyor', '');
-  showAuth();
-}
-
-async function continueWithSession(session, options = {}) {
-  if (!session?.user?.id) {
-    showAuth();
-    return;
-  }
-
-  state.userId = session.user.id;
-  state.userEmail = session.user.email || state.userEmail || '';
-  stateLoad();
-  state.userId = session.user.id;
-  state.userEmail = session.user.email || state.userEmail || '';
-  state.name = state.name || getSessionDisplayName(session);
-
-  if (!hasTrackedData() && !Number.isFinite(Number(state.startWeight))) {
-    state.onboarded = false;
-  }
-
-  stateSave();
-  document.getElementById('authModal')?.remove();
-
-  renderAll();
-  updateOnlineStatus();
-
-  setStatus('Veriler yükleniyor...', '');
-  const cloudLoad = withTimeout(loadAllCloudData({ force: true }), options.skipCloudWait ? 4500 : 12000, 'Bulut veri yükleme');
-
-  const finishAfterCloud = result => {
-    if (result?.error) console.warn('Bulut veri yükleme hatası:', result.error);
-    normalizeProfileState();
-    renderAll();
-
-    const hasProfileStart = Number.isFinite(Number(state.startWeight));
-    if (!state.onboarded && !hasTrackedData() && !hasProfileStart) {
-      setStatus('Başlangıç kurulumu bekleniyor', '');
-      showOnboarding();
-      return;
-    }
-
-    if (result?.timedOut) {
-      setStatus('Cloud yanıtı gecikti - yerel veriler hazır', 'error');
-    } else if (result?.value?.busy) {
-      setStatus('Senkronizasyon devam ediyor', 'ok');
-    } else if (result?.error || result?.value?.ok === false) {
-      setStatus('Yerel veriler hazır - senkron kontrol edilmeli', 'error');
-    } else {
-      setStatus('Senkron aktif', 'ok');
-    }
-  };
-
-  if (options.skipCloudWait) {
-    cloudLoad.then(finishAfterCloud);
-  } else {
-    const cloudResult = await cloudLoad;
-    finishAfterCloud(cloudResult);
-  }
-}
-
-function showOnboarding() {
-  if (document.getElementById('onboardingModal')) return;
-
-  const modal = document.createElement('div');
-  modal.id = 'onboardingModal';
-  modal.className = 'onboarding-modal';
-  modal.innerHTML = `
-    <div class="onboarding-card">
-      <div class="onboarding-kicker">FitTracker kurulumu</div>
-      <h2>Başlangıç bilgilerini ekle</h2>
-      <p>Bu bilgiler hedef kartlarını, haftalık ölçüm akışını ve ilerleme grafiklerini kişiselleştirir.</p>
-
-      <div class="onboarding-grid">
-        <label>
-          İsim
-          <input id="onboardName" type="text" placeholder="Adın" />
-        </label>
-        <label>
-          Başlangıç tarihi
-          <input id="onboardStartDate" type="date" min="${START_DATE}" value="${START_DATE}" />
-        </label>
-        <label>
-          Başlangıç kilosu
-          <input id="onboardStartWeight" type="number" step="0.1" placeholder="kg" />
-        </label>
-        <label>
-          Başlangıç bel ölçümü
-          <input id="onboardStartWaist" type="number" step="0.1" placeholder="cm" />
-        </label>
-        <label>
-          İlk hedef kilo
-          <input id="onboardFirstGoal" type="number" step="0.1" placeholder="örn: 95" />
-        </label>
-        <label>
-          Ana hedef kilo
-          <input id="onboardGoalWeight" type="number" step="0.1" placeholder="örn: 85" />
-        </label>
-      </div>
-
-      <button class="btn onboarding-submit" id="onboardSubmit">Başla</button>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-  document.getElementById('onboardSubmit')?.addEventListener('click', completeOnboarding);
-}
-
-async function completeOnboarding() {
-  const name = document.getElementById('onboardName')?.value.trim();
-  const startDate = document.getElementById('onboardStartDate')?.value || START_DATE;
-  const startWeight = parseLocaleNumber(document.getElementById('onboardStartWeight')?.value || '');
-  const startWaist = parseLocaleNumber(document.getElementById('onboardStartWaist')?.value || '');
-  const firstGoal = parseLocaleNumber(document.getElementById('onboardFirstGoal')?.value || '');
-  const goalWeight = parseLocaleNumber(document.getElementById('onboardGoalWeight')?.value || '');
-
-  if (!name || Number.isNaN(startWeight) || Number.isNaN(startWaist) || Number.isNaN(firstGoal) || Number.isNaN(goalWeight)) {
-    alert('Lütfen tüm başlangıç bilgilerini doldur.');
-    return;
-  }
-
-  if (startDate < START_DATE) {
-    alert('Başlangıç tarihi 31 Mayıs 2026’dan önce olamaz.');
-    return;
-  }
-
-  state.onboarded = true;
-  state.name = name;
-  state.startDate = startDate;
-  state.startWeight = parseFloat(startWeight.toFixed(1));
-  state.startWaist = parseFloat(startWaist.toFixed(1));
-  state.goalWeight = parseFloat(goalWeight.toFixed(1));
-  state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
-  ensureSyncMeta().pendingProfile = true;
-  state.measurements = [{
-    date: startDate,
-    weight: state.startWeight,
-    waist: state.startWaist,
-  }];
-  state.sleep = [];
-  state.workouts = [];
-  state.notes = [];
-  state.weights = [];
-  state.nutrition = [];
-  state.deletedRecords = {
-    measurements: [],
-    sleep: [],
-    workouts: [],
-  notes: [],
-};
-
-  stateSave();
-
-  if (!canUseCloud()) {
-    setStatus('Kurulum yerel kaydedildi - giriş sonrası cloud senkronlanacak', 'ok');
-    document.getElementById('onboardingModal')?.remove();
-    renderAll();
-    return;
-  }
-
-  await saveProfileToSupabase();
-
-  const { error } = await db
-    .from('measurements')
-    .insert([{
-      user_id: getUserId(),
-      date: startDate,
-      weight: state.startWeight,
-      waist: state.startWaist,
-    }]);
-
-  if (error) {
-    console.warn('İlk ölçüm cloud kaydı yapılamadı:', error);
-    setStatus('Kurulum kaydedildi, cloud ölçüm daha sonra senkronlanacak', 'ok');
-  } else {
-    setStatus('Kurulum tamamlandı ✓', 'ok');
-  }
-
-  document.getElementById('onboardingModal')?.remove();
-  renderAll();
-  if (!error) {
-    await loadAllCloudData();
-  }
-}
-
-// ONLINE STATUS
-function updateOnlineStatus() {
-  const notice = document.getElementById('offlineNotice');
-
-  if (navigator.onLine) {
-    if (notice) notice.classList.remove('visible');
-    const pendingCount = getPendingSyncCount();
-    setStatus(pendingCount ? `${pendingCount} değişiklik senkron bekliyor` : 'Çevrimiçi', 'ok');
-    setSyncDot(pendingCount ? 'busy' : ensureSyncMeta().lastError ? 'err' : 'ok');
-  } else {
-    if (notice) notice.classList.add('visible');
-    setStatus('Çevrimdışı - veriler yerel olarak saklanır', 'error');
-    setSyncDot('err');
-  }
-  renderSettings();
-}
-
-function handleOnline() {
-  updateOnlineStatus();
-  if (state.onboarded && hasActiveUser()) loadAllCloudData({ force: true });
-}
-
-async function syncNow() {
-  if (!navigator.onLine) {
-    setStatus('Senkron için internet bağlantısı gerekiyor', 'error');
-    return;
-  }
-
-  const result = await loadAllCloudData({ force: true });
-  if (result?.ok) setStatus('Web ve PWA verileri senkronize edildi', 'ok');
-}
-
-// PWA INSTALL
-let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-
-  const banner = document.getElementById('installBanner');
-  if (banner) banner.classList.add('visible');
-});
-
-function installApp() {
-  if (!deferredPrompt) return;
-
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then(({ outcome }) => {
-    deferredPrompt = null;
-
-    const banner = document.getElementById('installBanner');
-    if (banner) banner.classList.remove('visible');
-
-    if (outcome === 'accepted') {
-      setStatus('Uygulama yüklendi ✓', 'ok');
-    }
-  });
-}
-
-// INIT
-function bindUiEvents() {
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && state.onboarded) loadAllCloudData();
-  });
-
-  const sleepBtn = document.getElementById('saveSleepBtn');
-  if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
-
-  const sleepDateInput = document.getElementById('sleepDateInput');
-  if (sleepDateInput) sleepDateInput.value = today();
-
-  const workoutDateInput = document.getElementById('workoutDateInput');
-  if (workoutDateInput) workoutDateInput.value = today();
-
-  const measureDateInput = document.getElementById('measureDateInput');
-  if (measureDateInput) {
-    syncMeasureFormDate(true);
-    measureDateInput.addEventListener('change', updateWaistHint);
-  }
-
-  const workoutBtn = document.getElementById('saveWorkoutBtn');
-  if (workoutBtn) workoutBtn.addEventListener('click', saveWorkout);
-
-  const measurementBtn = document.getElementById('saveMeasurementBtn');
-  if (measurementBtn) measurementBtn.addEventListener('click', saveMeasurementFromForm);
-
-  const workoutCategoryInput = document.getElementById('workoutCategoryInput');
-  if (workoutCategoryInput) {
-    workoutCategoryInput.addEventListener('change', updateWorkoutTypes);
-    updateWorkoutTypes();
-  }
-
-  const workoutTypeInput = document.getElementById('workoutTypeInput');
-  if (workoutTypeInput) {
-    workoutTypeInput.addEventListener('change', () => {
-      updateWorkoutDistanceField();
-      updateWorkoutGuidance();
-    });
-    updateWorkoutDistanceField();
-  }
-
-  document.querySelectorAll('[data-sleep-hours]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById('sleepInput');
-      if (input) input.value = btn.dataset.sleepHours;
-      btn.closest('.quick-picks')?.querySelectorAll('button').forEach(item => item.classList.remove('is-selected'));
-      btn.classList.add('is-selected');
-      releaseMobileInputFocus();
-    });
-  });
-
-  document.querySelectorAll('[data-workout-minutes]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById('workoutDurationInput');
-      if (input) input.value = btn.dataset.workoutMinutes;
-      btn.closest('.quick-picks')?.querySelectorAll('button').forEach(item => item.classList.remove('is-selected'));
-      btn.classList.add('is-selected');
-      releaseMobileInputFocus();
-    });
-  });
-
-  document.querySelectorAll('[data-daily-view]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      dailyView = btn.dataset.dailyView || 'week';
-      renderDailyViewControls();
-      renderSleepSummary();
-      renderSleepList();
-      renderWorkoutSummary();
-      renderWorkoutList();
-    });
-  });
-
-  const signOutBtn = document.getElementById('signOutBtn');
-  if (signOutBtn) signOutBtn.addEventListener('click', signOut);
-
-  const syncNowBtn = document.getElementById('syncNowBtn');
-  if (syncNowBtn) syncNowBtn.addEventListener('click', syncNow);
-
-  window.addEventListener('focus', () => {
-    if (state.onboarded) loadAllCloudData();
-  });
-
-  const weightBtn = document.getElementById('openAddWeightBtn');
-  if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
-
-  const themeBtn = document.getElementById('themeBtn');
-  if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
-
-  const profileThemeToggle = document.getElementById('profileThemeToggle');
-  if (profileThemeToggle) {
-    profileThemeToggle.addEventListener('change', event => {
-      state.theme = event.target.checked ? 'dark' : 'light';
-      applyTheme();
-      stateSave();
-      renderSettings();
-    });
-  }
-
-  const measureReminderToggle = document.getElementById('measureReminderToggle');
-  if (measureReminderToggle) {
-    measureReminderToggle.addEventListener('change', event => {
-      updatePreference('measureReminder', event.target.checked);
-    });
-  }
-
-  const dailyReminderToggle = document.getElementById('dailyReminderToggle');
-  if (dailyReminderToggle) {
-    dailyReminderToggle.addEventListener('change', event => {
-      updatePreference('dailyReminder', event.target.checked);
-    });
-  }
-
-  const editNameBtn = document.getElementById('editNameBtn');
-  if (editNameBtn) editNameBtn.addEventListener('click', editName);
-
-  const editGoalsBtn = document.getElementById('editGoalsBtn');
-  if (editGoalsBtn) editGoalsBtn.addEventListener('click', editGoals);
-
-  const addNoteBtn = document.getElementById('addNoteBtn');
-  if (addNoteBtn) addNoteBtn.addEventListener('click', addNote);
-
-  const installBtn = document.getElementById('installBtn');
-  if (installBtn) installBtn.addEventListener('click', installApp);
-
-  const dismissInstall = document.getElementById('dismissInstall');
-  if (dismissInstall) {
-    dismissInstall.addEventListener('click', () => {
-      const banner = document.getElementById('installBanner');
-      if (banner) banner.classList.remove('visible');
-    });
-  }
-
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', updateOnlineStatus);
-
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/service-worker.js', { scope: '/' })
-        .then(reg => {
-          console.log('[SW] Kayıtlı:', reg.scope);
-          reg.update();
-
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (refreshing) return;
-            refreshing = true;
-            window.location.reload();
-          });
-
-          if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          }
-
-          reg.addEventListener('updatefound', () => {
-            const worker = reg.installing;
-            if (!worker) return;
-
-            worker.addEventListener('statechange', () => {
-              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                worker.postMessage({ type: 'SKIP_WAITING' });
-              }
-            });
-          });
-        })
-        .catch(err => console.warn('[SW] Kayıt hatası:', err));
-    });
-  }
-}
-
-async function checkAuthSession() {
-  setStatus('Oturum kontrol ediliyor...', '');
-
-  const fallback = window.setTimeout(() => {
-    setStatus('Giriş bekleniyor', '');
-    showAuth();
-  }, 4500);
-
-  try {
-    const { data } = await db.auth.getSession();
-    window.clearTimeout(fallback);
-
-    if (!data.session) {
-      updateOnlineStatus();
-      setStatus('Giriş bekleniyor', '');
-      showAuth();
-      return;
-    }
-
-    if (activeSessionLoad) {
-      await activeSessionLoad;
-      return;
-    }
-
-    activeSessionLoad = continueWithSession(data.session)
-      .finally(() => {
-        activeSessionLoad = null;
-      });
-    await activeSessionLoad;
-  } catch (error) {
-    window.clearTimeout(fallback);
-    console.warn('Oturum kontrolü yapılamadı:', error);
-    updateOnlineStatus();
-    setStatus('Giriş bekleniyor', '');
-    showAuth();
-  }
-}
-
-function setupAuthListener() {
-  db.auth.onAuthStateChange((_event, session) => {
-    if (_event === 'SIGNED_OUT' || !session?.user?.id) {
-      if (_event === 'SIGNED_OUT') {
-        activeSessionLoad = null;
-        state = {
-          ...state,
-          userId: '',
-          userEmail: '',
-          onboarded: false,
-          name: '',
-          measurements: [],
-          workouts: [],
-          notes: [],
-          sleep: [],
-          deletedRecords: {
-            measurements: [],
-            sleep: [],
-            workouts: [],
-            notes: [],
-          },
-        };
-        document.getElementById('onboardingModal')?.remove();
-        renderAll();
-        showAuth();
-      }
-      return;
-    }
-
-    const shouldLoad =
-      session.user.id !== state.userId ||
-      _event === 'SIGNED_IN' ||
-      _event === 'INITIAL_SESSION' ||
-      (!state.measurements.length && !state.sleep.length && !state.workouts.length);
-
-    if (!shouldLoad || activeSessionLoad) return;
-
-    activeSessionLoad = continueWithSession(session, { skipCloudWait: true })
-      .finally(() => {
-        activeSessionLoad = null;
-      });
-  });
-}
-
-function init() {
-  renderAll();
-  bindUiEvents();
-  updateOnlineStatus();
-  setupAuthListener();
-  checkAuthSession();
-}
-
-// Expose for inline HTML handlers
-window.goPanel = goPanel;
-window.deleteWeight = deleteWeight;
-window.deleteNote = deleteNote;
-window.deleteSleep = deleteSleep;
-window.deleteWorkout = deleteWorkout;
-
-init();
+
+  pointer-events: none;
+}
+
+/* WEIGHT CARD */
+
+.stat-card-blue {
+  position: relative;
+  overflow: hidden;
+
+  background:
+    linear-gradient(135deg,#ffffff,#fbfdff) !important;
+
+  border: 1px solid rgba(148,163,184,.12) !important;
+
+  box-shadow:
+    0 12px 34px rgba(15,23,42,.04),
+    inset 0 1px 0 rgba(255,255,255,.75) !important;
+}
+
+.stat-card-blue::before {
+  content: "";
+
+  position: absolute;
+  width: 180px;
+  height: 180px;
+
+  top: -80px;
+  right: -80px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(circle, rgba(59,130,246,.08), transparent 70%);
+}
+
+/* WEEK CARD */
+
+.week-chip {
+  position: relative;
+
+  background:
+    linear-gradient(135deg,#ffffff,#fcfffd) !important;
+
+  border: 1px solid rgba(148,163,184,.12) !important;
+
+  box-shadow:
+    0 14px 36px rgba(15,23,42,.045),
+    inset 0 1px 0 rgba(255,255,255,.72) !important;
+}
+
+.week-metric {
+  background:
+    linear-gradient(135deg,#ffffff,#f8fafc) !important;
+
+  border: 1px solid rgba(148,163,184,.08) !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.65);
+}
+
+/* QUICK ACTIONS */
+
+.quick-actions-card {
+  background:
+    linear-gradient(135deg,#ffffff,#fbfdff) !important;
+
+  border: 1px solid rgba(148,163,184,.12) !important;
+
+  box-shadow:
+    0 14px 36px rgba(15,23,42,.04),
+    inset 0 1px 0 rgba(255,255,255,.72) !important;
+}
+
+/* BUTTONS */
+
+.quick-btn {
+  transition: .25s ease;
+}
+
+.quick-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* DARK MODE */
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top left, rgba(34,197,94,.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 24%),
+    #0b1020 !important;
+}
+
+[data-theme="dark"] .goal-hero-card {
+  background:
+    linear-gradient(135deg,#102218,#12261d) !important;
+
+  border-color: rgba(34,197,94,.16) !important;
+
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.02) !important;
+}
+
+[data-theme="dark"] .stat-card-blue,
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .quick-actions-card {
+  background:
+    linear-gradient(135deg,#151b26,#171f2d) !important;
+
+  border-color: #273244 !important;
+
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.24),
+    inset 0 1px 0 rgba(255,255,255,.02) !important;
+}
+
+[data-theme="dark"] .week-metric {
+  background:
+    linear-gradient(135deg,#1a2231,#1d2636) !important;
+
+  border-color: rgba(255,255,255,.04) !important;
+}
+
+/* v82 — Unified Premium Dashboard */
+
+:root {
+  --premium-bg: #f4f7fb;
+  --premium-surface: #ffffff;
+  --premium-border: #e6edf5;
+  --premium-text: #0f172a;
+  --premium-muted: #64748b;
+
+  --premium-green: #22c55e;
+  --premium-green-soft: #ecfdf5;
+  --premium-blue: #3b82f6;
+  --premium-blue-soft: #eff6ff;
+
+  --premium-shadow: 0 18px 44px rgba(15,23,42,.055);
+}
+
+[data-theme="dark"] {
+  --premium-bg: #0b1020;
+  --premium-surface: #151b26;
+  --premium-border: #273244;
+  --premium-text: #f8fafc;
+  --premium-muted: #94a3b8;
+  --premium-green-soft: #102218;
+  --premium-blue-soft: #111c2f;
+  --premium-shadow: 0 18px 44px rgba(0,0,0,.26);
+}
+
+body,
+.app-shell,
+#panels {
+  background:
+    radial-gradient(circle at top left, rgba(34,197,94,.035), transparent 28%),
+    radial-gradient(circle at top right, rgba(59,130,246,.04), transparent 28%),
+    var(--premium-bg) !important;
+}
+
+.dashboard-wrap {
+  max-width: 1080px !important;
+  padding: 0 18px 90px !important;
+}
+
+.hero {
+  padding: 22px 0 0 !important;
+}
+
+.hero-title {
+  font-size: 28px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.8px !important;
+  color: var(--premium-text) !important;
+}
+
+.hero-title span {
+  color: var(--premium-blue) !important;
+}
+
+.hero-date {
+  color: var(--premium-muted) !important;
+  font-size: 11px !important;
+  letter-spacing: 2.4px !important;
+}
+
+/* Motivation */
+.moti-card {
+  margin-top: 22px !important;
+  padding: 15px 18px !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, #bbf7d0, #86efac) !important;
+  color: #064e3b !important;
+  box-shadow: 0 14px 34px rgba(34,197,94,.10) !important;
+}
+
+.moti-emoji {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.45) !important;
+  font-size: 20px !important;
+}
+
+.moti-text {
+  color: #064e3b !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+/* Goal */
+.goal-hero-card {
+  margin-top: 20px !important;
+  padding: 24px !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 92% 15%, rgba(34,197,94,.09), transparent 34%),
+    linear-gradient(135deg, #f0fdf4, #ffffff) !important;
+  border: 1px solid rgba(34,197,94,.16) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.goal-label {
+  color: var(--premium-muted) !important;
+}
+
+.goal-value {
+  color: var(--premium-text) !important;
+  font-size: 38px !important;
+  font-weight: 900 !important;
+}
+
+.goal-sub,
+.goal-percent {
+  color: var(--premium-muted) !important;
+}
+
+.goal-track {
+  height: 7px !important;
+  background: rgba(34,197,94,.14) !important;
+}
+
+.goal-fill {
+  background: linear-gradient(90deg, #22c55e, #16a34a) !important;
+}
+
+/* Progress Summary */
+.progress-summary-card {
+  margin-top: 18px;
+  padding: 24px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 92% 18%, rgba(59,130,246,.10), transparent 34%),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+  border: 1px solid rgba(59,130,246,.13);
+  box-shadow: var(--premium-shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.progress-summary-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--premium-muted);
+  font-family: var(--font-mono);
+  letter-spacing: .5px;
+}
+
+.progress-summary-value {
+  margin-top: 10px;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--premium-text);
+  letter-spacing: -.8px;
+}
+
+.progress-summary-value span {
+  font-size: 16px;
+  color: var(--premium-muted);
+}
+
+.progress-summary-side {
+  text-align: right;
+}
+
+.progress-summary-small {
+  font-size: 12px;
+  color: var(--premium-muted);
+}
+
+.progress-summary-diff {
+  margin-top: 5px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.progress-summary-diff.good {
+  color: #16a34a;
+}
+
+.progress-summary-diff.bad {
+  color: #ef4444;
+}
+
+/* Week */
+.week-chip {
+  margin-top: 18px !important;
+  padding: 22px !important;
+  border-radius: 28px !important;
+  background: linear-gradient(135deg, #ffffff, #fbfdff) !important;
+  border: 1px solid var(--premium-border) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.week-metric {
+  background: #f8fafc !important;
+  border-color: rgba(148,163,184,.14) !important;
+  border-radius: 18px !important;
+}
+
+/* Quick */
+.quick-actions-card {
+  margin-top: 18px !important;
+  padding: 20px !important;
+  border-radius: 28px !important;
+  background: linear-gradient(135deg, #ffffff, #fbfdff) !important;
+  border: 1px solid var(--premium-border) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.quick-btn {
+  border-radius: 999px !important;
+  padding: 11px 16px !important;
+  font-size: 13px !important;
+}
+
+/* Dark */
+[data-theme="dark"] .moti-card {
+  background: linear-gradient(135deg, #14532d, #166534) !important;
+  color: #dcfce7 !important;
+}
+
+[data-theme="dark"] .moti-text {
+  color: #dcfce7 !important;
+}
+
+[data-theme="dark"] .goal-hero-card,
+[data-theme="dark"] .progress-summary-card,
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .quick-actions-card {
+  background: linear-gradient(135deg, #151b26, #171f2d) !important;
+  border-color: var(--premium-border) !important;
+}
+
+[data-theme="dark"] .week-metric {
+  background: #1b2230 !important;
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding: 0 14px 78px !important;
+  }
+
+  .hero-title {
+    font-size: 24px !important;
+  }
+
+  .goal-hero-card,
+  .progress-summary-card,
+  .week-chip,
+  .quick-actions-card {
+    border-radius: 24px !important;
+    padding: 18px !important;
+  }
+
+  .progress-summary-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .progress-summary-side {
+    text-align: left;
+  }
+
+  .progress-summary-value,
+  .goal-value {
+    font-size: 32px !important;
+  }
+
+  .week-metrics {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* v83 — Goal clarity polish */
+
+.goal-hero-card {
+  grid-template-columns: 1fr !important;
+}
+
+.goal-track {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.goal-sub {
+  margin-top: 8px !important;
+  font-weight: 600 !important;
+}
+
+.goal-percent {
+  font-weight: 700 !important;
+}
+
+/* v84 — Dual goal progress */
+
+.goal-progress-block {
+  margin-top: 14px;
+}
+
+.goal-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--premium-muted);
+  margin-bottom: 7px;
+}
+
+.goal-progress-row strong {
+  color: var(--premium-text);
+  font-weight: 800;
+}
+
+.goal-track.final {
+  background: rgba(59,130,246,.12) !important;
+}
+
+.goal-fill.final {
+  background: linear-gradient(90deg, #38bdf8, #3b82f6) !important;
+}
+
+.goal-percent {
+  margin-top: 12px !important;
+}
+/* v85 — Balanced goal progress */
+
+.goal-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.goal-progress-block {
+  margin-top: 0 !important;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.52);
+  border: 1px solid rgba(148,163,184,.10);
+}
+
+.goal-progress-row {
+  margin-bottom: 9px !important;
+}
+
+.goal-track {
+  width: 100% !important;
+}
+
+[data-theme="dark"] .goal-progress-block {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.06);
+}
+
+@media (max-width: 700px) {
+  .goal-progress-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .goal-progress-block {
+    padding: 13px;
+  }
+}
+/* v86 — Goal card premium layout */
+
+.goal-card-layout {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.goal-main {
+  min-width: 0;
+}
+
+.goal-side {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.goal-caption {
+  margin-top: -4px;
+  color: var(--premium-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.goal-progress-block.primary {
+  margin-top: 18px !important;
+}
+
+.goal-progress-block.secondary {
+  margin-top: 2px !important;
+}
+
+.goal-side-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.54);
+  border: 1px solid rgba(148,163,184,.10);
+}
+
+.goal-side-item span {
+  font-size: 13px;
+  color: var(--premium-muted);
+  font-weight: 700;
+}
+
+.goal-side-item strong {
+  font-size: 18px;
+  color: var(--premium-text);
+  font-weight: 800;
+}
+
+.goal-progress-block {
+  background: rgba(255,255,255,.50) !important;
+}
+
+.goal-percent {
+  margin-top: 0 !important;
+  font-size: 12px !important;
+  color: var(--premium-muted) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .goal-side-item,
+[data-theme="dark"] .goal-progress-block {
+  background: rgba(255,255,255,.04) !important;
+  border-color: rgba(255,255,255,.06) !important;
+}
+
+@media (max-width: 700px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .goal-side {
+    gap: 10px;
+  }
+
+  .goal-side-item {
+    padding: 11px 12px;
+  }
+}
+
+/* v87 — Premium polish */
+
+.goal-hero-card {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+}
+
+.goal-hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 85% 20%,
+    rgba(34,197,94,.08),
+    transparent 38%);
+  pointer-events: none;
+}
+
+.goal-card-layout {
+  align-items: center !important;
+}
+
+.goal-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.goal-side {
+  align-content: center;
+}
+
+.goal-percent {
+  display: none !important;
+}
+
+/* Son ölçüm premium */
+
+.progress-summary-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,.88),
+      rgba(241,245,249,.95)
+    ) !important;
+}
+
+.progress-summary-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at right center,
+      rgba(59,130,246,.10),
+      transparent 40%);
+  pointer-events: none;
+}
+
+[data-theme="dark"] .progress-summary-card {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(15,23,42,.95),
+      rgba(17,24,39,.98)
+    ) !important;
+}
+.progress-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* v88 — Current class premium polish */
+
+.moti-card {
+  background: linear-gradient(135deg, #bbf7d0, #86efac) !important;
+  border: 1px solid rgba(255,255,255,.45) !important;
+  box-shadow: 0 12px 30px rgba(34,197,94,.12) !important;
+}
+
+.goal-hero-card,
+.progress-summary-card,
+.week-chip,
+.quick-actions-card {
+  backdrop-filter: blur(18px);
+  transition: .28s ease;
+}
+
+.goal-hero-card {
+  background:
+    radial-gradient(circle at 86% 18%, rgba(34,197,94,.08), transparent 38%),
+    linear-gradient(135deg, rgba(255,255,255,.88), rgba(240,255,244,.82)) !important;
+  border: 1px solid rgba(34,197,94,.16) !important;
+}
+
+.progress-summary-card {
+  background:
+    radial-gradient(circle at 90% 20%, rgba(59,130,246,.10), transparent 38%),
+    linear-gradient(135deg, rgba(255,255,255,.90), rgba(239,246,255,.82)) !important;
+  border: 1px solid rgba(96,165,250,.14) !important;
+}
+
+.week-chip {
+  background:
+    radial-gradient(circle at 92% 14%, rgba(59,130,246,.055), transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,250,252,.86)) !important;
+}
+
+.week-fill.workout,
+.goal-fill {
+  box-shadow: 0 0 12px rgba(34,197,94,.22);
+}
+
+.week-fill.sleep,
+.goal-fill.final {
+  box-shadow: 0 0 12px rgba(59,130,246,.24);
+}
+
+.goal-hero-card:hover,
+.progress-summary-card:hover,
+.week-chip:hover,
+.quick-actions-card:hover {
+  transform: translateY(-2px);
+}
+
+/* v91 — Goal card final balance */
+
+.goal-hero-card {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 260px;
+}
+
+.goal-hero-card::before {
+  content: "";
+  position: absolute;
+  right: -90px;
+  top: -110px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,197,94,.13), transparent 68%);
+  pointer-events: none;
+}
+
+.goal-card-layout {
+  position: relative;
+  z-index: 1;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 360px !important;
+  gap: 36px !important;
+  align-items: center !important;
+}
+
+.goal-main {
+  max-width: 380px;
+}
+
+.goal-side {
+  width: 100%;
+  display: grid !important;
+  gap: 14px !important;
+}
+
+.goal-side-item,
+.goal-progress-block {
+  background: rgba(255,255,255,.58) !important;
+  border: 1px solid rgba(148,163,184,.12) !important;
+  backdrop-filter: blur(14px);
+}
+
+.goal-side-item {
+  min-height: 58px;
+}
+
+.goal-progress-block.primary {
+  max-width: 340px;
+}
+
+.goal-progress-block.secondary {
+  width: 100%;
+}
+
+[data-theme="dark"] .goal-side-item,
+[data-theme="dark"] .goal-progress-block {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.07) !important;
+}
+
+@media (max-width: 700px) {
+  .goal-hero-card {
+    min-height: auto;
+  }
+
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .goal-main,
+  .goal-progress-block.primary {
+    max-width: 100%;
+  }
+}
+
+/* v92 — Fix empty right area in goal card */
+
+#dashboardGoalCard > div {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+}
+
+.goal-hero-card {
+  min-height: auto !important;
+  padding: 28px !important;
+}
+
+.goal-card-layout {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.1fr) !important;
+  gap: 32px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.goal-main {
+  max-width: none !important;
+}
+
+.goal-side {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.goal-side-item,
+.goal-progress-block.secondary {
+  min-height: 92px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.goal-side-item {
+  align-items: flex-start !important;
+}
+
+.goal-side-item strong {
+  font-size: 24px !important;
+  margin-top: 6px !important;
+}
+
+.goal-progress-block.primary {
+  max-width: 100% !important;
+}
+
+@media (max-width: 900px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* v93 — Goal card balanced final fix */
+
+#dashboardGoalCard > div {
+  display: block !important;
+}
+
+.goal-hero-card {
+  min-height: auto !important;
+  padding: 28px !important;
+}
+
+.goal-card-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) !important;
+  gap: 28px !important;
+  align-items: center !important;
+}
+
+.goal-main {
+  max-width: none !important;
+}
+
+.goal-side {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 14px !important;
+}
+
+.goal-side-item,
+.goal-progress-block.secondary {
+  min-height: auto !important;
+  padding: 16px !important;
+  border-radius: 20px !important;
+}
+
+.goal-progress-block.secondary {
+  grid-column: 1 / -1 !important;
+}
+
+.goal-side-item {
+  display: block !important;
+}
+
+.goal-side-item span {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.goal-side-item strong {
+  font-size: 22px !important;
+}
+
+.goal-progress-block.primary {
+  max-width: 100% !important;
+}
+
+@media (max-width: 700px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* v94 — Goal Card Final Layout */
+
+#dashboardGoalCard > div {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+}
+
+.goal-hero-card {
+  padding: 30px !important;
+  min-height: auto !important;
+}
+
+.goal-card-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, .95fr) !important;
+  gap: 44px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.goal-main {
+  max-width: none !important;
+}
+
+.goal-big-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.goal-value {
+  font-size: 64px !important;
+  line-height: .92 !important;
+  font-weight: 800 !important;
+  letter-spacing: -2.8px !important;
+}
+
+.goal-kg {
+  font-size: 27px;
+  font-weight: 700;
+  color: var(--premium-text);
+}
+
+.goal-caption {
+  margin-top: 12px !important;
+  font-size: 15px !important;
+}
+
+.goal-progress-block.primary {
+  margin-top: 24px !important;
+  max-width: 460px !important;
+}
+
+.goal-side {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+  width: 100% !important;
+}
+
+.goal-side-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.goal-side-item {
+  min-height: 110px !important;
+  padding: 22px !important;
+  border-radius: 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+}
+
+.goal-side-item span {
+  font-size: 14px !important;
+  margin-bottom: 10px !important;
+}
+
+.goal-side-item strong {
+  font-size: 31px !important;
+  line-height: 1 !important;
+}
+
+.goal-progress-block.secondary {
+  min-height: 96px !important;
+  padding: 20px !important;
+  border-radius: 24px !important;
+}
+
+.goal-track,
+.week-track {
+  height: 8px !important;
+}
+
+.goal-progress-row {
+  margin-bottom: 12px !important;
+}
+
+@media (max-width: 900px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+    gap: 22px !important;
+  }
+
+  .goal-side-top {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-value {
+    font-size: 48px !important;
+  }
+}
+/* v95 — Goal progress compact alignment */
+
+.goal-caption {
+  margin-top: 6px !important;
+  padding: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.goal-progress-block.primary,
+.goal-progress-block.secondary {
+  min-height: auto !important;
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
+}
+
+.goal-progress-block.primary {
+  margin-top: 16px !important;
+}
+
+.goal-progress-block.secondary {
+  margin-top: 0 !important;
+}
+
+.goal-progress-row {
+  margin-bottom: 8px !important;
+  line-height: 1.2 !important;
+}
+
+.goal-track {
+  height: 7px !important;
+  margin-top: 0 !important;
+}
+
+.goal-side-item {
+  min-height: 92px !important;
+  padding: 18px 20px !important;
+}
+
+.goal-side {
+  gap: 14px !important;
+}
+
+.goal-side-top {
+  gap: 14px !important;
+}
+
+@media (max-width: 900px) {
+  .goal-side-item {
+    min-height: auto !important;
+  }
+}
+/* v96 — Bottom nav overlap fix */
+
+.dashboard-wrap {
+  padding-bottom: 150px !important;
+}
+
+.quick-actions-card {
+  margin-bottom: 28px !important;
+}
+
+@media (max-width: 700px) {
+  .dashboard-wrap {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 36px !important;
+  }
+}
+/* v97 — FINAL dashboard spacing override */
+
+#pHome .dashboard-wrap {
+  padding: 0 18px 28px !important;
+  max-width: 1080px !important;
+  min-height: auto !important;
+}
+
+#pHome .quick-actions-card {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 700px) {
+  #pHome .dashboard-wrap {
+    padding: 0 14px calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+}
+/* v98 — Premium compact rhythm */
+
+.goal-hero-card {
+  padding: 26px 30px !important;
+}
+
+.goal-card-layout {
+  gap: 26px !important;
+}
+
+.goal-main {
+  padding-right: 8px !important;
+}
+
+.goal-big-row {
+  margin-top: 4px !important;
+}
+
+.goal-value {
+  font-size: 58px !important;
+  letter-spacing: -2px !important;
+}
+
+.goal-progress-block.primary {
+  margin-top: 14px !important;
+}
+
+.goal-side {
+  gap: 14px !important;
+}
+
+.goal-side-item {
+  min-height: 92px !important;
+}
+
+.goal-side-item strong {
+  font-size: 26px !important;
+}
+
+.goal-progress-block.secondary {
+  min-height: 92px !important;
+}
+/* v98 — Measurement card */
+
+.measurement-card {
+  min-height: 150px !important;
+  padding: 28px 32px !important;
+}
+
+.measurement-card .stat-val {
+  font-size: 54px !important;
+  letter-spacing: -2px !important;
+}
+
+.measurement-card .progress-summary-diff {
+  font-size: 20px !important;
+}
+/* v98 — Week compact */
+
+.week-card {
+  padding: 24px !important;
+}
+
+.week-metric {
+  padding: 14px 16px !important;
+}
+
+.week-track {
+  height: 8px !important;
+}
+
+.week-card-title {
+  margin-bottom: 2px !important;
+}
+/* v99 — Premium blur override */
+
+#pHome .dashboard-card,
+#pHome .goal-hero-card,
+#pHome .week-card,
+#pHome .measurement-card,
+#pHome .quick-actions-card,
+#pHome .motivation-banner {
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+/* v100 — Final goal card 2x2 balance */
+
+.goal-card-layout {
+  grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr) !important;
+  gap: 34px !important;
+}
+
+.goal-side-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.goal-side-grid .goal-side-item,
+.goal-side-grid .goal-progress-block.secondary {
+  min-height: 104px !important;
+  padding: 18px 20px !important;
+  border-radius: 24px !important;
+  margin: 0 !important;
+}
+
+.goal-side-grid .goal-progress-block.secondary {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.goal-side-grid .goal-progress-row {
+  margin-bottom: 10px !important;
+}
+
+.goal-side-grid .goal-track {
+  height: 7px !important;
+}
+
+.goal-progress-block.primary {
+  display: none !important;
+}
+
+.goal-caption {
+  margin-top: 8px !important;
+}
+
+@media (max-width: 900px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .goal-side-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* v101 — Restore balanced goal layout */
+
+.goal-card-layout {
+  grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr) !important;
+  gap: 34px !important;
+  align-items: center !important;
+}
+
+.goal-progress-block.primary {
+  display: block !important;
+  max-width: 460px !important;
+  margin-top: 18px !important;
+}
+
+.goal-side-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.goal-side-grid .goal-progress-block.secondary {
+  grid-column: 1 / -1 !important;
+  min-height: 88px !important;
+}
+
+.goal-side-grid .goal-side-item {
+  min-height: 96px !important;
+}
+
+.goal-hero-card {
+  padding: 28px !important;
+}
+
+@media (max-width: 900px) {
+  .goal-card-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-side-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+/* v102 — FINAL DASHBOARD GOAL RESET */
+
+#pHome #dashboardGoalCard > div {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+  margin: 20px 0 !important;
+}
+
+#pHome .goal-hero-card {
+  display: block !important;
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: auto !important;
+  padding: 32px !important;
+  border-radius: 32px !important;
+}
+
+#pHome .goal-card-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important;
+  gap: 36px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+#pHome .goal-left {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+}
+
+#pHome .goal-right {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 16px !important;
+  min-width: 0 !important;
+}
+
+#pHome .goal-label {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: var(--premium-muted) !important;
+  font-family: var(--font-mono) !important;
+  letter-spacing: .5px !important;
+}
+
+#pHome .goal-big {
+  margin-top: 14px !important;
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 8px !important;
+}
+
+#pHome .goal-big span {
+  font-size: 64px !important;
+  line-height: .9 !important;
+  font-weight: 800 !important;
+  letter-spacing: -2.6px !important;
+  color: var(--premium-text) !important;
+}
+
+#pHome .goal-big small {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  color: var(--premium-text) !important;
+}
+
+#pHome .goal-caption {
+  margin-top: 12px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--premium-muted) !important;
+}
+
+#pHome .goal-mini-card,
+#pHome .goal-info-card {
+  background: rgba(255,255,255,.58) !important;
+  border: 1px solid rgba(148,163,184,.12) !important;
+  border-radius: 24px !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+#pHome .goal-left .goal-mini-card {
+  margin-top: 24px !important;
+  width: 100% !important;
+  max-width: 460px !important;
+  padding: 16px 18px !important;
+}
+
+#pHome .goal-info-card {
+  min-height: 112px !important;
+  padding: 22px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+#pHome .goal-info-card span {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--premium-muted) !important;
+  margin-bottom: 12px !important;
+}
+
+#pHome .goal-info-card strong {
+  font-size: 31px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  color: var(--premium-text) !important;
+}
+
+#pHome .goal-final-card {
+  grid-column: 1 / -1 !important;
+  min-height: 96px !important;
+  padding: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+#pHome .goal-progress-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 10px !important;
+  font-size: 13px !important;
+  color: var(--premium-muted) !important;
+}
+
+#pHome .goal-progress-row strong {
+  font-weight: 800 !important;
+  color: var(--premium-text) !important;
+}
+
+#pHome .goal-track {
+  height: 8px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  background: rgba(34,197,94,.14) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+#pHome .goal-track.final {
+  background: rgba(59,130,246,.13) !important;
+}
+
+#pHome .goal-fill {
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #22c55e, #16a34a) !important;
+}
+
+#pHome .goal-fill.final {
+  background: linear-gradient(90deg, #38bdf8, #3b82f6) !important;
+}
+
+#pHome .goal-progress-block,
+#pHome .goal-side,
+#pHome .goal-side-grid,
+#pHome .goal-side-top,
+#pHome .goal-main {
+  all: unset;
+}
+
+[data-theme="dark"] #pHome .goal-mini-card,
+[data-theme="dark"] #pHome .goal-info-card {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.07) !important;
+}
+
+@media (max-width: 900px) {
+  #pHome .goal-card-layout {
+    grid-template-columns: 1fr !important;
+    gap: 22px !important;
+  }
+
+  #pHome .goal-right {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  #pHome .goal-big span {
+    font-size: 52px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  #pHome .goal-hero-card {
+    padding: 22px !important;
+  }
+
+  #pHome .goal-right {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pHome .goal-big span {
+    font-size: 46px !important;
+  }
+}
+
+.dashboard-wrap {
+  max-width: 1080px !important;
+}
+
+.moti-card {
+  margin-top: 18px !important;
+  margin-bottom: 20px !important;
+}
+
+.goal-hero-card {
+  margin-top: 0 !important;
+}
+.goal-hero-card {
+  padding: 26px 30px !important;
+}
+
+.last-meas-card,
+.progress-summary-card {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.week-track {
+  height: 9px !important;
+}
+
+.goal-hero-card {
+  padding: 26px 30px !important;
+}
+
+.last-meas-card,
+.progress-summary-card {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.week-track {
+  height: 9px !important;
+}
+
+@media (max-width:700px){
+
+  .last-meas-card,
+  .progress-summary-card{
+    text-align:center;
+    flex-direction:column;
+    justify-content:center;
+    gap:14px;
+  }
+
+  .last-meas-card > div:last-child,
+  .progress-summary-card > div:last-child{
+    text-align:center !important;
+  }
+
+}
+[data-theme="dark"] .goal-info-card,
+[data-theme="dark"] .goal-final-card,
+[data-theme="dark"] .week-metric{
+  border-color:rgba(255,255,255,.05) !important;
+}
+
+[data-theme="dark"] .quick-btn.sleep{
+  background:rgba(6,182,212,.18);
+}
+
+[data-theme="dark"] .quick-btn.workout{
+  background:rgba(139,92,246,.18);
+}
+
+[data-theme="dark"] .quick-btn.note{
+  background:rgba(34,197,94,.16);
+}
+
+.dashboard-wrap,
+.dashboard-screen,
+main{
+  padding-bottom:110px !important;
+  min-height:auto !important;
+}
+
+.quick-actions-card{
+  margin-bottom:20px !important;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+/* Product polish pass */
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface2: #edf2f7;
+  --border: #d7e0ec;
+  --text: #111827;
+  --text2: #374151;
+  --muted: #66758a;
+  --blue: #2563eb;
+  --green: #0f766e;
+  --red: #dc2626;
+  --cyan: #0e7490;
+  --purple: #6d5bd0;
+  --amber: #b7791f;
+  --coral: #dc5f4a;
+  --shadow: 0 10px 30px rgba(15, 23, 42, .07);
+  --radius: 18px;
+}
+
+[data-theme="dark"] {
+  --bg: #0e1219;
+  --surface: #171d27;
+  --surface2: #111722;
+  --border: #273244;
+  --text: #f8fafc;
+  --text2: #d5dce8;
+  --muted: #95a1b4;
+}
+
+html,
+body,
+.app-shell,
+#panels {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(37,99,235,.08), transparent 280px),
+    linear-gradient(180deg, rgba(15,118,110,.05), transparent 260px),
+    var(--bg) !important;
+}
+
+body {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+}
+
+#panels {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 18px calc(96px + env(safe-area-inset-bottom));
+}
+
+.panel.active {
+  display: block;
+}
+
+.section {
+  margin: 18px 0 0 !important;
+}
+
+.page-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.page-intro h2 {
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--text);
+  margin-top: 6px;
+  letter-spacing: 0;
+}
+
+.page-intro p {
+  max-width: 620px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.card,
+.week-chip,
+.quick-actions-card,
+.moti-card,
+.progress-summary-card,
+.goal-hero-card {
+  border-radius: 18px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.card,
+.quick-actions-card,
+.week-chip {
+  background: rgba(255,255,255,.92) !important;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .quick-actions-card,
+[data-theme="dark"] .week-chip {
+  background: rgba(23,29,39,.94) !important;
+}
+
+.dashboard-wrap {
+  max-width: none !important;
+  padding: 0 0 8px !important;
+}
+
+.hero {
+  padding: 18px 0 0 !important;
+}
+
+.hero-title {
+  font-size: clamp(24px, 4vw, 34px) !important;
+  letter-spacing: 0 !important;
+}
+
+.moti-card {
+  margin-top: 16px !important;
+  background: linear-gradient(135deg, #ecfdf5, #eff6ff) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .moti-card {
+  background: linear-gradient(135deg, rgba(5,150,105,.18), rgba(37,99,235,.16)) !important;
+}
+
+.dashboard-measure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.progress-summary-card {
+  min-height: 138px;
+  padding: 20px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--surface) !important;
+}
+
+.progress-summary-label,
+.sec-title,
+.list-title {
+  color: var(--muted) !important;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.progress-summary-value {
+  font-size: 38px !important;
+  line-height: 1;
+  letter-spacing: 0 !important;
+}
+
+.progress-summary-value span {
+  font-size: 16px !important;
+}
+
+.progress-summary-side {
+  text-align: right;
+}
+
+.progress-summary-small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-summary-diff.good {
+  color: var(--green) !important;
+}
+
+.progress-summary-diff.bad {
+  color: var(--red) !important;
+}
+
+.input-card {
+  padding: 16px;
+}
+
+.form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px !important;
+  align-items: end !important;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.form-grid input,
+.form-grid select {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 44px;
+  padding: 0 12px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  font: inherit;
+}
+
+.form-submit,
+.form-grid > .btn {
+  height: 44px;
+  border-radius: 12px;
+}
+
+.quick-picks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.quick-picks button {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.quick-picks button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.note-compose {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.note-compose textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.daily-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.daily-filter-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface2));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+}
+
+.daily-filter-bar button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.daily-filter-bar button.active {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .22);
+}
+
+.list-card {
+  overflow: hidden;
+  min-height: 250px;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.daily-grid[data-view="all"] .list-card {
+  max-height: 560px;
+}
+
+.list-title {
+  padding: 16px 16px 0;
+}
+
+#sleepSummary,
+#workoutSummary {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px 10px;
+}
+
+.daily-stat-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.daily-stat-line strong {
+  font-size: 18px;
+}
+
+.daily-stat-line.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.daily-stat-line.muted strong {
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.daily-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--border);
+}
+
+#sleepList,
+#workoutList {
+  display: grid;
+  margin-top: 2px;
+  overflow: visible;
+}
+
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
+  overflow: auto;
+}
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.progress-period {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-period strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.progress-metric-card {
+  min-height: 142px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.progress-metric-card span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.progress-metric-card strong {
+  margin-top: 10px;
+  color: var(--text);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.progress-metric-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.progress-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.progress-insight-card {
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.9));
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.progress-insight-card span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.progress-insight-card strong {
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.progress-insight-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.metric-track {
+  height: 7px;
+  margin: 12px 0 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.metric-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--blue));
+}
+
+.week-insight {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--text2);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.daily-row-title {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.daily-row-meta {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.row-delete {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-edit {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--muted);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.row-edit:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.weekly-report-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.weekly-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.weekly-report-row > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.weekly-report-row > div:first-child strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.weekly-report-row > div:first-child span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.weekly-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.weekly-report-metrics div {
+  display: grid;
+  gap: 6px;
+}
+
+.weekly-report-metrics span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.weekly-report-metrics strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.weekly-report-metrics i {
+  height: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.weekly-report-metrics b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--blue));
+}
+
+.empty-state.compact {
+  padding: 16px;
+  text-align: left;
+}
+
+.onboarding-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .52);
+  backdrop-filter: blur(14px);
+}
+
+.onboarding-card {
+  width: min(100%, 620px);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 26px;
+  border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+}
+
+.onboarding-kicker {
+  color: var(--blue);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.onboarding-card h2 {
+  margin-top: 8px;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.onboarding-card p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.onboarding-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.onboarding-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.onboarding-grid input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.onboarding-submit {
+  width: 100%;
+  height: 46px;
+  margin-top: 16px;
+}
+
+.auth-card {
+  width: min(100%, 480px);
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--surface2);
+}
+
+.auth-tabs button {
+  height: 38px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-tabs button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 14px rgba(15,23,42,.08);
+}
+
+.onboarding-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.auth-secondary {
+  width: 100%;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-message {
+  min-height: 18px;
+  margin-top: 12px;
+  color: var(--green);
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-message.error {
+  color: var(--red);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-card {
+  min-height: 172px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 10px 26px rgba(15,23,42,.04);
+}
+
+.settings-card-title {
+  margin-bottom: 14px;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-row strong {
+  color: var(--text);
+  text-align: right;
+}
+
+.settings-copy {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sync-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+
+.sync-status-grid div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+}
+
+.sync-status-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sync-status-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.settings-action {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.chart-card {
+  min-height: 330px;
+  height: auto;
+  padding: 18px;
+  overflow: hidden;
+}
+
+#measurementChartHost {
+  min-height: 360px;
+}
+
+.measurement-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 18px;
+  height: 100%;
+}
+
+.weight-trend-panel,
+.waist-tracking-panel {
+  min-width: 0;
+  border: 1px solid rgba(203,213,225,.72);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,250,252,.92));
+}
+
+.weight-trend-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.measurement-chart-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.measurement-chart-top span {
+  display: block;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.measurement-chart-top strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.measurement-chart-top .good,
+.measurement-chart-top .bad {
+  justify-self: end;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.measurement-chart-top .good {
+  background: rgba(16,185,129,.12);
+  color: #047857;
+}
+
+.measurement-chart-top .bad {
+  background: rgba(239,68,68,.12);
+  color: #b91c1c;
+}
+
+.measurement-chart-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 168px;
+}
+
+.measurement-chart-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.measurement-detail-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.measurement-detail-row div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(241,245,249,.72);
+}
+
+.measurement-detail-row span,
+.waist-tracking-panel span {
+  display: block;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.measurement-detail-row strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.waist-tracking-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px;
+}
+
+.waist-tracking-panel strong {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.waist-tracking-panel p {
+  margin: 12px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.waist-tracking-panel small {
+  margin-top: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.waist-rhythm {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+
+.waist-rhythm i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(203,213,225,.9);
+}
+
+.waist-rhythm i.active {
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+[data-theme="dark"] .weight-trend-panel,
+[data-theme="dark"] .waist-tracking-panel {
+  border-color: rgba(71,85,105,.72);
+  background:
+    linear-gradient(180deg, rgba(23,29,39,.94), rgba(15,23,42,.9));
+}
+
+[data-theme="dark"] .measurement-detail-row div {
+  background: rgba(30,41,59,.68);
+}
+
+#sleepBars,
+#workoutBars {
+  height: 100%;
+}
+
+.bottom-nav {
+  width: min(100%, 1120px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 28px rgba(15,23,42,.08);
+}
+
+.bn-item {
+  min-height: 62px;
+}
+
+.btn,
+.quick-btn {
+  border-radius: 12px !important;
+}
+
+@media (max-width: 760px) {
+  #panels {
+    padding: 0 14px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .page-intro,
+  .progress-summary-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-measure-grid,
+  .daily-grid,
+  .form-grid,
+  .progress-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .progress-summary-side {
+    text-align: left;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card {
+    min-height: 260px;
+  }
+
+  #measurementChartHost {
+    min-height: 520px;
+  }
+
+  .measurement-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .measurement-chart-top strong {
+    font-size: 17px;
+  }
+
+  .measurement-detail-row {
+    grid-template-columns: 1fr;
+  }
+
+  .waist-tracking-panel {
+    min-height: 180px;
+  }
+
+  .weekly-report-row,
+  .weekly-report-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .daily-filter-bar button {
+    padding: 0 8px;
+  }
+
+  .list-card {
+    max-height: none;
+  }
+
+  .onboarding-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav {
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+/* Premium readiness pass */
+.status-bar {
+  display: none !important;
+}
+
+.status-bar.visible {
+  display: flex !important;
+}
+
+.topnav {
+  height: calc(62px + env(safe-area-inset-top)) !important;
+  padding-inline: 18px !important;
+}
+
+.nav-actions {
+  gap: 10px !important;
+}
+
+.nav-logout-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  min-height: 36px;
+  padding: 0 14px !important;
+  border: 1px solid rgba(220,38,38,.18) !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.8) !important;
+  color: #b91c1c !important;
+  font: 800 12px var(--font-main) !important;
+  box-shadow: 0 8px 18px rgba(15,23,42,.06);
+}
+
+.nav-logout-btn:hover {
+  background: rgba(254,242,242,.95) !important;
+  border-color: rgba(220,38,38,.34) !important;
+}
+
+[data-theme="dark"] .nav-logout-btn {
+  background: rgba(127,29,29,.18) !important;
+  color: #fecaca !important;
+  border-color: rgba(248,113,113,.2) !important;
+}
+
+#pSettings .section {
+  max-width: 1120px;
+  margin-inline: auto !important;
+}
+
+#pSettings .sec-head {
+  margin-bottom: 14px;
+}
+
+#pSettings .settings-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+#pSettings .settings-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 214px;
+  padding: 20px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  background: rgba(255,255,255,.94) !important;
+  box-shadow: 0 18px 36px rgba(15,23,42,.08) !important;
+}
+
+[data-theme="dark"] #pSettings .settings-card {
+  background: rgba(23,29,39,.94) !important;
+}
+
+#pSettings .settings-card-title {
+  margin: 0 0 16px !important;
+  color: var(--text) !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+}
+
+#pSettings .settings-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 12px 0 !important;
+  border-top: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+  font-size: 13px !important;
+}
+
+#pSettings .settings-row strong {
+  color: var(--text) !important;
+  font-size: 14px !important;
+  text-align: right !important;
+  overflow-wrap: anywhere;
+}
+
+#pSettings .settings-copy {
+  flex: 1;
+  margin: 0 0 12px !important;
+  color: var(--muted) !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+}
+
+#pSettings .settings-action {
+  margin-top: auto !important;
+  height: 42px !important;
+}
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-toggle-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-toggle-row strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.settings-toggle-row span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 28px;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch > span {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+
+.switch > span::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 4px 10px rgba(15,23,42,.18);
+  transition: transform .2s;
+}
+
+.switch input:checked + span {
+  background: rgba(37,99,235,.92);
+  border-color: rgba(37,99,235,.92);
+}
+
+.switch input:checked + span::after {
+  transform: translateX(20px);
+}
+
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.field-hint.important {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.measure-hint-strip {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15,118,110,.12);
+  border-radius: 12px;
+  background: rgba(15,118,110,.06);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.measure-hint-strip.important {
+  border-color: rgba(15,118,110,.24);
+  background: rgba(15,118,110,.10);
+  color: var(--green);
+}
+
+.delta-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-family: var(--font-main);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.delta-pill.good {
+  background: rgba(15,118,110,.10);
+  color: var(--green);
+}
+
+.delta-pill.bad {
+  background: rgba(220,38,38,.09);
+  color: var(--red);
+}
+
+.delta-pill.neutral {
+  background: var(--surface2);
+  color: var(--muted);
+}
+
+.fallback-line-chart {
+  min-height: 250px;
+  display: grid;
+  grid-template-rows: minmax(180px, 1fr) auto;
+  gap: 16px;
+  padding: 18px;
+}
+
+.fallback-line-chart svg {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  overflow: visible;
+}
+
+.fallback-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fallback-chart-labels div {
+  display: grid;
+  gap: 4px;
+}
+
+.fallback-chart-labels strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.chart-card {
+  min-height: 260px;
+}
+
+.chart-mini-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px 0;
+}
+
+.chart-mini-head strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.chart-mini-head span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.chart-mini-head em {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(37,99,235,.1);
+  color: var(--blue);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.bar-chart {
+  height: auto;
+  min-height: 196px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 22px 12px 8px;
+}
+
+.bar-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-fill {
+  width: min(100%, 42px);
+  min-height: 12px;
+  border-radius: 999px 999px 8px 8px;
+  box-shadow: inset 0 -10px 18px rgba(255,255,255,.18), 0 10px 18px rgba(15,23,42,.08);
+}
+
+.bar-fill.sleep {
+  background: linear-gradient(180deg, #22d3ee, #2563eb);
+}
+
+.bar-fill.workout {
+  background: linear-gradient(180deg, #f59e0b, #dc5f4a);
+}
+
+.bar-label {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.bar-value {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .bar-fill {
+  box-shadow: inset 0 -10px 18px rgba(255,255,255,.08), 0 10px 18px rgba(0,0,0,.18);
+}
+
+[data-theme="dark"] .progress-insight-card {
+  background: rgba(23,29,39,.94);
+}
+
+[data-theme="dark"] .chart-mini-head em {
+  background: rgba(96,165,250,.14);
+}
+
+.empty-state {
+  min-height: 220px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state .empty-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(37,99,235,.1);
+  color: var(--blue);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.empty-state strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.empty-state p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.empty-state .btn {
+  margin-top: 4px;
+}
+
+#progressList .empty-state {
+  min-height: 150px;
+}
+
+@media (max-width: 860px) {
+  #pSettings .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .progress-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .nav-logout-btn {
+    min-width: 34px;
+    padding: 0 !important;
+  }
+
+  .empty-state {
+    min-height: 190px;
+    padding: 22px 16px;
+  }
+
+  .progress-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-mini-head {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bar-chart {
+    gap: 8px;
+    padding-inline: 4px;
+  }
+}
+
+/* Progress and record polish */
+.chart-mini-head.enhanced {
+  padding: 16px 18px 0;
+  align-items: center;
+}
+
+.chart-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 18px 0;
+}
+
+.chart-stat-row div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+}
+
+.chart-stat-row span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chart-stat-row strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.bar-chart.enhanced {
+  position: relative;
+  min-height: 230px;
+  padding: 28px 18px 14px;
+  align-items: flex-end;
+}
+
+.sleep-chart.enhanced::before {
+  content: "7 saat hedef";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: calc(14px + 44px + var(--target-line, 70%));
+  border-top: 1px dashed rgba(37, 99, 235, .35);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  transform: translateY(6px);
+  pointer-events: none;
+}
+
+.bar-fill {
+  position: relative;
+}
+
+.bar-fill span {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+}
+
+.bar-value {
+  max-width: 110px;
+  min-height: 28px;
+  text-align: center;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.daily-filter-bar {
+  position: sticky;
+  top: calc(62px + env(safe-area-inset-top));
+  z-index: 20;
+}
+
+.list-title {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.daily-row {
+  min-height: 72px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--surface2));
+}
+
+.daily-row:hover {
+  background: color-mix(in srgb, var(--surface2) 58%, var(--surface));
+}
+
+.daily-row > div:first-child {
+  min-width: 0;
+}
+
+.daily-row-title,
+.daily-row-meta {
+  overflow-wrap: anywhere;
+}
+
+.row-delete {
+  flex: 0 0 auto;
+}
+
+.weekly-report-row {
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.9));
+}
+
+.weekly-report-row small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+[data-theme="dark"] .chart-stat-row div,
+[data-theme="dark"] .bar-fill span,
+[data-theme="dark"] .weekly-report-row,
+[data-theme="dark"] .daily-row {
+  background: rgba(255, 255, 255, .04);
+}
+
+@media (max-width: 820px) {
+  .chart-stat-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bar-chart.enhanced {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .bar-fill span {
+    font-size: 10px;
+    padding-inline: 5px;
+  }
+}
+
+@media (max-width: 560px) {
+  .bar-chart.enhanced {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .bar-chart.enhanced .bar-item {
+    flex: 0 0 64px;
+  }
+
+  .weekly-report-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* v112: single-package polish */
+.workout-guidance {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.09), rgba(37, 99, 235, 0.06));
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workout-guidance:empty {
+  display: none;
+}
+
+.workout-guidance strong {
+  flex: 0 0 140px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.workout-guidance span {
+  flex: 1;
+}
+
+.week-mini-insights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.week-mini-insights span {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.week-mini-insights strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#pProgress .chart-card {
+  min-height: auto;
+}
+
+.bar-chart.enhanced {
+  min-height: 238px;
+  padding-bottom: 12px;
+}
+
+.progress-chart-card,
+.measurement-chart-shell {
+  border-radius: 16px;
+}
+
+.progress-insight-card {
+  min-height: 74px;
+}
+
+.daily-grid[data-view="week"] .list-card {
+  max-height: 450px;
+  overflow: hidden;
+}
+
+.daily-grid[data-view="week"] #sleepList,
+.daily-grid[data-view="week"] #workoutList,
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.daily-grid[data-view="today"] #sleepList,
+.daily-grid[data-view="today"] #workoutList {
+  max-height: none;
+}
+
+@media (max-width: 760px) {
+  .workout-guidance,
+  .week-mini-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .workout-guidance {
+    display: block;
+  }
+
+  .workout-guidance strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .bar-chart.enhanced {
+    min-height: 210px;
+  }
+
+  .daily-grid[data-view="week"] .list-card {
+    max-height: none;
+  }
+}
+
+/* v114: cache-safe CSS icons. Keeps PWA icon rendering independent from emoji/svg fonts. */
+.bottom-nav .bn-item .bn-icon {
+  position: relative !important;
+  display: inline-block !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: currentColor !important;
+  transform-origin: center;
+}
+
+.bottom-nav .bn-icon::before,
+.bottom-nav .bn-icon::after,
+.moti-card .moti-icon::before,
+.moti-card .moti-icon::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.bottom-nav .icon-dashboard::before {
+  left: 3px;
+  top: 9px;
+  width: 18px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top: 0;
+  border-radius: 3px;
+}
+
+.bottom-nav .icon-dashboard::after {
+  left: 5px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border-left: 2px solid currentColor;
+  border-top: 2px solid currentColor;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.bottom-nav .icon-scale::before {
+  left: 4px;
+  top: 5px;
+  width: 16px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-radius: 7px 7px 5px 5px;
+}
+
+.bottom-nav .icon-scale::after {
+  left: 10px;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: -5px 8px 0 -1px currentColor, 5px 8px 0 -1px currentColor;
+}
+
+.bottom-nav .icon-log::before {
+  left: 5px;
+  top: 3px;
+  width: 14px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+.bottom-nav .icon-log::after {
+  left: 9px;
+  top: 8px;
+  width: 7px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 5px 0 currentColor, 0 10px 0 currentColor;
+}
+
+.bottom-nav .icon-progress::before {
+  left: 4px;
+  bottom: 5px;
+  width: 16px;
+  height: 13px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0 0 0 2px;
+}
+
+.bottom-nav .icon-progress::after {
+  left: 7px;
+  top: 7px;
+  width: 14px;
+  height: 8px;
+  border-left: 2px solid currentColor;
+  border-top: 2px solid currentColor;
+  transform: skew(-24deg) rotate(-8deg);
+  border-radius: 2px;
+}
+
+.bottom-nav .icon-profile::before {
+  left: 8px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.bottom-nav .icon-profile::after {
+  left: 4px;
+  top: 14px;
+  width: 16px;
+  height: 7px;
+  border-radius: 10px 10px 4px 4px;
+  background: currentColor;
+}
+
+.moti-card .moti-icon {
+  position: relative !important;
+  display: inline-block !important;
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(236,253,245,.9));
+  color: #0f9f6e;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  box-shadow: 0 12px 24px rgba(20, 184, 166, .12);
+}
+
+.moti-card .moti-icon::before {
+  left: 12px;
+  top: 11px;
+  width: 9px;
+  height: 18px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, #fbbf24, #10b981);
+  transform: rotate(22deg);
+}
+
+.moti-card .moti-icon::after {
+  left: 18px;
+  top: 14px;
+  width: 13px;
+  height: 16px;
+  border: 3px solid #0ea5e9;
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 3px 8px 0 0;
+  transform: rotate(44deg);
+}
+
+
+/* v115 — sync, icon and PWA safe-area final fixes */
+.nav-logout-btn {
+  font-family: var(--font-body) !important;
+}
+
+html,
+body,
+.app-shell,
+#panels {
+  min-height: 100%;
+}
+
+body {
+  padding-bottom: 0 !important;
+}
+
+#panels {
+  padding-bottom: 0 !important;
+  min-height: auto !important;
+}
+
+.panel.active {
+  min-height: auto !important;
+}
+
+.dashboard-wrap {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+}
+
+.quick-actions-card {
+  margin-bottom: 0 !important;
+}
+
+.bottom-nav {
+  min-height: calc(68px + env(safe-area-inset-bottom));
+}
+
+.bn-item .bn-icon {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+}
+
+.icon-dashboard,
+.icon-scale,
+.icon-log,
+.icon-progress,
+.icon-profile {
+  opacity: .92;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: rgba(21,27,38,.98) !important;
+  backdrop-filter: blur(18px);
+}
+
+@media (max-width:700px) {
+  .dashboard-wrap {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+
+  .section:last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+
+/* v116 — final layout, nav icon and overlap fixes */
+:root{
+  --bottom-nav-height: 76px;
+}
+
+html,
+body{
+  width:100%;
+  min-height:100%;
+  overflow-x:hidden !important;
+}
+
+body{
+  padding-bottom:0 !important;
+}
+
+.app-shell{
+  min-height:100dvh !important;
+  padding-bottom:0 !important;
+}
+
+#panels{
+  min-height:auto !important;
+  padding-bottom:0 !important;
+  overflow:visible !important;
+}
+
+.panel{
+  display:none !important;
+  min-height:auto !important;
+  padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px) !important;
+}
+
+.panel.active{
+  display:block !important;
+}
+
+.dashboard-wrap{
+  padding-bottom:0 !important;
+}
+
+.dashboard-wrap > :last-child,
+.panel.active > :last-child{
+  margin-bottom:0 !important;
+}
+
+.bottom-nav{
+  height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom)) !important;
+  min-height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom)) !important;
+  padding:8px 14px calc(8px + env(safe-area-inset-bottom)) !important;
+  display:grid !important;
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  align-items:center !important;
+  gap:6px;
+  border-radius:0 !important;
+  overflow:hidden;
+  box-shadow:0 -10px 28px rgba(15,23,42,.08);
+}
+
+.bn-item{
+  height:100% !important;
+  min-width:0 !important;
+  padding:4px 0 !important;
+  gap:4px !important;
+  border-radius:16px;
+  font-family:var(--font-body) !important;
+  font-size:11px !important;
+  font-weight:700 !important;
+  letter-spacing:.1px !important;
+}
+
+.bn-item .bn-icon{
+  position:static !important;
+  display:grid !important;
+  place-items:center !important;
+  width:24px !important;
+  height:24px !important;
+  min-width:24px !important;
+  color:currentColor !important;
+  opacity:.95 !important;
+}
+
+.bn-item .bn-icon svg{
+  display:block !important;
+  width:23px !important;
+  height:23px !important;
+  fill:none !important;
+  stroke:currentColor !important;
+  stroke-width:2.15 !important;
+  stroke-linecap:round !important;
+  stroke-linejoin:round !important;
+}
+
+.bn-icon::before,
+.bn-icon::after,
+.icon-dashboard::before,
+.icon-dashboard::after,
+.icon-scale::before,
+.icon-scale::after,
+.icon-log::before,
+.icon-log::after,
+.icon-progress::before,
+.icon-progress::after,
+.icon-profile::before,
+.icon-profile::after{
+  content:none !important;
+  display:none !important;
+}
+
+.bn-item.active{
+  color:var(--blue) !important;
+  background:rgba(59,130,246,.08);
+}
+
+.bn-item.active .bn-icon{
+  transform:none !important;
+}
+
+[data-theme="dark"] .bottom-nav{
+  background:rgba(21,27,38,.98) !important;
+  border-top-color:#2a3348 !important;
+  box-shadow:0 -10px 28px rgba(0,0,0,.22);
+}
+
+[data-theme="dark"] .bn-item.active{
+  background:rgba(59,130,246,.12);
+}
+
+@media (min-width:701px){
+  :root{ --bottom-nav-height: 72px; }
+  .panel{ padding-bottom:calc(var(--bottom-nav-height) + 22px) !important; }
+  .bottom-nav{
+    left:50% !important;
+    transform:translateX(-50%) !important;
+    width:min(1180px, calc(100% - 32px)) !important;
+    bottom:12px !important;
+    border:1px solid var(--border) !important;
+    border-radius:22px !important;
+    padding:8px 22px !important;
+    backdrop-filter:blur(18px);
+  }
+}
+
+@media (max-width:700px){
+  :root{ --bottom-nav-height: 82px; }
+  .panel{
+    padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 10px) !important;
+  }
+  .bottom-nav{
+    left:0 !important;
+    transform:none !important;
+    width:100% !important;
+    bottom:0 !important;
+    border-left:0 !important;
+    border-right:0 !important;
+  }
+  .bn-item{font-size:11px !important;}
+}
+
+
+/* v218 — FINAL: panel, scroll, bottom nav icon stabilization */
+
+/* Sekme üst üste binmesini kesin olarak engelle */
+#panels > .panel {
+  display: none !important;
+}
+
+#panels > .panel.active {
+  display: block !important;
+}
+
+/* Fixed bottom nav için gereğinden fazla scroll boşluğunu azalt */
+html,
+body,
+.app-shell,
+#panels {
+  min-height: auto !important;
+}
+
+body {
+  padding-bottom: 0 !important;
+  overflow-x: hidden !important;
+}
+
+#panels {
+  padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+}
+
+.dashboard-wrap {
+  padding-bottom: 18px !important;
+}
+
+.quick-actions-card {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 700px) {
+  #panels {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .dashboard-wrap {
+    padding-bottom: 8px !important;
+  }
+}
+
+/* Bottom nav: SVG ikonları kullan, eski pseudo ikonları kapat */
+.bottom-nav {
+  min-height: calc(64px + env(safe-area-inset-bottom)) !important;
+  padding: 6px 12px calc(6px + env(safe-area-inset-bottom)) !important;
+  gap: 6px !important;
+}
+
+.bottom-nav .bn-item {
+  min-height: 54px !important;
+  border-radius: 16px !important;
+  gap: 4px !important;
+  padding: 7px 0 6px !important;
+  color: var(--muted) !important;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--blue) !important;
+  background: rgba(59,130,246,.10) !important;
+}
+
+[data-theme="dark"] .bottom-nav .bn-item.active {
+  background: rgba(59,130,246,.16) !important;
+}
+
+.bottom-nav .bn-icon {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+  position: relative !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+  margin: 0 auto 1px !important;
+  transform-origin: center !important;
+}
+
+.bottom-nav .bn-icon::before,
+.bottom-nav .bn-icon::after {
+  display: none !important;
+  content: none !important;
+}
+
+.bottom-nav .bn-icon svg {
+  display: block !important;
+  width: 23px !important;
+  height: 23px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  opacity: 1 !important;
+}
+
+.bottom-nav .bn-icon svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+.bottom-nav .bn-item.active .bn-icon {
+  transform: scale(1.07) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+  font-weight: 700 !important;
+  letter-spacing: .2px !important;
+}
+
+/* Desktop/PWA pencere görünümünde nav genişliği kontrollü kalsın */
+@media (min-width: 900px) {
+  .bottom-nav {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: min(1120px, calc(100% - 48px)) !important;
+    bottom: 12px !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 18px 45px rgba(15,23,42,.10) !important;
+  }
+
+  [data-theme="dark"] .bottom-nav {
+    box-shadow: 0 18px 45px rgba(0,0,0,.25) !important;
+  }
+
+  #panels {
+    padding-bottom: 102px !important;
+  }
+}
+
+/* v222: canonical PWA layout, navigation and interaction polish */
+:root {
+  --mobile-nav-content-height: 64px;
+}
+
+html {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+  scroll-padding-top: calc(58px + env(safe-area-inset-top));
+}
+
+body,
+.app-shell {
+  min-height: 100dvh !important;
+  padding-bottom: 0 !important;
+}
+
+#panels {
+  min-height: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#panels > .panel {
+  padding-bottom: 0 !important;
+}
+
+#panels > .panel.active {
+  padding-bottom: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom) + 14px) !important;
+}
+
+.dashboard-wrap,
+.dashboard-wrap > :last-child,
+.panel.active > :last-child,
+.section:last-child {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.topnav {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .03);
+}
+
+.nav-actions {
+  gap: 6px;
+}
+
+.nav-logout-btn,
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border-color: transparent;
+  background: rgba(148, 163, 184, .09);
+  color: var(--text2);
+}
+
+.nav-logout-btn svg,
+.icon-btn svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-logout-btn:hover,
+.nav-logout-btn:focus-visible {
+  color: var(--red);
+  border-color: rgba(239, 68, 68, .18);
+  background: rgba(239, 68, 68, .08);
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  color: var(--blue);
+  border-color: rgba(59, 130, 246, .18);
+  background: rgba(59, 130, 246, .08);
+}
+
+.bottom-nav {
+  height: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom)) !important;
+  min-height: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom)) !important;
+  padding: 5px 8px calc(5px + env(safe-area-inset-bottom)) !important;
+  gap: 3px !important;
+  overflow: visible !important;
+  background: rgba(255, 255, 255, .94) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.bottom-nav .bn-item {
+  position: relative;
+  min-height: 54px !important;
+  padding: 6px 2px 5px !important;
+  gap: 3px !important;
+  border-radius: 13px !important;
+  color: #748198 !important;
+  transition: color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.bottom-nav .bn-item::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateX(-50%);
+  transition: width .18s ease, background .18s ease;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--blue) !important;
+  background: rgba(59, 130, 246, .075) !important;
+}
+
+.bottom-nav .bn-item.active::before {
+  width: 24px;
+  background: currentColor;
+}
+
+.bottom-nav .bn-icon,
+.bottom-nav .bn-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+}
+
+.bottom-nav .bn-icon svg {
+  stroke-width: 1.8 !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon {
+  transform: translateY(-1px) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, .2);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: rgba(21, 27, 38, .94) !important;
+}
+
+@media (min-width: 701px) {
+  #panels > .panel.active {
+    padding-bottom: 108px !important;
+  }
+
+  .bottom-nav {
+    height: 72px !important;
+    min-height: 72px !important;
+    padding: 7px 18px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* v223: premium color system and optical icon treatment */
+:root {
+  --bg: #f3f5fa;
+  --surface: #fdfdff;
+  --surface2: #edf1f7;
+  --border: rgba(91, 108, 139, .13);
+  --text: #111827;
+  --text2: #4b5870;
+  --muted: #7d899f;
+  --dim: #c7cfdd;
+  --blue: #526ef5;
+  --green: #16a87a;
+  --shadow: 0 1px 2px rgba(17, 24, 39, .025), 0 12px 32px rgba(38, 51, 77, .065);
+  --radius: 18px;
+}
+
+[data-theme="dark"] {
+  --bg: #0d111b;
+  --surface: #151b28;
+  --surface2: #1b2333;
+  --border: rgba(158, 174, 205, .12);
+  --text: #f4f6fb;
+  --text2: #c2cad9;
+  --muted: #7f8ca5;
+  --dim: #39445a;
+  --blue: #7890ff;
+}
+
+html,
+body,
+.app-shell {
+  background-color: var(--bg) !important;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 12% -8%, rgba(82, 110, 245, .09), transparent 31rem),
+    radial-gradient(circle at 102% 18%, rgba(94, 211, 180, .065), transparent 27rem);
+  background-attachment: fixed;
+}
+
+.app-shell {
+  background: transparent !important;
+}
+
+.topnav {
+  background: rgba(249, 250, 253, .82) !important;
+  border-bottom-color: rgba(91, 108, 139, .1) !important;
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+}
+
+.nav-logo {
+  color: #172033;
+  letter-spacing: -.55px;
+}
+
+.nav-logo span {
+  color: var(--blue);
+}
+
+.nav-logout-btn,
+.icon-btn {
+  background: rgba(255, 255, 255, .64);
+  border: 1px solid rgba(91, 108, 139, .1);
+  box-shadow: 0 5px 16px rgba(38, 51, 77, .055);
+}
+
+.card,
+.stat-card,
+.settings-card,
+.quick-actions-card,
+.week-chip,
+.input-card {
+  background: rgba(253, 253, 255, .9) !important;
+  border-color: rgba(91, 108, 139, .11) !important;
+  box-shadow: var(--shadow) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.card,
+.settings-card,
+.quick-actions-card {
+  border-radius: 22px !important;
+}
+
+.moti-card {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .86), transparent 30%),
+    linear-gradient(135deg, #dff7ed 0%, #e8f2ff 52%, #fff2c9 100%) !important;
+  color: #1f3152 !important;
+  border: 1px solid rgba(72, 126, 145, .14) !important;
+  box-shadow: 0 16px 36px rgba(49, 87, 111, .12) !important;
+}
+
+.btn:not(.ghost) {
+  background: linear-gradient(135deg, #4c65e8, #607cff);
+  box-shadow: 0 8px 18px rgba(82, 110, 245, .18);
+}
+
+.bottom-nav {
+  background: rgba(249, 250, 253, .9) !important;
+  border-top-color: rgba(91, 108, 139, .1) !important;
+  box-shadow: 0 -10px 32px rgba(38, 51, 77, .075) !important;
+}
+
+.bottom-nav .bn-item {
+  color: #7c879b !important;
+  background: transparent !important;
+}
+
+.bottom-nav .bn-item::before {
+  display: none;
+}
+
+.bottom-nav .bn-icon {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  border-radius: 10px !important;
+  transition: color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.bottom-nav .bn-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  stroke-width: 1.7 !important;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--blue) !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon {
+  color: #fff !important;
+  background: linear-gradient(145deg, #4962df, #6e86ff) !important;
+  box-shadow: 0 7px 16px rgba(82, 110, 245, .3), inset 0 1px 0 rgba(255, 255, 255, .24);
+  transform: translateY(-2px) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-weight: 600 !important;
+  color: inherit;
+}
+
+[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 12% -8%, rgba(120, 144, 255, .12), transparent 30rem),
+    radial-gradient(circle at 102% 18%, rgba(52, 211, 153, .06), transparent 27rem);
+}
+
+[data-theme="dark"] .topnav,
+[data-theme="dark"] .bottom-nav {
+  background: rgba(15, 20, 31, .88) !important;
+}
+
+[data-theme="dark"] .nav-logo {
+  color: var(--text);
+}
+
+[data-theme="dark"] .nav-logout-btn,
+[data-theme="dark"] .icon-btn,
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .settings-card,
+[data-theme="dark"] .quick-actions-card,
+[data-theme="dark"] .week-chip,
+[data-theme="dark"] .input-card {
+  background: rgba(21, 27, 40, .9) !important;
+}
+
+/* v224: visible light-theme correction */
+html[data-theme="light"],
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-color: #e9eef7 !important;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-image:
+    radial-gradient(circle at 8% 2%, rgba(112, 136, 224, .12), transparent 24rem),
+    radial-gradient(circle at 96% 22%, rgba(84, 190, 165, .08), transparent 22rem),
+    linear-gradient(180deg, #eef2f8 0%, #e9eef7 48%, #edf1f7 100%) !important;
+  background-attachment: fixed !important;
+}
+
+html[data-theme="light"] #panels > .panel,
+html[data-theme="light"] #panels > .panel.active,
+html[data-theme="light"] .dashboard-wrap {
+  background: transparent !important;
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .settings-card,
+html[data-theme="light"] .quick-actions-card,
+html[data-theme="light"] .week-chip,
+html[data-theme="light"] .input-card,
+html[data-theme="light"] #dashboardGoalCard > *,
+html[data-theme="light"] #dashboardProgressCard > * {
+  background: rgba(255, 255, 255, .82) !important;
+  border: 1px solid rgba(92, 108, 139, .12) !important;
+  box-shadow:
+    0 1px 2px rgba(17, 24, 39, .025),
+    0 12px 34px rgba(44, 58, 86, .075) !important;
+}
+
+html[data-theme="light"] .moti-card {
+  color: #24314f !important;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .8), transparent 32%),
+    linear-gradient(135deg, #dfe8ff 0%, #e9edff 52%, #e2f5ef 100%) !important;
+  border: 1px solid rgba(86, 106, 175, .14) !important;
+  box-shadow: 0 14px 32px rgba(73, 91, 145, .11) !important;
+}
+
+html[data-theme="light"] .moti-card .moti-emoji {
+  color: #526ef5 !important;
+  background: rgba(255, 255, 255, .62) !important;
+  border: 1px solid rgba(82, 110, 245, .1);
+}
+
+html[data-theme="light"] .moti-card .moti-text {
+  color: #24314f !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .topnav,
+html[data-theme="light"] .bottom-nav {
+  background: rgba(247, 249, 253, .86) !important;
+}
+
+@media (max-width: 700px) {
+  html[data-theme="light"] body,
+  html[data-theme="light"] .app-shell,
+  html[data-theme="light"] #panels {
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(112, 136, 224, .1), transparent 18rem),
+      linear-gradient(180deg, #eef2f8 0%, #e8edf6 100%) !important;
+  }
+}
+
+/* v225 final palette override */
+html[data-theme="light"] body .moti-card,
+html[data-theme="light"] #pHome .moti-card {
+  color: #1d3557 !important;
+  background-color: #e9f8f2 !important;
+  background-image:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, .9), transparent 30%),
+    radial-gradient(circle at 4% 110%, rgba(112, 210, 180, .22), transparent 38%),
+    linear-gradient(125deg, #dcf8ec 0%, #e5f1ff 55%, #fff1bd 100%) !important;
+  border: 1px solid rgba(72, 126, 145, .14) !important;
+  box-shadow: 0 15px 34px rgba(60, 102, 125, .12) !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-text {
+  color: #1d3557 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-emoji,
+html[data-theme="light"] body .moti-card .moti-icon {
+  color: #348b78 !important;
+  background: rgba(255, 255, 255, .7) !important;
+  border: 1px solid rgba(52, 139, 120, .12) !important;
+  box-shadow: 0 8px 20px rgba(52, 139, 120, .1) !important;
+}
+
+html[data-theme="light"] .hero-title span {
+  background: linear-gradient(90deg, #4f67e8, #27a786) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+html[data-theme="light"] .week-chip {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(238, 245, 255, .92)) !important;
+  border-color: rgba(82, 110, 245, .12) !important;
+}
+
+html[data-theme="light"] .quick-actions-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(82, 110, 245, .07), transparent 42%),
+    rgba(255, 255, 255, .9) !important;
+}
+
+html[data-theme="light"] .quick-btn.sleep {
+  color: #245f9f !important;
+  background: #e7f2ff !important;
+  border-color: #cfe4fb !important;
+}
+
+html[data-theme="light"] .quick-btn.workout {
+  color: #23755e !important;
+  background: #e3f7ef !important;
+  border-color: #c9ebdf !important;
+}
+
+html[data-theme="light"] .quick-btn.note {
+  color: #8a641a !important;
+  background: #fff4cf !important;
+  border-color: #f1dfaa !important;
+}
+
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, #4e68ea, #6380fa) !important;
+  box-shadow: 0 9px 20px rgba(78, 104, 234, .2) !important;
+}
+
+html[data-theme="light"] .week-fill.sleep {
+  background: linear-gradient(90deg, #46b8d8, #5f7df2) !important;
+}
+
+html[data-theme="light"] .week-fill.workout {
+  background: linear-gradient(90deg, #45c49d, #24a777) !important;
+}
+
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  background: linear-gradient(145deg, #4e67e6, #6985fb) !important;
+  box-shadow: 0 8px 18px rgba(78, 103, 230, .28) !important;
+}
+
+/* v238: canonical premium UI system */
+:root {
+  --premium-bg: #eef2f8;
+  --premium-surface: rgba(255, 255, 255, .88);
+  --premium-surface-solid: #ffffff;
+  --premium-line: rgba(86, 101, 132, .12);
+  --premium-shadow: 0 2px 4px rgba(31, 42, 68, .025), 0 18px 48px rgba(44, 58, 86, .075);
+  --premium-shadow-soft: 0 10px 28px rgba(44, 58, 86, .055);
+  --premium-radius: 24px;
+  --premium-radius-sm: 16px;
+  --content-width: 1080px;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-color: var(--premium-bg) !important;
+  background-image:
+    radial-gradient(circle at 8% -4%, rgba(90, 112, 232, .11), transparent 27rem),
+    radial-gradient(circle at 96% 12%, rgba(38, 175, 146, .075), transparent 25rem),
+    linear-gradient(180deg, #f3f6fb 0%, #edf2f8 52%, #eaf0f7 100%) !important;
+}
+
+#panels {
+  width: min(100%, calc(var(--content-width) + 40px)) !important;
+  max-width: none !important;
+  margin-inline: auto !important;
+  padding-inline: 20px !important;
+}
+
+.dashboard-wrap,
+#pHome .dashboard-wrap {
+  width: 100% !important;
+  max-width: var(--content-width) !important;
+  margin-inline: auto !important;
+}
+
+.section {
+  width: 100%;
+  margin-top: 22px !important;
+}
+
+.sec-head {
+  margin-bottom: 10px;
+}
+
+.sec-title,
+.list-title,
+.progress-summary-label {
+  color: #72809a !important;
+  font-size: 11px !important;
+  letter-spacing: .08em !important;
+}
+
+.card,
+.settings-card,
+.quick-actions-card,
+.week-chip,
+.input-card,
+.goal-hero-card,
+.progress-summary-card {
+  border: 1px solid var(--premium-line) !important;
+  border-radius: var(--premium-radius) !important;
+  background: var(--premium-surface) !important;
+  box-shadow: var(--premium-shadow) !important;
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+
+.card:hover,
+.settings-card:hover {
+  border-color: rgba(82, 110, 245, .18) !important;
+}
+
+.hero {
+  padding-top: 24px !important;
+}
+
+.hero-date {
+  letter-spacing: .22em !important;
+  color: #71809c !important;
+}
+
+.hero-title {
+  margin-top: 6px !important;
+  font-size: clamp(30px, 4vw, 40px) !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.035em !important;
+}
+
+.moti-card {
+  min-height: 72px;
+  padding: 16px 20px !important;
+  border-radius: 20px !important;
+  box-shadow: var(--premium-shadow-soft) !important;
+}
+
+.goal-hero-card {
+  overflow: hidden;
+}
+
+.dashboard-measure-grid {
+  gap: 16px !important;
+}
+
+.progress-summary-card {
+  min-height: 132px !important;
+  padding: 22px !important;
+}
+
+.week-chip {
+  padding: 22px !important;
+}
+
+.week-card-head {
+  align-items: flex-start !important;
+}
+
+.week-card-title {
+  font-size: 17px !important;
+  letter-spacing: -.01em;
+}
+
+.week-card-date {
+  max-width: 680px;
+  margin-top: 4px;
+  color: #75839d !important;
+  font-size: 12px !important;
+  line-height: 1.45;
+}
+
+.week-card-pill {
+  border: 1px solid rgba(16, 168, 122, .12);
+  box-shadow: none !important;
+}
+
+.week-metric {
+  padding: 14px 16px !important;
+  border: 1px solid var(--premium-line) !important;
+  border-radius: var(--premium-radius-sm) !important;
+  background: rgba(248, 250, 253, .72) !important;
+}
+
+.week-track,
+.metric-track,
+.weekly-report-metrics i {
+  height: 6px !important;
+  background: #e7ecf4 !important;
+}
+
+.page-intro {
+  padding-top: 24px !important;
+}
+
+.page-intro h2 {
+  font-size: 28px !important;
+  letter-spacing: -.025em !important;
+}
+
+.entry-card {
+  padding: 18px !important;
+}
+
+.entry-form {
+  display: grid !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+.sleep-entry-form {
+  grid-template-columns: minmax(150px, .9fr) minmax(180px, 1fr) auto auto;
+}
+
+.workout-entry-form {
+  grid-template-columns: minmax(145px, .85fr) minmax(130px, .8fr) minmax(150px, 1fr) minmax(105px, .65fr) auto minmax(120px, .75fr);
+}
+
+.entry-form input,
+.entry-form select,
+.form-grid input,
+.form-grid select,
+.note-compose textarea {
+  min-width: 0 !important;
+  height: 44px !important;
+  border: 1px solid var(--premium-line) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, .82) !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .025);
+}
+
+.workout-entry-form #workoutNoteInput {
+  grid-column: 1 / -2;
+}
+
+.workout-entry-form #saveWorkoutBtn {
+  grid-column: -2 / -1;
+}
+
+.workout-guidance {
+  margin-top: 14px !important;
+  border-radius: 15px !important;
+}
+
+.quick-picks {
+  flex-wrap: nowrap !important;
+}
+
+.quick-picks button {
+  min-width: 42px;
+  height: 36px !important;
+  background: #f2f5fa !important;
+  border-color: rgba(86, 101, 132, .13) !important;
+}
+
+.daily-filter-bar {
+  top: 72px !important;
+  padding: 5px !important;
+  border-radius: 15px !important;
+  background: rgba(255, 255, 255, .9) !important;
+  backdrop-filter: blur(16px);
+}
+
+.daily-grid {
+  align-items: start;
+  gap: 16px !important;
+}
+
+.list-card,
+.daily-grid[data-view="week"] .list-card,
+.daily-grid[data-view="all"] .list-card {
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#sleepList,
+#workoutList,
+.daily-grid[data-view="week"] #sleepList,
+.daily-grid[data-view="week"] #workoutList,
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.daily-row {
+  min-height: 70px !important;
+  padding: 14px 16px !important;
+  background: transparent !important;
+}
+
+.daily-row:hover {
+  background: rgba(82, 110, 245, .035) !important;
+}
+
+.row-edit,
+.row-delete {
+  background: #f5f7fb !important;
+}
+
+.note-compose {
+  padding: 18px !important;
+}
+
+.note-compose textarea {
+  min-height: 112px !important;
+  height: auto !important;
+}
+
+#noteList .empty-state {
+  min-height: 150px !important;
+}
+
+.progress-period {
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--premium-line) !important;
+  border-radius: 0 !important;
+  padding: 13px 16px !important;
+  background: rgba(238, 243, 250, .72) !important;
+}
+
+.progress-grid,
+.progress-insight-grid {
+  gap: 14px !important;
+}
+
+.progress-metric-card,
+.progress-insight-card,
+.chart-stat-row div,
+.weekly-report-row {
+  border-color: var(--premium-line) !important;
+  background: rgba(255, 255, 255, .7) !important;
+  box-shadow: none !important;
+}
+
+.progress-metric-card {
+  min-height: 156px !important;
+  border-radius: 18px !important;
+}
+
+.progress-insight-card {
+  min-height: 106px !important;
+  border-radius: 17px !important;
+}
+
+#pProgress .chart-card {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.chart-mini-head.enhanced {
+  padding: 22px 24px 0 !important;
+}
+
+.chart-mini-head strong {
+  font-size: 16px !important;
+  letter-spacing: -.01em;
+}
+
+.chart-stat-row {
+  gap: 12px !important;
+  padding: 14px 24px 0 !important;
+}
+
+.chart-stat-row div {
+  min-height: 58px;
+  padding: 11px 13px !important;
+  border: 1px solid rgba(86, 101, 132, .08);
+  border-radius: 14px !important;
+}
+
+.bar-chart.enhanced {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(56px, 1fr));
+  align-items: end !important;
+  gap: 12px !important;
+  min-height: 258px !important;
+  padding: 32px 26px 20px !important;
+}
+
+.workout-chart.enhanced {
+  grid-template-columns: repeat(6, minmax(64px, 1fr));
+}
+
+.bar-chart.enhanced .bar-item {
+  width: 100%;
+  height: 196px;
+  display: grid !important;
+  grid-template-rows: 132px 22px 34px;
+  align-items: end;
+  justify-items: center;
+  gap: 4px !important;
+}
+
+.bar-chart.enhanced .bar-fill {
+  align-self: end;
+  width: 42px !important;
+  max-height: 124px;
+  border-radius: 14px 14px 6px 6px !important;
+}
+
+.bar-chart.enhanced .bar-label {
+  align-self: center;
+  line-height: 22px;
+}
+
+.bar-chart.enhanced .bar-value {
+  align-self: start;
+  min-height: 0 !important;
+  line-height: 1.2;
+}
+
+.bar-fill span {
+  bottom: calc(100% + 8px) !important;
+  box-shadow: 0 7px 18px rgba(44, 58, 86, .1) !important;
+}
+
+.sleep-chart.enhanced::before {
+  left: 26px !important;
+  right: 26px !important;
+  bottom: 148px !important;
+  transform: none !important;
+}
+
+.weekly-report-list {
+  gap: 12px !important;
+  padding: 16px !important;
+}
+
+.weekly-report-row {
+  grid-template-columns: minmax(240px, .85fr) minmax(0, 1.65fr) !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+}
+
+.weekly-report-metrics {
+  gap: 16px !important;
+}
+
+.weekly-report-metrics strong {
+  font-size: 14px !important;
+}
+
+.settings-grid {
+  gap: 16px !important;
+}
+
+.settings-card {
+  min-height: 0 !important;
+  padding: 20px !important;
+}
+
+.bottom-nav {
+  border: 1px solid rgba(86, 101, 132, .12) !important;
+  background: rgba(250, 252, 255, .91) !important;
+  box-shadow: 0 18px 50px rgba(31, 42, 68, .14) !important;
+}
+
+.bottom-nav .bn-item {
+  border-radius: 15px !important;
+}
+
+@media (max-width: 980px) {
+  .workout-entry-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .workout-entry-form #workoutNoteInput {
+    grid-column: 1 / 3;
+  }
+
+  .workout-entry-form #saveWorkoutBtn {
+    grid-column: 3 / 4;
+  }
+
+  .progress-grid,
+  .progress-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #panels {
+    padding-inline: 14px !important;
+  }
+
+  .section {
+    margin-top: 18px !important;
+  }
+
+  .page-intro {
+    align-items: flex-start !important;
+  }
+
+  .sleep-entry-form,
+  .workout-entry-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sleep-entry-form .quick-picks,
+  .workout-entry-form .quick-picks,
+  .workout-entry-form #workoutNoteInput {
+    grid-column: 1 / -1;
+  }
+
+  .sleep-entry-form #saveSleepBtn,
+  .workout-entry-form #saveWorkoutBtn {
+    grid-column: 1 / -1;
+  }
+
+  .daily-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .bar-chart.enhanced,
+  .workout-chart.enhanced {
+    display: grid !important;
+    grid-template-columns: repeat(7, 64px) !important;
+    overflow-x: auto;
+    justify-content: start;
+    scroll-snap-type: x proximity;
+  }
+
+  .workout-chart.enhanced {
+    grid-template-columns: repeat(6, 64px) !important;
+  }
+
+  .bar-chart.enhanced .bar-item {
+    scroll-snap-align: start;
+  }
+
+  .weekly-report-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero-title {
+    font-size: 29px !important;
+  }
+
+  .dashboard-measure-grid,
+  .progress-grid,
+  .progress-insight-grid,
+  .sleep-entry-form,
+  .workout-entry-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  .workout-entry-form #workoutNoteInput,
+  .workout-entry-form #saveWorkoutBtn,
+  .sleep-entry-form .quick-picks,
+  .sleep-entry-form #saveSleepBtn,
+  .workout-entry-form .quick-picks {
+    grid-column: 1 !important;
+  }
+
+  .quick-picks {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .chart-mini-head.enhanced {
+    padding: 18px 18px 0 !important;
+  }
+
+  .chart-stat-row {
+    padding-inline: 18px !important;
+  }
+
+  .progress-grid,
+  .progress-insight-grid {
+    padding-inline: 12px !important;
+  }
+
+  .bottom-nav {
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+}
+
+/* v239: high-impact premium direction */
+:root {
+  --lux-ink: #111a36;
+  --lux-indigo: #5a5ff2;
+  --lux-indigo-deep: #3f46cf;
+  --lux-mint: #10b981;
+  --lux-coral: #f26b5f;
+  --lux-gold: #f4b740;
+  --lux-line: rgba(44, 57, 96, .11);
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-image:
+    radial-gradient(circle at 4% 0%, rgba(90, 95, 242, .15), transparent 30rem),
+    radial-gradient(circle at 100% 16%, rgba(16, 185, 129, .10), transparent 28rem),
+    linear-gradient(180deg, #f7f8fc 0%, #edf1f8 55%, #e9eef6 100%) !important;
+}
+
+.card,
+.settings-card,
+.week-chip,
+.input-card,
+.goal-hero-card,
+.progress-summary-card {
+  border-color: var(--lux-line) !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 18px 44px rgba(35, 44, 76, .075) !important;
+}
+
+.sec-title,
+.list-title,
+.progress-summary-label {
+  color: #677493 !important;
+  letter-spacing: .11em !important;
+}
+
+.hero-title,
+.page-intro h2,
+.chart-mini-head strong,
+.settings-card-title {
+  color: var(--lux-ink) !important;
+}
+
+.moti-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 84px !important;
+  background:
+    radial-gradient(circle at 94% 18%, rgba(255,255,255,.48), transparent 24%),
+    linear-gradient(110deg, #545af0 0%, #7477f7 50%, #20b99a 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 20px 42px rgba(70, 75, 210, .24) !important;
+}
+
+.moti-card::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -42px;
+  top: -85px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 50%;
+}
+
+html[data-theme="light"] body .moti-card .moti-text {
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 750 !important;
+  letter-spacing: -.01em;
+}
+
+html[data-theme="light"] body .moti-card .moti-icon {
+  color: #fff !important;
+  background: rgba(255,255,255,.17) !important;
+  border-color: rgba(255,255,255,.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.btn:not(.ghost),
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, var(--lux-indigo-deep), #6970ff) !important;
+  box-shadow: 0 10px 22px rgba(79, 84, 220, .25) !important;
+}
+
+.daily-filter-bar {
+  border: 0 !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 10px 26px rgba(35,44,76,.09) !important;
+}
+
+.daily-filter-bar button.active {
+  background: linear-gradient(135deg, #4e54df, #6d73ff) !important;
+  box-shadow: 0 8px 18px rgba(78,84,223,.28) !important;
+}
+
+.daily-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+}
+
+.daily-grid .list-card {
+  height: 540px !important;
+  min-height: 540px !important;
+  max-height: 540px !important;
+  overflow: hidden !important;
+}
+
+#sleepList,
+#workoutList,
+.daily-grid[data-view="week"] #sleepList,
+.daily-grid[data-view="week"] #workoutList,
+.daily-grid[data-view="all"] #sleepList,
+.daily-grid[data-view="all"] #workoutList {
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90,95,242,.3) transparent;
+  flex: 1 1 auto !important;
+}
+
+#sleepList::-webkit-scrollbar,
+#workoutList::-webkit-scrollbar {
+  width: 6px;
+}
+
+#sleepList::-webkit-scrollbar-thumb,
+#workoutList::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(90,95,242,.28);
+}
+
+.list-title {
+  padding-top: 18px !important;
+}
+
+#sleepSummary,
+#workoutSummary {
+  min-height: 82px;
+  padding-top: 10px !important;
+  border-bottom: 1px solid var(--lux-line);
+}
+
+.daily-row {
+  min-height: 74px !important;
+  flex: 0 0 74px;
+  border-top: 0 !important;
+  border-bottom: 1px solid rgba(44,57,96,.09) !important;
+}
+
+.daily-row-title {
+  color: var(--lux-ink) !important;
+  font-size: 15px;
+}
+
+.daily-row-meta {
+  color: #7b88a4 !important;
+}
+
+.row-edit {
+  color: #586582 !important;
+  background: #f1f3f8 !important;
+}
+
+.row-delete {
+  color: #8190ad !important;
+  background: #f5f7fb !important;
+}
+
+.row-edit:hover {
+  color: var(--lux-indigo) !important;
+  border-color: rgba(90,95,242,.28) !important;
+}
+
+.chart-card {
+  min-height: 0 !important;
+}
+
+.bar-chart.enhanced {
+  min-height: 202px !important;
+  padding-top: 24px !important;
+  padding-bottom: 14px !important;
+}
+
+.bar-chart.enhanced .bar-item {
+  height: 156px !important;
+  grid-template-rows: 94px 22px 30px !important;
+}
+
+.bar-chart.enhanced .bar-fill {
+  max-height: 86px !important;
+  width: 40px !important;
+}
+
+.bar-fill.sleep {
+  background: linear-gradient(180deg, #48d8f1 0%, #5c62f1 100%) !important;
+  box-shadow: 0 12px 22px rgba(73, 105, 230, .2) !important;
+}
+
+.bar-fill.workout {
+  background: linear-gradient(180deg, var(--lux-gold) 0%, var(--lux-coral) 100%) !important;
+  box-shadow: 0 12px 22px rgba(242, 107, 95, .18) !important;
+}
+
+.sleep-chart.enhanced::before {
+  bottom: 112px !important;
+}
+
+.chart-stat-row div {
+  background: #f5f7fb !important;
+  border: 0 !important;
+}
+
+.chart-mini-head em {
+  color: #4c52df !important;
+  background: rgba(90,95,242,.10) !important;
+}
+
+.weekly-report-row {
+  grid-template-columns: minmax(270px, .95fr) minmax(0, 1.55fr) !important;
+  align-items: stretch !important;
+  background: #fff !important;
+}
+
+.weekly-report-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  border-left: 1px solid var(--lux-line);
+}
+
+.weekly-report-metrics > div {
+  grid-template-rows: 16px 24px 18px 8px;
+  align-content: center;
+  padding: 0 18px !important;
+}
+
+.weekly-report-metrics > div + div {
+  border-left: 1px solid var(--lux-line);
+}
+
+.weekly-report-metrics span,
+.weekly-report-metrics strong,
+.weekly-report-metrics small {
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.weekly-report-metrics span { grid-row: 1; }
+.weekly-report-metrics strong { grid-row: 2; }
+.weekly-report-metrics small { grid-row: 3; }
+
+.weekly-report-metrics i {
+  grid-row: 4;
+  align-self: end;
+  width: 100%;
+}
+
+.weekly-report-metrics > div:first-child b {
+  background: linear-gradient(90deg, #24b6b1, #5d62f1) !important;
+}
+
+.weekly-report-metrics > div:last-child b {
+  background: linear-gradient(90deg, var(--lux-mint), #4d5ee9) !important;
+}
+
+.progress-metric-card:first-child,
+.progress-insight-card:first-child {
+  border-top: 3px solid #31bdb1 !important;
+}
+
+.progress-metric-card:nth-child(2),
+.progress-insight-card:nth-child(3) {
+  border-top: 3px solid var(--lux-coral) !important;
+}
+
+.progress-metric-card:nth-child(3) {
+  border-top: 3px solid var(--lux-indigo) !important;
+}
+
+.goal-hero-card {
+  box-shadow: 0 24px 54px rgba(47, 55, 104, .11) !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon,
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  background: linear-gradient(145deg, #4e54df, #7378ff) !important;
+  box-shadow: 0 9px 20px rgba(78,84,223,.32) !important;
+}
+
+@media (max-width: 760px) {
+  .daily-grid .list-card {
+    height: 460px !important;
+    min-height: 460px !important;
+    max-height: 460px !important;
+  }
+
+  .weekly-report-metrics {
+    border-left: 0;
+    border-top: 1px solid var(--lux-line);
+  }
+
+  .weekly-report-metrics > div {
+    padding: 14px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .daily-grid .list-card {
+    height: 430px !important;
+    min-height: 430px !important;
+    max-height: 430px !important;
+  }
+
+  .weekly-report-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  .weekly-report-metrics > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--lux-line);
+  }
+}
+
+/* v240: Aqua Citrus visual experiment */
+:root {
+  --aqua-bg: #dff8f5;
+  --aqua-soft: #effcfb;
+  --citrus: #dfff75;
+  --citrus-soft: #f4ffc9;
+  --ink: #142039;
+  --ink-soft: #55627b;
+  --coral: #ff796b;
+  --sun: #ffc94d;
+  --mint: #32c9a2;
+  --violet: #7774f5;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] #panels {
+  background-color: var(--aqua-bg) !important;
+  background-image:
+    radial-gradient(circle at 8% 5%, rgba(119, 116, 245, .16), transparent 25rem),
+    radial-gradient(circle at 92% 8%, rgba(223, 255, 117, .42), transparent 22rem),
+    radial-gradient(circle at 96% 70%, rgba(50, 201, 162, .13), transparent 28rem),
+    linear-gradient(145deg, #e9fbfa 0%, #eef5ff 46%, #f6ffe4 100%) !important;
+}
+
+html[data-theme="light"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .45;
+  background-image:
+    linear-gradient(rgba(20, 32, 57, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 32, 57, .025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.hero-title,
+.page-intro h2,
+.progress-metric-card strong,
+.progress-insight-card strong,
+.weekly-report-metrics strong {
+  color: var(--ink) !important;
+}
+
+.moti-card,
+html[data-theme="light"] body .moti-card,
+html[data-theme="light"] #pHome .moti-card {
+  isolation: isolate;
+  min-height: 88px !important;
+  padding: 17px 22px !important;
+  color: var(--ink) !important;
+  background:
+    radial-gradient(circle at 92% 18%, rgba(255,255,255,.78), transparent 26%),
+    linear-gradient(110deg, var(--citrus) 0%, #efffa9 42%, #fff0b5 100%) !important;
+  border: 1px solid rgba(121, 145, 45, .16) !important;
+  box-shadow: 0 18px 38px rgba(118, 139, 52, .17) !important;
+}
+
+.moti-card::after {
+  content: none !important;
+  display: none !important;
+}
+
+.moti-card::before {
+  z-index: -1 !important;
+  width: 210px !important;
+  height: 210px !important;
+  right: -64px !important;
+  top: -112px !important;
+  border: 1px solid rgba(20,32,57,.1) !important;
+  background: rgba(255,255,255,.2);
+}
+
+.moti-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+html[data-theme="light"] body .moti-card .moti-text,
+html[data-theme="light"] #pHome .moti-card .moti-text {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: var(--ink) !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] body .moti-card .moti-icon,
+html[data-theme="light"] #pHome .moti-card .moti-icon {
+  color: var(--ink) !important;
+  background: rgba(255,255,255,.64) !important;
+  border: 1px solid rgba(20,32,57,.1) !important;
+  box-shadow: 0 10px 22px rgba(57,75,35,.12) !important;
+}
+
+.card,
+.settings-card,
+.week-chip,
+.input-card,
+.goal-hero-card,
+.progress-summary-card {
+  border-color: rgba(53, 78, 104, .11) !important;
+  background: rgba(255, 255, 255, .91) !important;
+}
+
+.goal-hero-card {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(50,201,162,.13), transparent 32%),
+    radial-gradient(circle at 92% 2%, rgba(119,116,245,.10), transparent 30%),
+    rgba(255,255,255,.94) !important;
+}
+
+.quick-actions-card {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.95), rgba(239,252,251,.92)) !important;
+}
+
+.quick-btn.sleep {
+  color: #245b9b !important;
+  background: #dff1ff !important;
+  border-color: #c9e4fb !important;
+}
+
+.quick-btn.workout {
+  color: #8f3b33 !important;
+  background: #ffe5df !important;
+  border-color: #ffd0c8 !important;
+}
+
+.quick-btn.note {
+  color: #705713 !important;
+  background: #fff2b8 !important;
+  border-color: #f3df91 !important;
+}
+
+.btn:not(.ghost),
+html[data-theme="light"] .btn:not(.ghost) {
+  background: linear-gradient(135deg, #4f55db, #7774f5) !important;
+  box-shadow: 0 10px 22px rgba(79,85,219,.25) !important;
+}
+
+.bottom-nav {
+  padding-inline: 12px !important;
+}
+
+.bottom-nav .bn-item {
+  color: #64718a !important;
+  background: transparent !important;
+}
+
+.bottom-nav .bn-icon {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 12px !important;
+  color: var(--ink) !important;
+  border: 1px solid rgba(20,32,57,.07) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 7px 15px rgba(39,55,83,.08);
+}
+
+.bottom-nav .bn-item:nth-child(1) .bn-icon { background: #dff1ff !important; }
+.bottom-nav .bn-item:nth-child(2) .bn-icon { background: #fff0b4 !important; }
+.bottom-nav .bn-item:nth-child(3) .bn-icon { background: #d9f8ee !important; }
+.bottom-nav .bn-item:nth-child(4) .bn-icon { background: #ffe2dd !important; }
+.bottom-nav .bn-item:nth-child(5) .bn-icon { background: #e6e3ff !important; }
+
+.bottom-nav .bn-icon svg {
+  width: 19px !important;
+  height: 19px !important;
+  stroke-width: 2 !important;
+}
+
+.bottom-nav .bn-item.active {
+  color: var(--ink) !important;
+  background: rgba(20,32,57,.055) !important;
+}
+
+.bottom-nav .bn-item.active .bn-icon,
+html[data-theme="light"] .bottom-nav .bn-item.active .bn-icon {
+  color: #fff !important;
+  background: linear-gradient(145deg, #202a49, #3c486d) !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 22px rgba(20,32,57,.3) !important;
+  transform: translateY(-2px) rotate(-2deg) !important;
+}
+
+.bottom-nav .bn-item > span:last-child {
+  font-weight: 750 !important;
+}
+
+.chart-mini-head em,
+.week-card-pill {
+  color: #3541b9 !important;
+  background: #e8e8ff !important;
+}
+
+.progress-metric-card:first-child,
+.progress-insight-card:first-child {
+  border-top-color: var(--mint) !important;
+}
+
+.progress-metric-card:nth-child(2),
+.progress-insight-card:nth-child(3) {
+  border-top-color: var(--coral) !important;
+}
+
+.bar-fill.sleep {
+  background: linear-gradient(180deg, #4ee0dd 0%, #6070ef 100%) !important;
+}
+
+.bar-fill.workout {
+  background: linear-gradient(180deg, var(--sun) 0%, var(--coral) 100%) !important;
+}
+
+@media (max-width: 520px) {
+  .moti-card,
+  html[data-theme="light"] body .moti-card {
+    min-height: 82px !important;
+    padding: 15px 16px !important;
+  }
+
+  html[data-theme="light"] body .moti-card .moti-text {
+    font-size: 14px !important;
+  }
+
+  .bottom-nav .bn-icon {
+    width: 33px !important;
+    height: 33px !important;
+    min-width: 33px !important;
+    min-height: 33px !important;
+  }
+}
+
+/* v250 mobile containment: keep PWA text readable and prevent side overflow */
+@media (max-width: 760px) {
+  html,
+  body,
+  .app-shell,
+  .panel {
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  .section,
+  .card,
+  .list-card,
+  .chart-card,
+  .weekly-report-row,
+  .daily-row {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .daily-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .daily-grid .list-card,
+  .daily-grid[data-view="week"] .list-card,
+  .daily-grid[data-view="all"] .list-card,
+  .daily-grid[data-view="today"] .list-card {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #sleepList,
+  #workoutList,
+  .daily-grid[data-view="week"] #sleepList,
+  .daily-grid[data-view="week"] #workoutList,
+  .daily-grid[data-view="all"] #sleepList,
+  .daily-grid[data-view="all"] #workoutList,
+  .daily-grid[data-view="today"] #sleepList,
+  .daily-grid[data-view="today"] #workoutList {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .daily-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-height: 74px !important;
+    height: auto !important;
+    flex: none !important;
+    padding: 14px 12px !important;
+  }
+
+  .daily-row > div:first-child {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .daily-row-title,
+  .daily-row-meta {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .daily-row-title {
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+  }
+
+  .daily-row-meta {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .row-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .row-edit {
+    width: auto !important;
+    min-width: 76px !important;
+    padding: 0 12px !important;
+    white-space: nowrap !important;
+  }
+
+  .row-delete {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+  }
+
+  .weekly-report-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .weekly-report-row > div:first-child {
+    min-width: 0 !important;
+    padding: 18px 16px !important;
+  }
+
+  .weekly-report-row > div:first-child strong,
+  .weekly-report-row > div:first-child span,
+  .weekly-report-row > div:first-child small {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .weekly-report-metrics {
+    grid-template-columns: 1fr !important;
+    border-left: 0 !important;
+    border-top: 1px solid var(--lux-line) !important;
+    width: 100% !important;
+  }
+
+  .weekly-report-metrics > div {
+    min-width: 0 !important;
+    padding: 14px 16px !important;
+  }
+
+  .weekly-report-metrics > div + div {
+    border-left: 0 !important;
+    border-top: 1px solid var(--lux-line) !important;
+  }
+
+  .weekly-report-metrics strong,
+  .weekly-report-metrics small {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .weekly-report-metrics i {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .daily-filter-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    padding: 5px !important;
+  }
+
+  .daily-filter-bar button {
+    min-width: 0 !important;
+    padding: 10px 6px !important;
+    font-size: 12px !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+  }
+
+  .weekly-report-row > div:first-child {
+    padding: 16px 14px !important;
+  }
+}
+
+/* v251 record controls: premium inputs, selects and quick picks */
+#pDaily .entry-card,
+#pWeight .input-card {
+  position: relative;
+  border: 1px solid rgba(125, 221, 214, .32) !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.94), rgba(255,255,255,.76)),
+    radial-gradient(circle at 0 0, rgba(93, 230, 219, .18), transparent 34%),
+    radial-gradient(circle at 100% 0, rgba(255, 211, 122, .16), transparent 32%) !important;
+  box-shadow:
+    0 22px 52px rgba(31, 46, 75, .10),
+    inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+#pDaily .entry-card::before,
+#pWeight .input-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  border-top: 1px solid rgba(255,255,255,.85);
+}
+
+.entry-form input,
+.entry-form select,
+.form-grid input,
+.form-grid select,
+.note-compose textarea {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  height: 48px !important;
+  border: 1px solid rgba(119, 137, 171, .18) !important;
+  border-radius: 16px !important;
+  background-color: rgba(255,255,255,.86) !important;
+  color: var(--ink) !important;
+  font-weight: 750 !important;
+  font-size: 14px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.88),
+    0 10px 22px rgba(32, 46, 73, .055) !important;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background .18s ease;
+}
+
+.entry-form input::placeholder,
+.note-compose textarea::placeholder {
+  color: rgba(91, 107, 136, .72) !important;
+  font-weight: 650 !important;
+}
+
+.entry-form select,
+.form-grid select {
+  padding-right: 42px !important;
+  background-image:
+    linear-gradient(135deg, rgba(77, 211, 204, .13), rgba(91, 98, 242, .08)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2350617d' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat, no-repeat !important;
+  background-position: 0 0, right 14px center !important;
+  background-size: auto, 18px 18px !important;
+}
+
+.entry-form input[type="date"] {
+  color-scheme: light;
+  letter-spacing: .01em;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.92), rgba(244, 252, 250, .88)) !important;
+}
+
+.entry-form input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: .75;
+  cursor: pointer;
+  filter: saturate(1.15);
+}
+
+.entry-form input:focus,
+.entry-form select:focus,
+.form-grid input:focus,
+.form-grid select:focus,
+.note-compose textarea:focus {
+  outline: 0 !important;
+  border-color: rgba(78, 84, 223, .58) !important;
+  background-color: rgba(255,255,255,.98) !important;
+  box-shadow:
+    0 0 0 4px rgba(78, 84, 223, .12),
+    0 16px 30px rgba(35, 47, 81, .10) !important;
+  transform: translateY(-1px);
+}
+
+.quick-picks {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 4px !important;
+  border-radius: 18px !important;
+  background: rgba(238, 245, 250, .78) !important;
+  border: 1px solid rgba(119, 137, 171, .12) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72) !important;
+}
+
+.quick-picks button {
+  height: 38px !important;
+  min-width: 44px !important;
+  padding: 0 13px !important;
+  border-radius: 14px !important;
+  border: 1px solid transparent !important;
+  color: #56647d !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-weight: 850 !important;
+  transition: transform .18s ease, color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.quick-picks button:hover,
+.quick-picks button.is-selected {
+  color: #fff !important;
+  background: linear-gradient(135deg, #22bfb7, #5562f1) !important;
+  box-shadow: 0 10px 20px rgba(58, 96, 213, .24) !important;
+  transform: translateY(-1px);
+}
+
+.sleep-entry-form #saveSleepBtn,
+.workout-entry-form #saveWorkoutBtn,
+.form-grid .btn,
+.note-compose .btn {
+  height: 48px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #1fb8ae, #5662f1) !important;
+  box-shadow: 0 14px 28px rgba(55, 93, 213, .24) !important;
+  font-weight: 850 !important;
+}
+
+.workout-guidance {
+  border: 1px solid rgba(68, 205, 196, .28) !important;
+  background:
+    linear-gradient(135deg, rgba(235, 255, 252, .88), rgba(243, 247, 255, .88)),
+    radial-gradient(circle at 12% 0, rgba(34, 191, 183, .13), transparent 36%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.82), 0 14px 28px rgba(31, 46, 75, .06) !important;
+}
+
+.workout-guidance strong {
+  color: #142039 !important;
+}
+
+.workout-guidance span {
+  color: #677691 !important;
+}
+
+@media (min-width: 981px) {
+  .sleep-entry-form {
+    grid-template-columns: minmax(160px, .8fr) minmax(180px, 1fr) auto minmax(118px, .55fr) !important;
+  }
+
+  .workout-entry-form {
+    grid-template-columns:
+      minmax(142px, .78fr)
+      minmax(132px, .7fr)
+      minmax(160px, .95fr)
+      minmax(112px, .55fr)
+      auto
+      minmax(128px, .62fr) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .sleep-entry-form,
+  .workout-entry-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .sleep-entry-form .quick-picks,
+  .workout-entry-form .quick-picks,
+  .workout-entry-form #workoutNoteInput,
+  .sleep-entry-form #saveSleepBtn,
+  .workout-entry-form #saveWorkoutBtn {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pDaily .entry-card {
+    padding: 15px !important;
+  }
+
+  .sleep-entry-form,
+  .workout-entry-form {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .entry-form input,
+  .entry-form select,
+  .sleep-entry-form #saveSleepBtn,
+  .workout-entry-form #saveWorkoutBtn {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .quick-picks {
+    width: 100% !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    scrollbar-width: none;
+  }
+
+  .quick-picks::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-picks button {
+    flex: 0 0 auto !important;
+  }
+}
+
+/* v252 iOS PWA zoom guard: inputs below 16px trigger viewport zoom */
+@media (max-width: 760px) {
+  input,
+  select,
+  textarea,
+  .entry-form input,
+  .entry-form select,
+  .form-grid input,
+  .form-grid select,
+  .note-compose textarea {
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+    touch-action: manipulation;
+  }
+
+  .entry-form input,
+  .entry-form select,
+  .form-grid input,
+  .form-grid select {
+    min-height: 50px !important;
+  }
+
+  .sleep-entry-form #saveSleepBtn,
+  .workout-entry-form #saveWorkoutBtn,
+  .quick-picks button {
+    touch-action: manipulation;
+  }
+}
+
+/* v253 profile command center */
+#pSettings .section {
+  max-width: 1120px !important;
+}
+
+#pSettings .sec-head {
+  margin-bottom: 18px !important;
+}
+
+#pSettings .sec-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+#pSettings .sec-title::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #29d6cf, #5865f2);
+  box-shadow: 0 0 0 6px rgba(41, 214, 207, .13);
+}
+
+#pSettings .settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+#pSettings .settings-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 0 !important;
+  padding: 22px !important;
+  border: 1px solid rgba(123, 219, 214, .28) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,255,255,.78)),
+    radial-gradient(circle at 0 0, rgba(40, 218, 207, .15), transparent 34%),
+    radial-gradient(circle at 100% 0, rgba(255, 211, 122, .12), transparent 34%) !important;
+  box-shadow:
+    0 22px 50px rgba(31, 46, 75, .10),
+    inset 0 1px 0 rgba(255,255,255,.88) !important;
+}
+
+#pSettings .settings-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, #28d6cf, #5865f2);
+}
+
+#pSettings .settings-card:nth-child(2)::before {
+  background: linear-gradient(90deg, #21c77a, #31b6f1);
+}
+
+#pSettings .settings-card:nth-child(3)::before {
+  background: linear-gradient(90deg, #24c9bb, #f5bf55);
+}
+
+#pSettings .settings-card:nth-child(4)::before {
+  background: linear-gradient(90deg, #7b68f6, #22c7bd);
+}
+
+#pSettings .settings-card-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px !important;
+  letter-spacing: .02em !important;
+}
+
+#pSettings .settings-card-title::before {
+  content: "";
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.96), rgba(235, 246, 255, .82)),
+    linear-gradient(135deg, rgba(40, 214, 207, .28), rgba(88, 101, 242, .18));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 10px 20px rgba(37, 58, 97, .10);
+}
+
+#pSettings .settings-card:nth-child(2) .settings-card-title::before {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.96), rgba(236, 255, 246, .86)),
+    linear-gradient(135deg, rgba(33, 199, 122, .28), rgba(49, 182, 241, .18));
+}
+
+#pSettings .settings-card:nth-child(3) .settings-card-title::before {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.96), rgba(255, 249, 231, .88)),
+    linear-gradient(135deg, rgba(36, 201, 187, .28), rgba(245, 191, 85, .20));
+}
+
+#pSettings .settings-card:nth-child(4) .settings-card-title::before {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.96), rgba(244, 242, 255, .88)),
+    linear-gradient(135deg, rgba(123, 104, 246, .24), rgba(34, 199, 189, .18));
+}
+
+#pSettings .settings-row {
+  min-height: 48px;
+  padding: 12px 0 !important;
+  border-top: 1px solid rgba(119, 137, 171, .13) !important;
+}
+
+#pSettings .settings-row span {
+  color: #73819c !important;
+  font-weight: 650;
+}
+
+#pSettings .settings-row strong {
+  color: #142039 !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+}
+
+#pSettings .settings-card:nth-child(2) .settings-row strong {
+  font-size: 16px !important;
+}
+
+#pSettings .settings-copy {
+  color: #6f7d97 !important;
+}
+
+#pSettings .sync-status-grid {
+  gap: 10px !important;
+  margin: 4px 0 12px !important;
+}
+
+#pSettings .sync-status-grid div {
+  border: 1px solid rgba(119, 137, 171, .13) !important;
+  border-radius: 16px !important;
+  background:
+    linear-gradient(145deg, rgba(247, 252, 255, .92), rgba(239, 246, 252, .76)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.78) !important;
+}
+
+.sync-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  white-space: nowrap;
+}
+
+.sync-state-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.sync-state-badge.is-ready {
+  color: #087f67 !important;
+  background: rgba(32, 201, 151, .13);
+}
+
+.sync-state-badge.is-pending,
+.sync-state-badge.is-syncing {
+  color: #4b55d9 !important;
+  background: rgba(88, 101, 242, .12);
+}
+
+.sync-state-badge.is-error,
+.sync-state-badge.is-offline {
+  color: #c2413a !important;
+  background: rgba(242, 107, 95, .13);
+}
+
+#pSettings .settings-action {
+  height: 46px !important;
+  border-radius: 16px !important;
+  border-color: rgba(88, 101, 242, .16) !important;
+  background: rgba(255,255,255,.82) !important;
+  color: #4e5bd7 !important;
+  font-weight: 850 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 10px 20px rgba(38, 55, 91, .06) !important;
+}
+
+#pSettings .sync-now-btn {
+  background: linear-gradient(135deg, #24c9bb, #5865f2) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 14px 28px rgba(56, 94, 213, .20) !important;
+}
+
+#pSettings .settings-toggle-row {
+  min-height: 76px;
+  padding: 14px 0 !important;
+  border-top: 1px solid rgba(119, 137, 171, .13) !important;
+}
+
+#pSettings .settings-toggle-row strong {
+  color: #142039 !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+}
+
+#pSettings .settings-toggle-row span {
+  color: #73819c !important;
+  font-size: 13px !important;
+}
+
+#pSettings .switch {
+  width: 52px !important;
+  height: 30px !important;
+}
+
+#pSettings .switch > span {
+  border: 1px solid rgba(119, 137, 171, .15) !important;
+  background: #edf3f7 !important;
+  box-shadow: inset 0 1px 2px rgba(31, 46, 75, .08) !important;
+}
+
+#pSettings .switch > span::after {
+  width: 24px !important;
+  height: 24px !important;
+  top: 2px !important;
+}
+
+#pSettings .switch input:checked + span {
+  background: linear-gradient(135deg, #23c5bb, #5865f2) !important;
+}
+
+@media (max-width: 820px) {
+  #pSettings .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pSettings .settings-card {
+    padding: 19px 17px !important;
+    border-radius: 20px !important;
+  }
+
+  #pSettings .settings-row {
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  #pSettings .settings-row strong {
+    max-width: 56%;
+  }
+
+  #pSettings .sync-status-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pSettings .settings-toggle-row {
+    gap: 12px !important;
+  }
+}
+
+/* v254 - Dashboard command center polish */
+#pHome .dashboard-wrap {
+  max-width: 1120px !important;
+  padding: 4px 18px 18px !important;
+}
+
+#pHome .hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 136px;
+  margin: 0 0 16px !important;
+  padding: 30px 32px !important;
+  border: 1px solid rgba(45, 212, 191, .22);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(45, 212, 191, .24), transparent 34%),
+    radial-gradient(circle at 96% 14%, rgba(255, 199, 95, .22), transparent 32%),
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(246,253,250,.86)) !important;
+  box-shadow: 0 24px 58px rgba(31, 46, 75, .10), inset 0 1px 0 rgba(255,255,255,.92);
+}
+
+#pHome .hero::after {
+  content: "";
+  position: absolute;
+  right: 30px;
+  bottom: 22px;
+  width: 118px;
+  height: 118px;
+  border-radius: 36px;
+  background:
+    linear-gradient(135deg, rgba(88,101,242,.14), rgba(45,212,191,.20)),
+    linear-gradient(135deg, rgba(255,255,255,.55), rgba(255,255,255,.04));
+  transform: rotate(10deg);
+  opacity: .9;
+}
+
+#pHome .hero-date {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 0 10px !important;
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #24656f !important;
+  background: rgba(255,255,255,.64);
+  border: 1px solid rgba(36, 201, 187, .18);
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  letter-spacing: .13em !important;
+}
+
+#pHome .hero-date::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #24d6c8, #5865f2);
+  box-shadow: 0 0 0 5px rgba(45, 212, 191, .13);
+}
+
+#pHome .hero-title {
+  position: relative;
+  z-index: 1;
+  max-width: 780px;
+  margin: 0 !important;
+  color: #111b32 !important;
+  font-size: clamp(31px, 4vw, 44px) !important;
+  line-height: 1.03 !important;
+  letter-spacing: -.035em !important;
+}
+
+#pHome .hero-title span {
+  color: transparent !important;
+  background: linear-gradient(90deg, #5865f2 0%, #22b8cf 45%, #14a377 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+}
+
+#pHome .moti-card,
+html[data-theme="light"] #pHome .moti-card,
+html[data-theme="light"] body #pHome .moti-card {
+  min-height: 78px !important;
+  margin: 0 0 16px !important;
+  padding: 17px 20px !important;
+  border: 1px solid rgba(45, 212, 191, .22) !important;
+  border-radius: 24px !important;
+  color: #142039 !important;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(45, 212, 191, .24), transparent 28%),
+    radial-gradient(circle at 88% 0%, rgba(255, 213, 128, .32), transparent 30%),
+    linear-gradient(135deg, rgba(245,255,250,.98), rgba(235,247,255,.95)) !important;
+  box-shadow: 0 18px 42px rgba(31, 46, 75, .08), inset 0 1px 0 rgba(255,255,255,.88) !important;
+}
+
+#pHome .moti-card::before,
+#pHome .moti-card::after {
+  content: none !important;
+}
+
+#pHome .moti-card .moti-text,
+html[data-theme="light"] body #pHome .moti-card .moti-text {
+  color: #17243e !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+  line-height: 1.42 !important;
+  letter-spacing: -.01em !important;
+}
+
+#pHome .moti-card .moti-icon,
+html[data-theme="light"] body #pHome .moti-card .moti-icon {
+  width: 42px !important;
+  height: 42px !important;
+  flex: 0 0 42px !important;
+  border-radius: 16px !important;
+  color: #15203a !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.55)),
+    linear-gradient(135deg, rgba(45,212,191,.30), rgba(88,101,242,.16)) !important;
+  border: 1px solid rgba(20,32,57,.09) !important;
+  box-shadow: 0 12px 22px rgba(31, 46, 75, .10) !important;
+}
+
+#pHome .goal-hero-card {
+  position: relative;
+  margin: 0 0 16px !important;
+  padding: 24px !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 7% 10%, rgba(45, 212, 191, .16), transparent 30%),
+    radial-gradient(circle at 94% 0%, rgba(88, 101, 242, .12), transparent 28%),
+    rgba(255,255,255,.94) !important;
+  box-shadow: 0 24px 58px rgba(31, 46, 75, .09), inset 0 1px 0 rgba(255,255,255,.92) !important;
+}
+
+#pHome .goal-hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: linear-gradient(90deg, #24d6c8, #5865f2, #ffc857);
+}
+
+#pHome .goal-card-layout {
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+  gap: 22px !important;
+  align-items: stretch !important;
+}
+
+#pHome .goal-left,
+#pHome .goal-right {
+  min-width: 0;
+}
+
+#pHome .goal-left {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 6px 0 !important;
+}
+
+#pHome .goal-label,
+#pHome .progress-summary-label {
+  color: #697894 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: .12em !important;
+}
+
+#pHome .goal-big {
+  margin: 10px 0 8px !important;
+}
+
+#pHome .goal-big span {
+  font-size: clamp(60px, 8vw, 84px) !important;
+  line-height: .92 !important;
+  letter-spacing: -.055em !important;
+  color: #0d1830 !important;
+}
+
+#pHome .goal-big small {
+  color: #16223d !important;
+  font-size: 28px !important;
+  font-weight: 900 !important;
+}
+
+#pHome .goal-caption {
+  color: #6f7d98 !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+}
+
+#pHome .goal-right {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+#pHome .goal-final-card {
+  grid-column: 1 / -1;
+}
+
+#pHome .goal-mini-card,
+#pHome .goal-info-card {
+  border: 1px solid rgba(105, 122, 153, .13) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.92), rgba(247,251,255,.74)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.84), 0 12px 26px rgba(31, 46, 75, .055) !important;
+}
+
+#pHome .goal-info-card {
+  min-height: 116px !important;
+  padding: 20px !important;
+}
+
+#pHome .goal-info-card span {
+  color: #6f7d98 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+#pHome .goal-info-card strong {
+  margin-top: 14px !important;
+  color: #111b32 !important;
+  font-size: clamp(26px, 4vw, 34px) !important;
+  line-height: 1 !important;
+  letter-spacing: -.04em !important;
+}
+
+#pHome .goal-mini-card {
+  padding: 17px 18px !important;
+}
+
+#pHome .goal-progress-row {
+  gap: 12px;
+}
+
+#pHome .goal-progress-row span,
+#pHome .goal-progress-row strong {
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
+
+#pHome .goal-track {
+  height: 9px !important;
+  background: rgba(25, 69, 111, .09) !important;
+}
+
+#pHome .goal-fill {
+  background: linear-gradient(90deg, #20c77a, #25b7d9, #5865f2) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.26) inset, 0 8px 18px rgba(37, 183, 217, .18);
+}
+
+#pHome .dashboard-measure-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  margin: 0 0 16px !important;
+}
+
+#pHome .progress-summary-card {
+  min-height: 128px !important;
+  padding: 22px !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(88, 101, 242, .08), transparent 30%),
+    rgba(255,255,255,.92) !important;
+}
+
+#pHome .progress-summary-value {
+  color: #111b32 !important;
+  font-size: clamp(30px, 4vw, 42px) !important;
+  letter-spacing: -.045em !important;
+}
+
+#pHome .progress-summary-side {
+  text-align: right;
+}
+
+#pHome .progress-summary-diff {
+  font-size: 24px !important;
+  font-weight: 950 !important;
+  letter-spacing: -.035em !important;
+}
+
+#pHome .week-chip {
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 30px !important;
+  background: rgba(255,255,255,.94) !important;
+  box-shadow: 0 22px 54px rgba(31, 46, 75, .085), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+#pHome .week-card {
+  padding: 22px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#pHome .week-card-head {
+  align-items: center !important;
+  padding: 0 0 18px !important;
+  border-bottom: 1px solid rgba(105, 122, 153, .12);
+}
+
+#pHome .week-card-title {
+  color: #111b32 !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+  letter-spacing: -.025em !important;
+}
+
+#pHome .week-card-date {
+  color: #6f7d98 !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+
+#pHome .week-card-pill {
+  color: #087f67 !important;
+  background: rgba(32, 201, 151, .13) !important;
+  border: 1px solid rgba(32, 201, 151, .13) !important;
+  border-radius: 999px !important;
+}
+
+#pHome .week-metrics {
+  gap: 14px !important;
+  margin-top: 18px !important;
+}
+
+#pHome .week-metric {
+  padding: 17px !important;
+  border: 1px solid rgba(105, 122, 153, .12) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(246,251,255,.68)) !important;
+}
+
+#pHome .week-track {
+  height: 8px !important;
+  border-radius: 999px !important;
+  background: rgba(25, 69, 111, .09) !important;
+}
+
+#pHome .week-fill {
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, #22c7bd, #5865f2) !important;
+}
+
+#pHome .quick-actions-card {
+  margin: 0 !important;
+  padding: 18px !important;
+  gap: 18px !important;
+  border-radius: 28px !important;
+  border: 1px solid rgba(45, 212, 191, .20) !important;
+  background:
+    radial-gradient(circle at 2% 0%, rgba(45, 212, 191, .16), transparent 32%),
+    radial-gradient(circle at 100% 100%, rgba(255, 199, 95, .14), transparent 32%),
+    rgba(255,255,255,.92) !important;
+  box-shadow: 0 22px 54px rgba(31, 46, 75, .085), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+#pHome .quick-title {
+  color: #111b32 !important;
+  font-size: 19px !important;
+  font-weight: 950 !important;
+  letter-spacing: -.02em !important;
+}
+
+#pHome .quick-sub {
+  margin-top: 4px;
+  color: #6f7d98 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+#pHome .quick-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+#pHome .quick-btn {
+  min-height: 44px;
+  border: 1px solid rgba(255,255,255,.72) !important;
+  border-radius: 16px !important;
+  padding: 12px 16px !important;
+  color: #111b32 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  box-shadow: 0 12px 22px rgba(31, 46, 75, .08), inset 0 1px 0 rgba(255,255,255,.78) !important;
+}
+
+#pHome .quick-btn.sleep {
+  background: linear-gradient(135deg, #e6f4ff, #d9edff) !important;
+}
+
+#pHome .quick-btn.workout {
+  background: linear-gradient(135deg, #dbf8ed, #e6f6ff) !important;
+}
+
+#pHome .quick-btn.note {
+  background: linear-gradient(135deg, #fff1bd, #fff8dc) !important;
+}
+
+@media (max-width: 900px) {
+  #pHome .hero {
+    min-height: 118px;
+    padding: 24px !important;
+  }
+
+  #pHome .goal-card-layout,
+  #pHome .goal-right,
+  #pHome .dashboard-measure-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pHome .progress-summary-side {
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome .dashboard-wrap {
+    padding: 0 14px 10px !important;
+  }
+
+  #pHome .hero {
+    min-height: 0;
+    padding: 21px 18px !important;
+    border-radius: 26px;
+  }
+
+  #pHome .hero::after {
+    width: 86px;
+    height: 86px;
+    right: -16px;
+    bottom: -16px;
+    opacity: .52;
+  }
+
+  #pHome .hero-title {
+    max-width: 100%;
+    font-size: 29px !important;
+    line-height: 1.08 !important;
+  }
+
+  #pHome .moti-card {
+    align-items: flex-start !important;
+    min-height: 0 !important;
+    padding: 15px !important;
+    border-radius: 22px !important;
+  }
+
+  #pHome .goal-hero-card,
+  #pHome .week-chip,
+  #pHome .quick-actions-card {
+    border-radius: 24px !important;
+  }
+
+  #pHome .goal-hero-card {
+    padding: 19px !important;
+  }
+
+  #pHome .goal-big span {
+    font-size: 62px !important;
+  }
+
+  #pHome .goal-info-card {
+    min-height: auto !important;
+    padding: 17px !important;
+  }
+
+  #pHome .dashboard-measure-grid {
+    gap: 12px !important;
+  }
+
+  #pHome .progress-summary-card {
+    min-height: auto !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    padding: 18px !important;
+  }
+
+  #pHome .week-card {
+    padding: 18px !important;
+  }
+
+  #pHome .week-card-head {
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  #pHome .week-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pHome .quick-actions-card {
+    align-items: stretch !important;
+    padding: 16px !important;
+  }
+
+  #pHome .quick-actions {
+    justify-content: stretch;
+  }
+
+  #pHome .quick-btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+/* v255 - Dashboard overflow and spacing fix */
+#pHome #dashboardProgressCard {
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 0 24px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome .dashboard-measure-grid {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome .progress-summary-card {
+  position: relative !important;
+  z-index: 1 !important;
+  overflow: hidden !important;
+}
+
+#pHome .week-chip {
+  clear: both !important;
+  position: relative !important;
+  z-index: 2 !important;
+  margin: 0 0 18px !important;
+  transform: none !important;
+}
+
+#pHome .week-card {
+  min-width: 0 !important;
+}
+
+#pHome .quick-actions-card {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+@media (max-width: 900px) {
+  #pHome #dashboardProgressCard {
+    margin-bottom: 20px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome #dashboardProgressCard {
+    margin-bottom: 18px !important;
+  }
+
+  #pHome .week-card-title,
+  #pHome .week-card-date,
+  #pHome .week-metric,
+  #pHome .progress-summary-card {
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* v256 - Hard dashboard layout reset */
+html[data-theme="light"] #pHome #dashboardProgressCard,
+html[data-theme="light"] #pHome #dashboardProgressCard > .dashboard-measure-grid,
+#pHome #dashboardProgressCard,
+#pHome #dashboardProgressCard > .dashboard-measure-grid {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome #dashboardProgressCard {
+  margin: 0 0 26px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+#pHome #dashboardProgressCard > .dashboard-measure-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-card {
+  margin: 0 !important;
+  min-height: 128px !important;
+  transform: none !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-card:hover,
+#pHome .week-chip:hover,
+#pHome .quick-actions-card:hover {
+  transform: none !important;
+}
+
+#pHome .week-chip,
+html[data-theme="light"] #pHome .week-chip {
+  display: block !important;
+  margin: 0 0 20px !important;
+  padding: 22px !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(88,101,242,.06), transparent 34%),
+    rgba(255,255,255,.94) !important;
+  border: 1px solid rgba(53, 78, 104, .11) !important;
+  box-shadow: 0 22px 54px rgba(31, 46, 75, .085), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+#pHome .week-card-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  min-width: 0 !important;
+  padding: 0 0 18px !important;
+  margin: 0 0 18px !important;
+  border-bottom: 1px solid rgba(105, 122, 153, .12) !important;
+}
+
+#pHome .week-card-head > div:first-child {
+  min-width: 0 !important;
+}
+
+#pHome .week-card-title {
+  display: block !important;
+  margin: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+#pHome .week-card-date {
+  margin-top: 7px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+#pHome .week-card-pill {
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+#pHome .week-metrics {
+  margin: 0 !important;
+}
+
+@media (max-width: 900px) {
+  #pHome #dashboardProgressCard > .dashboard-measure-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome #dashboardProgressCard {
+    margin-bottom: 18px !important;
+  }
+
+  #pHome .week-chip {
+    padding: 18px !important;
+    border-radius: 24px !important;
+  }
+
+  #pHome .week-card-head {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  #pHome .week-card-pill {
+    align-self: flex-start !important;
+  }
+}
+
+/* v257 - iPhone PWA dashboard safe-area pass */
+.topnav {
+  z-index: 600 !important;
+}
+
+.bottom-nav {
+  z-index: 650 !important;
+}
+
+#panels > #pHome.panel.active {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+}
+
+#pHome .dashboard-wrap {
+  padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
+}
+
+#pHome .quick-actions-card {
+  margin-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+}
+
+@supports (-webkit-touch-callout: none) {
+  html,
+  body {
+    background-color: #effaf5 !important;
+  }
+
+  .topnav {
+    position: sticky !important;
+    top: 0 !important;
+    min-height: calc(64px + env(safe-area-inset-top)) !important;
+    padding-top: env(safe-area-inset-top) !important;
+  }
+
+  #panels > .panel.active {
+    padding-bottom: calc(158px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .dashboard-wrap {
+    padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome .quick-actions-card {
+    margin-bottom: calc(34px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .quick-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  #pHome .quick-btn {
+    width: 100% !important;
+    min-height: 50px !important;
+  }
+}
+
+/* v267 - Final dashboard measure card alignment */
+#pHome #dashboardProgressCard {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 22px 0 26px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+#pHome #dashboardProgressCard > .dashboard-measure-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 18px !important;
+  min-width: 0 !important;
+  min-height: 136px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 24px 28px !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 96% 18%, rgba(88, 101, 242, .12), transparent 36%),
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,252,255,.92)) !important;
+  border: 1px solid rgba(46, 77, 116, .12) !important;
+  box-shadow: 0 22px 54px rgba(31, 46, 75, .09), inset 0 1px 0 rgba(255,255,255,.95) !important;
+  transform: none !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 4px !important;
+  background: linear-gradient(180deg, #29d5c2, #4f6df5) !important;
+  opacity: .95 !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-main,
+#pHome #dashboardProgressCard .progress-summary-side {
+  min-width: 0 !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-label {
+  margin: 0 0 12px !important;
+  color: #7182a0 !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: .14em !important;
+  line-height: 1.15 !important;
+  text-transform: uppercase !important;
+  white-space: normal !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-value {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px !important;
+  color: #101a32 !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: clamp(34px, 4.7vw, 46px) !important;
+  font-weight: 950 !important;
+  letter-spacing: -.04em !important;
+  line-height: .95 !important;
+  white-space: nowrap !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-value span {
+  color: #627390 !important;
+  font-size: .42em !important;
+  font-weight: 850 !important;
+  letter-spacing: -.01em !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-side {
+  display: grid !important;
+  justify-items: end !important;
+  align-content: center !important;
+  gap: 8px !important;
+  text-align: right !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-diff {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 36px !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: clamp(20px, 2.5vw, 28px) !important;
+  font-weight: 950 !important;
+  letter-spacing: -.03em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-diff.good {
+  color: #079a74 !important;
+  background: rgba(16, 185, 129, .12) !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-diff.bad {
+  color: #e05252 !important;
+  background: rgba(239, 68, 68, .10) !important;
+}
+
+#pHome #dashboardProgressCard .progress-summary-small {
+  max-width: 190px !important;
+  color: #7384a1 !important;
+  font-family: "DM Sans", system-ui, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+}
+
+@media (max-width: 900px) {
+  #pHome #dashboardProgressCard > .dashboard-measure-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome #dashboardProgressCard {
+    margin: 18px 0 22px !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-card {
+    grid-template-columns: 1fr !important;
+    align-items: start !important;
+    gap: 18px !important;
+    min-height: 0 !important;
+    padding: 24px !important;
+    border-radius: 28px !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-side {
+    justify-items: start !important;
+    text-align: left !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-small {
+    max-width: 100% !important;
+  }
+}
+
+/* v268 - PWA final responsive audit */
+#pProgress .sleep-chart.enhanced::before {
+  content: "" !important;
+  left: 18px !important;
+  right: 18px !important;
+  bottom: 112px !important;
+  height: 0 !important;
+  border-top: 1px dashed rgba(37, 99, 235, .32) !important;
+  color: transparent !important;
+  transform: none !important;
+}
+
+#pProgress .sleep-chart.enhanced::after {
+  content: "7 saat hedef";
+  position: absolute;
+  right: 18px;
+  bottom: 116px;
+  z-index: 3;
+  padding: 3px 7px;
+  border: 1px solid rgba(37, 99, 235, .12);
+  border-radius: 999px;
+  color: #7182a0;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 4px 12px rgba(31, 46, 75, .06);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  #panels > .panel.active {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pProgress .chart-card,
+  #pProgress .weekly-report-list,
+  #pProfile .profile-card,
+  #pLog .log-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #pProgress .chart-mini-head.enhanced {
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  #pProgress .chart-mini-head.enhanced em {
+    align-self: flex-start !important;
+    white-space: nowrap !important;
+  }
+
+  #pProgress .bar-chart.enhanced {
+    overflow: visible !important;
+  }
+
+  #pProgress .sleep-chart.enhanced::before {
+    left: 10px !important;
+    right: 10px !important;
+  }
+
+  #pProgress .sleep-chart.enhanced::after {
+    right: 10px;
+  }
+
+  #pProfile .profile-row > strong,
+  #pProfile .profile-row > span {
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pProgress .chart-stat-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pProgress .bar-chart.enhanced {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  #pProgress .sleep-chart.enhanced::after {
+    right: 6px;
+    bottom: 116px;
+    font-size: 9px;
+  }
+
+  #pHome .quick-actions-card,
+  #pWeight .measurement-form-card,
+  #pLog .notes-card,
+  #pProfile .profile-card {
+    margin-bottom: 12px !important;
+  }
+
+  .bottom-nav {
+    z-index: 1000 !important;
+  }
+}
+
+/* v269 - Compact mobile dashboard scroll */
+@media (min-width: 761px) {
+  #panels {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  #panels > .panel,
+  #panels > .panel.active,
+  #panels > #pHome.panel.active {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .bottom-nav {
+    position: relative !important;
+    inset: auto !important;
+    margin: 18px auto 10px !important;
+    transform: none !important;
+  }
+}
+
+.workout-distance-field[hidden] {
+  display: none !important;
+}
+
+.week-mini-insights.has-distance {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* v273 - Walking distance visibility */
+.walking-distance-metric {
+  grid-column: 1 / -1;
+  border-color: rgba(20, 184, 166, 0.24);
+  background:
+    linear-gradient(135deg, rgba(20, 184, 166, 0.08), rgba(37, 99, 235, 0.07)),
+    rgba(255, 255, 255, 0.72);
+}
+
+.walking-distance-metric small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* v274 - Progress week picker and mobile chart fit */
+.progress-week-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 255, 0.78)),
+    rgba(255, 255, 255, 0.7);
+  box-shadow: 0 16px 38px rgba(45, 78, 120, 0.08);
+}
+
+.progress-week-picker span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.progress-week-picker strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.progress-week-picker select {
+  min-width: 220px;
+  padding: 12px 42px 12px 14px;
+  border: 1px solid rgba(105, 122, 153, .16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .86);
+  color: var(--text);
+  font-weight: 850;
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  #pProgress .sleep-chart.enhanced::after {
+    display: none !important;
+    content: "" !important;
+  }
+
+  #pProgress .bar-chart.enhanced,
+  #pProgress .workout-chart.enhanced {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    overflow: visible !important;
+    min-height: 168px !important;
+    padding: 18px 2px 8px !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-item {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-fill {
+    width: clamp(26px, 8vw, 38px) !important;
+    min-width: 26px !important;
+    margin-inline: auto !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-fill span {
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-label,
+  #pProgress .bar-chart.enhanced .bar-value {
+    max-width: 100% !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  #pProgress .workout-chart.enhanced .bar-value {
+    font-size: 9px !important;
+  }
+
+  .progress-week-picker {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .progress-week-picker select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  #pProgress .bar-chart.enhanced,
+  #pProgress .workout-chart.enhanced {
+    gap: 2px !important;
+  }
+
+  #pProgress .bar-chart.enhanced .bar-fill {
+    width: clamp(23px, 7vw, 32px) !important;
+    min-width: 23px !important;
+  }
+
+  #pProgress .workout-chart.enhanced .bar-value {
+    font-size: 8.5px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #panels > #pHome.panel.active {
+    padding-bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #pHome .dashboard-wrap {
+    padding-bottom: 0 !important;
+  }
+
+  #pHome .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+
+  .week-mini-insights.has-distance {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pHome .dashboard-wrap {
+    gap: 12px !important;
+  }
+
+  #pHome .hero {
+    padding: 18px !important;
+  }
+
+  #pHome .moti-card {
+    padding: 13px 14px !important;
+  }
+
+  #pHome .goal-hero-card {
+    margin-bottom: 12px !important;
+    padding: 17px !important;
+  }
+
+  #pHome .goal-card-layout {
+    gap: 14px !important;
+  }
+
+  #pHome .goal-big {
+    margin: 7px 0 5px !important;
+  }
+
+  #pHome .goal-big span {
+    font-size: 56px !important;
+  }
+
+  #pHome .goal-right {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  #pHome .goal-info-card {
+    min-height: 92px !important;
+    padding: 14px !important;
+  }
+
+  #pHome .goal-info-card span {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  #pHome .goal-info-card strong {
+    margin-top: 10px !important;
+    font-size: 23px !important;
+  }
+
+  #pHome .goal-mini-card {
+    padding: 14px !important;
+  }
+
+  #pHome #dashboardProgressCard {
+    margin: 12px 0 16px !important;
+  }
+
+  #pHome #dashboardProgressCard > .dashboard-measure-grid {
+    gap: 10px !important;
+  }
+
+  #pHome #dashboardProgressCard .progress-summary-card {
+    gap: 12px !important;
+    padding: 18px !important;
+  }
+
+  #pHome .week-chip {
+    padding: 16px !important;
+  }
+
+  #pHome .week-metrics {
+    gap: 9px !important;
+    margin-top: 12px !important;
+  }
+
+  #pHome .week-metric {
+    padding: 14px !important;
+  }
+
+  #pHome .quick-actions-card {
+    padding: 15px !important;
+  }
+}
+
+@media (min-width: 981px) {
+  .workout-entry-form {
+    grid-template-columns:
+      minmax(136px, .72fr)
+      minmax(120px, .65fr)
+      minmax(145px, .85fr)
+      minmax(96px, .48fr)
+      minmax(110px, .52fr)
+      auto
+      minmax(116px, .58fr) !important;
+  }
+}
+
+/* v271 - Web-only fixed navigation and dashboard gap correction */
+@media (min-width: 761px) {
+  html body .app-shell #panels,
+  html[data-theme="light"] body .app-shell #panels {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  html body .app-shell #panels > .panel,
+  html body .app-shell #panels > .panel.active,
+  html body .app-shell #panels > #pHome.panel.active {
+    min-height: 0 !important;
+    padding-bottom: 96px !important;
+  }
+
+  html body #pHome .dashboard-wrap {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  html body #pHome .quick-actions-card {
+    margin-bottom: 0 !important;
+  }
+
+  html body .bottom-nav {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 12px !important;
+    width: min(1120px, calc(100% - 48px)) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    z-index: 1000 !important;
+  }
+}
+
+/* v272 - Achievements and badge showcase */
+#dashboardAchievement {
+  margin: -2px 0 14px;
+}
+
+.dashboard-achievement-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(95, 91, 224, .14);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0 50%, rgba(45, 212, 191, .14), transparent 28%),
+    linear-gradient(135deg, rgba(255,255,255,.94), rgba(242,244,255,.92));
+  box-shadow: 0 14px 34px rgba(31, 46, 75, .07);
+}
+
+.achievement-ring,
+.achievement-toast-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(145deg, #20c8b1, #5865f2);
+  box-shadow: 0 10px 22px rgba(76, 91, 221, .24);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.dashboard-achievement-card strong,
+.dashboard-achievement-card small {
+  display: block;
+}
+
+.dashboard-achievement-card strong {
+  color: #111b32;
+  font-size: 14px;
+}
+
+.dashboard-achievement-card small {
+  margin-top: 3px;
+  color: #71809b;
+  font-size: 12px;
+}
+
+.dashboard-achievement-card button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(88, 101, 242, .14);
+  border-radius: 12px;
+  color: #4652ce;
+  background: rgba(88, 101, 242, .08);
+  font: 800 12px var(--font-body);
+  cursor: pointer;
+}
+
+.achievement-showcase {
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid rgba(69, 90, 126, .12);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 201, 77, .16), transparent 28%),
+    radial-gradient(circle at 0 100%, rgba(45, 212, 191, .13), transparent 30%),
+    rgba(255,255,255,.92);
+  box-shadow: 0 22px 54px rgba(31, 46, 75, .08);
+}
+
+.achievement-showcase-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.achievement-showcase-head span,
+.achievement-showcase-head strong {
+  display: block;
+}
+
+.achievement-showcase-head span {
+  color: #7182a0;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.achievement-showcase-head strong {
+  margin-top: 5px;
+  color: #111b32;
+  font-size: 22px;
+}
+
+.achievement-showcase-head small {
+  color: #65748f;
+  font-weight: 750;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.achievement-badge {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid rgba(93, 108, 139, .12);
+  border-radius: 20px;
+  background: rgba(248, 250, 253, .82);
+}
+
+.achievement-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  color: #8a96aa;
+  background: #e9edf4;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: -.02em;
+}
+
+.achievement-badge.is-unlocked {
+  border-color: rgba(35, 199, 166, .24);
+  background: linear-gradient(145deg, rgba(239,255,250,.92), rgba(244,246,255,.9));
+}
+
+.achievement-badge.is-unlocked .achievement-icon {
+  color: #fff;
+  background: linear-gradient(145deg, #20c8a5, #5964ef);
+  box-shadow: 0 9px 20px rgba(55, 111, 204, .2);
+}
+
+.achievement-copy {
+  min-width: 0;
+}
+
+.achievement-copy strong,
+.achievement-copy small,
+.achievement-copy em {
+  display: block;
+}
+
+.achievement-copy strong {
+  color: #172139;
+  font-size: 14px;
+}
+
+.achievement-copy small {
+  min-height: 32px;
+  margin-top: 3px;
+  color: #74829c;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.achievement-progress {
+  height: 6px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e4eaf2;
+}
+
+.achievement-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #24c9a7, #5865f2);
+}
+
+.achievement-copy em {
+  margin-top: 6px;
+  color: #6f7d96;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.achievement-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 104px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: min(360px, calc(100% - 28px));
+  padding: 14px 16px;
+  border: 1px solid rgba(45, 212, 191, .22);
+  border-radius: 20px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 24px 60px rgba(24, 37, 63, .2);
+  opacity: 0;
+  transform: translate(-50%, 20px) scale(.96);
+  transition: opacity .25s ease, transform .25s ease;
+}
+
+.achievement-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.achievement-toast strong,
+.achievement-toast small {
+  display: block;
+}
+
+.achievement-toast strong {
+  color: #111b32;
+}
+
+.achievement-toast small {
+  margin-top: 2px;
+  color: #71809a;
+}
+
+@media (max-width: 900px) {
+  .achievement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-achievement-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 13px;
+  }
+
+  .dashboard-achievement-card button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .achievement-showcase {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .achievement-showcase-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .achievement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-toast {
+    bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+}
+
+/* v275.4 — encoding-safe layout polish */
+#pDaily .workout-entry-form {
+  grid-template-columns: minmax(145px, .85fr) minmax(130px, .75fr) minmax(155px, .9fr) minmax(110px, .6fr) minmax(220px, .95fr) minmax(132px, .58fr) !important;
+  align-items: stretch !important;
+}
+
+#pDaily .workout-entry-form .quick-picks {
+  grid-column: 5 / 6 !important;
+  grid-row: 1 !important;
+  width: 100%;
+  justify-content: center;
+}
+
+#pDaily .workout-entry-form #saveWorkoutBtn {
+  grid-column: 6 / 7 !important;
+  grid-row: 1 !important;
+}
+
+#pDaily .workout-entry-form #workoutIntensityInput {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 !important;
+}
+
+#pDaily .workout-entry-form #workoutDistanceInput {
+  grid-column: 2 / 3 !important;
+  grid-row: 2 !important;
+}
+
+#pDaily .workout-entry-form #workoutNoteInput {
+  grid-column: 3 / -1 !important;
+  grid-row: 2 !important;
+}
+
+#pDaily .note-compose {
+  padding: 14px 16px !important;
+}
+
+#pDaily .note-compose textarea {
+  min-height: 84px !important;
+  max-height: 112px !important;
+}
+
+#pDaily #noteList .empty-state {
+  min-height: 96px !important;
+}
+
+.waist-trend-panel {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(20, 184, 166, .18);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(240, 253, 250, .78), rgba(255, 255, 255, .9));
+  box-shadow: 0 16px 34px rgba(15, 23, 42, .05);
+}
+
+.waist-trend-panel.empty {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.waist-trend-panel.empty span,
+.waist-trend-panel .measurement-chart-top span {
+  color: #7585a1;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.waist-trend-panel.empty strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.waist-trend-panel.empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.waist-chart-canvas {
+  position: relative;
+  min-height: 245px;
+  margin-top: 12px;
+  padding: 12px 0 34px;
+  border-radius: 16px;
+  background:
+    linear-gradient(to bottom, rgba(117, 133, 161, .16) 1px, transparent 1px) 0 0 / 100% 25%,
+    rgba(255, 255, 255, .58);
+}
+
+.waist-chart-canvas svg {
+  display: block;
+  width: 100%;
+  height: 190px;
+  overflow: visible;
+}
+
+.waist-chart-labels {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.waist-chart-labels div {
+  min-width: 0;
+  color: #74829c;
+  font-size: 11px;
+  text-align: center;
+}
+
+.waist-chart-labels strong,
+.waist-chart-labels span {
+  display: block;
+  white-space: nowrap;
+}
+
+.achievement-badge {
+  position: relative;
+}
+
+.achievement-badge.is-unlocked::after {
+  content: "★";
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #f4b740, #f97316);
+  box-shadow: 0 8px 18px rgba(249, 115, 22, .22);
+  font-size: 13px;
+}
+
+.achievement-badge.is-locked {
+  opacity: .82;
+}
+
+[data-theme="dark"] .waist-trend-panel {
+  background: rgba(20, 29, 40, .92);
+  border-color: rgba(45, 212, 191, .18);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .waist-chart-canvas {
+  background:
+    linear-gradient(to bottom, rgba(148, 163, 184, .12) 1px, transparent 1px) 0 0 / 100% 25%,
+    rgba(15, 23, 42, .36);
+}
+
+@media (max-width: 980px) {
+  #pDaily .workout-entry-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #pDaily .workout-entry-form .quick-picks,
+  #pDaily .workout-entry-form #saveWorkoutBtn,
+  #pDaily .workout-entry-form #workoutIntensityInput,
+  #pDaily .workout-entry-form #workoutDistanceInput,
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: 1 / 3 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #pDaily .workout-entry-form {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  #pDaily .workout-entry-form .quick-picks,
+  #pDaily .workout-entry-form #saveWorkoutBtn,
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: 1 / -1 !important;
+  }
+
+  .waist-chart-canvas {
+    overflow-x: auto;
+  }
+
+  .waist-chart-canvas svg {
+    min-width: 520px;
+  }
+
+  .waist-chart-labels {
+    min-width: 500px;
+  }
+}
+
+@media (max-width: 520px) {
+  #pDaily .workout-entry-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  #pDaily .workout-entry-form .quick-picks,
+  #pDaily .workout-entry-form #saveWorkoutBtn,
+  #pDaily .workout-entry-form #workoutIntensityInput,
+  #pDaily .workout-entry-form #workoutDistanceInput,
+  #pDaily .workout-entry-form #workoutNoteInput {
+    grid-column: 1 !important;
+  }
+}
