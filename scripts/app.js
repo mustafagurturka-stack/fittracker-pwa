@@ -2153,6 +2153,20 @@ function getWorkoutCategoriesForRange(range) {
     .sort((a, b) => b[1] - a[1]);
 }
 
+function getWorkoutTypesForRange(range) {
+  const types = {};
+
+  (state.workouts || [])
+    .filter(item => item.date >= range.start && item.date <= range.end)
+    .forEach(item => {
+      const type = item.type || getWorkoutCategoryFromNote(item.note, item.type);
+      types[type] = (types[type] || 0) + Number(item.duration || 0);
+    });
+
+  return Object.entries(types)
+    .sort((a, b) => b[1] - a[1]);
+}
+
 function getCurrentWeekWorkoutCategories() {
   return getWorkoutCategoriesForRange(getDashboardWeekRange());
 }
@@ -2182,12 +2196,15 @@ function getWeekDailyTotals(range) {
           date: item.date,
           duration: 0,
           categories: {},
+          types: {},
         };
       }
 
       const category = getWorkoutCategoryFromNote(item.note, item.type);
+      const type = item.type || category;
       workoutByDay[item.date].duration += Number(item.duration || 0);
       workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
+      workoutByDay[item.date].types[type] = (workoutByDay[item.date].types[type] || 0) + Number(item.duration || 0);
     });
 
   return {
@@ -2506,17 +2523,18 @@ function renderProgressCharts() {
   if (workoutWrap) {
     const workoutData = getWeekDailyTotals(latestWeek).workouts;
     const categories = getWorkoutCategoriesForRange(latestWeek);
+    const workoutTypes = getWorkoutTypesForRange(latestWeek);
     const walkingStats = getWalkingStatsForRange(latestWeek);
-    const recordedCategoryText = categories.length
-      ? categories.map(([category, duration]) => `${category}: ${formatMinutes(duration)} dk`).join(' · ')
-      : 'Kategori verisi bekleniyor';
+    const recordedTypeText = workoutTypes.length
+      ? workoutTypes.map(([type, duration]) => `${type}: ${formatMinutes(duration)} dk`).join(' · ')
+      : 'Antrenman tipi bekleniyor';
     const distanceText = walkingStats.distance > 0
       ? ` · Yürüyüş: ${formatDistanceKm(walkingStats.distance)} km`
       : '';
     const workoutAdjustment = getVerifiedAdjustment(latestWeek, 'workouts');
     const categoryText = workoutAdjustment
-      ? `${recordedCategoryText}${distanceText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
-      : `${recordedCategoryText}${distanceText}`;
+      ? `${recordedTypeText}${distanceText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
+      : `${recordedTypeText}${distanceText}`;
     const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
     const workoutDays = workoutData.length;
 
@@ -2540,7 +2558,7 @@ function renderProgressCharts() {
       <div class="chart-stat-row">
         <div><span>Antrenman yapılan gün</span><strong>${workoutDays} gün</strong></div>
         <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
-        <div><span>Odak</span><strong>${categories[0] ? categories[0][0] : '—'}</strong></div>
+        <div><span>Odak</span><strong>${workoutTypes[0] ? workoutTypes[0][0] : (categories[0] ? categories[0][0] : '—')}</strong></div>
       </div>
       <div class="bar-chart workout-chart enhanced">
         ${workoutData.map(item => {
@@ -2549,16 +2567,22 @@ function renderProgressCharts() {
             .sort((a, b) => b[1] - a[1])
             .map(([name, duration]) => `${name}: ${formatMinutes(duration)} dk`)
             .join(' · ');
+          const typeText = Object.entries(item.types || {})
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, duration]) => `${name}: ${formatMinutes(duration)} dk`)
+            .join(' · ');
+          const topType = Object.entries(item.types || {})
+            .sort((a, b) => b[1] - a[1])[0]?.[0];
 
           return `
             <div class="bar-item">
-              <div class="bar-fill workout" style="height:${h}px" title="${category}">
+              <div class="bar-fill workout" style="height:${h}px" title="${typeText || category}">
                 <span>${formatMinutes(item.duration)} dk</span>
               </div>
               <div class="bar-label">
                 ${getShortWeekday(item.date)}
               </div>
-              <div class="bar-value">${Object.entries(item.categories)
+              <div class="bar-value">${topType || Object.entries(item.categories)
                 .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman'}</div>
             </div>
           `;
