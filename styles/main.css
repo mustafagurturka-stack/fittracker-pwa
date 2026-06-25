@@ -3224,6 +3224,14 @@ body,
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* v275.9 — calmer startup and cleaner sleep chart */
+#pProgress .sleep-chart.enhanced::before,
+#pProgress .sleep-chart.enhanced::after,
+.sleep-chart.enhanced::before {
+  content: none !important;
+  display: none !important;
+}
 /* v101 — Restore balanced goal layout */
 
 .goal-card-layout {
