@@ -1194,9 +1194,12 @@ function getAchievements() {
     { id: 'sleep-7', icon: '7U', title: 'Uyku Ustası', detail: '7 gecelik uyku kaydı', current: metrics.maxSleepDays, target: 7 },
     { id: 'walk-5', icon: '5K', title: 'Yol Başladı', detail: 'Toplam 5 km yürüyüş', current: metrics.walkingDistance, target: 5, unit: 'km' },
     { id: 'walk-25', icon: '25', title: 'Mesafe Avcısı', detail: 'Toplam 25 km yürüyüş', current: metrics.walkingDistance, target: 25, unit: 'km' },
+    { id: 'walk-50', icon: '50', title: 'Uzun Yol', detail: 'Toplam 50 km yürüyüş', current: metrics.walkingDistance, target: 50, unit: 'km' },
     { id: 'loss-5', icon: '5-', title: 'Dönüşüm', detail: 'Toplam 5 kg ilerleme', current: metrics.weightLoss, target: 5, unit: 'kg' },
+    { id: 'loss-10', icon: '10', title: 'Büyük Dönüşüm', detail: 'Toplam 10 kg ilerleme', current: metrics.weightLoss, target: 10, unit: 'kg' },
     { id: 'goal-1', icon: 'H1', title: 'İlk Hedef', detail: 'İlk kilo hedefine ulaş', current: metrics.firstGoalReached ? 1 : 0, target: 1 },
     { id: 'streak-3', icon: '3H', title: 'İstikrar', detail: '3 hafta üst üste kayıt', current: metrics.bestStreak, target: 3 },
+    { id: 'streak-6', icon: '6H', title: 'Seri Korundu', detail: '6 hafta üst üste kayıt', current: metrics.bestStreak, target: 6 },
   ].map(item => ({
     ...item,
     unlocked: Number(item.current) >= Number(item.target),
@@ -4513,29 +4516,6 @@ function bindUiEvents() {
         .register('/service-worker.js', { scope: '/' })
         .then(reg => {
           console.log('[SW] Kayıtlı:', reg.scope);
-          reg.update();
-
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (refreshing) return;
-            refreshing = true;
-            window.location.reload();
-          });
-
-          if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          }
-
-          reg.addEventListener('updatefound', () => {
-            const worker = reg.installing;
-            if (!worker) return;
-
-            worker.addEventListener('statechange', () => {
-              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                worker.postMessage({ type: 'SKIP_WAITING' });
-              }
-            });
-          });
         })
         .catch(err => console.warn('[SW] Kayıt hatası:', err));
     });
