@@ -3184,6 +3184,16 @@ body,
     grid-template-columns: 1fr !important;
   }
 }
+
+/* v275.7 — show workout type in progress chart without overflow */
+#pProgress .workout-chart.enhanced .bar-value {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 22px;
+  white-space: normal !important;
+  overflow: hidden !important;
+}
 /* v101 — Restore balanced goal layout */
 
 .goal-card-layout {
@@ -9350,6 +9360,15 @@ html[data-theme="light"] #pHome .week-chip {
 
   #pProgress .workout-chart.enhanced .bar-value {
     font-size: 9px !important;
+  }
+
+  #pProgress .workout-chart.enhanced .bar-value {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    min-height: 22px;
+    white-space: normal !important;
+    overflow: hidden !important;
   }
 
   .progress-week-picker {
