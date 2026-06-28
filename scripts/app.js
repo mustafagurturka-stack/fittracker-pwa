@@ -28,7 +28,7 @@ const VERIFIED_WEEK_TOTALS = {
 };
 
 const WORKOUT_CATALOG = {
-  Kuvvet: ['Full Body A', 'Full Body B', 'Full Body C', 'Full Body D', 'Core'],
+  Kuvvet: ['Full Body A', 'Full Body B', 'Full Body C', 'Full Body D', 'Core', 'Travel Full Body A', 'Travel Full Body B', 'Other Strength'],
   Kardiyo: ['Yürüyüş', 'Bisiklet', 'GrowwithJo', 'Diğer Kardiyo'],
 };
 
@@ -42,6 +42,12 @@ const LEGACY_WORKOUT_CATEGORY_MAP = {
   'Deadlift Odaklı': 'Kuvvet',
   'Üst Vücut': 'Kuvvet',
   'Alt Vücut': 'Kuvvet',
+  'Travel Full Body A': 'Kuvvet',
+  'Travel Full Body B': 'Kuvvet',
+  'Other Strength': 'Kuvvet',
+  'Direnç Bandı': 'Kuvvet',
+  'Vücut Ağırlığı': 'Kuvvet',
+  'Diğer Kuvvet': 'Kuvvet',
   'Sabah Yağ Yakım': 'Kardiyo',
   'GrowWithJo': 'Kardiyo',
   'GrowWithJo Challenge': 'Kardiyo',
@@ -306,7 +312,7 @@ function getWorkoutGuidance(category = 'Kuvvet', type = '') {
   const guide = {
     Kuvvet: {
       title: 'Kuvvet planı',
-      text: 'Full Body A/B/C/D rotasyonunu sürdür. Core seçeneğini kısa destek bölümü gibi girerek ana kuvvet gününe ekleyebilirsin.',
+      text: 'Full Body A/B/C/D rotasyonunu sürdür. Şehir dışı günlerde Travel Full Body A/B ile band ve vücut ağırlığı rotasyonunu ayrı takip edebilirsin.',
     },
     Kardiyo: {
       title: 'Kardiyo planı',
