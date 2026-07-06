@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="FitTracker" />
-  <link rel="manifest" href="/manifest.json?v=275.13" />
+  <link rel="manifest" href="/manifest.json?v=275.14" />
 
   <!-- Icons (Apple) -->
   <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=229" />
@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=176.13" />
+  <link rel="stylesheet" href="/styles/main.css?v=176.14" />
 </head>
 <body>
 
@@ -135,6 +135,7 @@
           <input type="number" id="measureWaistInput" placeholder="cm (ayda 1)" step="0.1" min="40" />
         </label>
         <button class="btn form-submit" id="saveMeasurementBtn">Kaydet</button>
+        <button class="btn ghost form-submit" id="skipMeasurementBtn" type="button">Ölçümü Atla</button>
       </div>
       <div id="waistMeasureHint" class="field-hint measure-hint-strip">
         Bel ölçümü ayda 1, her 4. tartıda takip edilir.
@@ -538,6 +539,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=275.13" defer></script>
+  <script src="/scripts/app.js?v=275.14" defer></script>
 </body>
 </html>
