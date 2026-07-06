@@ -92,6 +92,7 @@ let state = {
   startWeight: null,
   startWaist: null,
   measurements: [],
+  skippedMeasurements: [],
   weights: [],
   nutrition: [],
   workouts: [],
@@ -825,6 +826,12 @@ function getChartMeasurementData() {
   return data;
 }
 
+function getSkippedMeasurements() {
+  return (Array.isArray(state.skippedMeasurements) ? state.skippedMeasurements : [])
+    .filter(item => item?.date)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function getLatestWaistMeasurement() {
   return getSortedMeasurements()
     .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date))
@@ -1022,6 +1029,7 @@ function stateLoad() {
         pendingProfile: Boolean(savedState.syncMeta?.pendingProfile),
       },
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
+      skippedMeasurements: Array.isArray(savedState.skippedMeasurements) ? savedState.skippedMeasurements : [],
       weights: Array.isArray(savedState.weights) ? savedState.weights : [],
       nutrition: Array.isArray(savedState.nutrition) ? savedState.nutrition : [],
       workouts: Array.isArray(savedState.workouts) ? savedState.workouts : [],
@@ -1663,6 +1671,7 @@ function renderWeightSummary() {
 
   const weightDiff = last.weight - first.weight;
   const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
+  const latestSkipped = getSkippedMeasurements().at(-1);
 
   const milestones = state.milestones || [95, 90, 85, 80, 75];
 
@@ -1758,6 +1767,22 @@ function renderWeightSummary() {
         </div>
       </div>
 
+      ${latestSkipped ? `
+      <div class="card measurement-skip-card" style="padding:16px">
+        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          SON ÖLÇÜM NOTU
+        </div>
+
+        <div style="font-size:16px;font-weight:900;margin-top:6px">
+          ${formatDate(latestSkipped.date)} · Ölçüm atlandı
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">
+          ${latestSkipped.reason || 'Seyahat / tartıya erişim yok'}
+        </div>
+      </div>
+      ` : ''}
+
     </div>
   `;
 }
@@ -1768,8 +1793,13 @@ function renderWeightList() {
   if (!list || !empty) return;
 
   const data = getSortedMeasurements().sort((a, b) => b.date.localeCompare(a.date));
+  const skipped = getSkippedMeasurements().map(item => ({ ...item, isSkipped: true }));
+  const rows = [
+    ...data.map((item, index) => ({ ...item, measurementIndex: index, isSkipped: false })),
+    ...skipped,
+  ].sort((a, b) => b.date.localeCompare(a.date));
 
-  if (!data.length) {
+  if (!rows.length) {
     empty.style.display = 'block';
     list.innerHTML = '';
     return;
@@ -1777,8 +1807,20 @@ function renderWeightList() {
 
   empty.style.display = 'none';
 
-  list.innerHTML = data.map((m, index) => {
-    const prev = data[index + 1];
+  list.innerHTML = rows.map((m, index) => {
+    if (m.isSkipped) {
+      return `
+        <div class="measurement-skip-row">
+          <div>
+            <div class="measurement-skip-title">Ölçüm atlandı</div>
+            <div class="measurement-skip-meta">${formatDate(m.date)} · ${m.reason || 'Seyahat / tartıya erişim yok'}</div>
+          </div>
+          <span class="delta-pill neutral">Grafik etkilenmez</span>
+        </div>
+      `;
+    }
+
+    const prev = data[m.measurementIndex + 1];
 
     const weightDiff = prev && m.weight != null && prev.weight != null
       ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
@@ -1822,7 +1864,7 @@ function renderWeightList() {
           <div>${waistDiffHtml}</div>
         </div>
 
-        <button onclick="deleteWeight(${index})"
+        <button onclick="deleteWeight(${m.measurementIndex})"
           style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
           aria-label="Sil">×</button>
       </div>
@@ -3239,6 +3281,7 @@ async function saveMeasurementToSupabase(payload) {
 
 function saveMeasurementLocally(payload) {
   if (!Array.isArray(state.measurements)) state.measurements = [];
+  state.skippedMeasurements = getSkippedMeasurements().filter(item => item.date !== payload.date);
   unmarkRecordDeleted('measurements', payload);
   markPendingSync('measurements', payload.date);
 
@@ -3262,6 +3305,33 @@ function saveMeasurementLocally(payload) {
   state.measurements = getSortedMeasurements();
   stateSave();
   renderAll();
+}
+
+function skipMeasurementForSelectedDate() {
+  const dateInput = document.getElementById('measureDateInput');
+  const date = normalizeMeasurementDate(dateInput?.value || getSuggestedMeasureDate());
+  if (!date) return;
+
+  if (getSortedMeasurements().some(item => item.date === date)) {
+    alert('Bu tarih için zaten ölçüm var. Atlandı olarak işaretlemek için önce mevcut ölçümü silmelisin.');
+    return;
+  }
+
+  const reason = prompt('Ölçüm neden atlandı?', 'Şehir dışındayım / tartıya erişim yok');
+  if (reason === null) return;
+
+  state.skippedMeasurements = [
+    ...getSkippedMeasurements().filter(item => item.date !== date),
+    {
+      date,
+      reason: reason.trim() || 'Seyahat / tartıya erişim yok',
+      createdAt: new Date().toISOString(),
+    },
+  ].sort((a, b) => a.date.localeCompare(b.date));
+
+  stateSave();
+  renderAll();
+  setStatus('Ölçüm atlandı olarak işaretlendi', 'ok');
 }
 
 async function saveSleepToSupabase(payload) {
@@ -4116,6 +4186,7 @@ async function signOut() {
     onboarded: false,
     name: '',
     measurements: [],
+    skippedMeasurements: [],
     workouts: [],
     notes: [],
     sleep: [],
@@ -4275,6 +4346,7 @@ async function completeOnboarding() {
     weight: state.startWeight,
     waist: state.startWaist,
   }];
+  state.skippedMeasurements = [];
   state.sleep = [];
   state.workouts = [];
   state.notes = [];
@@ -4406,6 +4478,9 @@ function bindUiEvents() {
 
   const measurementBtn = document.getElementById('saveMeasurementBtn');
   if (measurementBtn) measurementBtn.addEventListener('click', saveMeasurementFromForm);
+
+  const skipMeasurementBtn = document.getElementById('skipMeasurementBtn');
+  if (skipMeasurementBtn) skipMeasurementBtn.addEventListener('click', skipMeasurementForSelectedDate);
 
   const workoutCategoryInput = document.getElementById('workoutCategoryInput');
   if (workoutCategoryInput) {
@@ -4578,6 +4653,7 @@ function setupAuthListener() {
           onboarded: false,
           name: '',
           measurements: [],
+          skippedMeasurements: [],
           workouts: [],
           notes: [],
           sleep: [],
