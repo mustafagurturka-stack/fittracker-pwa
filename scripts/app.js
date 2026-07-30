@@ -8,7 +8,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storageKey: 'fittracker-pro-auth',
+    storageKey: 'fittracker-pro-auth-v2',
   },
 });
 
@@ -17,15 +17,13 @@ console.log('Supabase hazır:', db);
 // CONSTANTS
 const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
 const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
-const STORAGE_KEY = 'ft_state_v2';
-const START_DATE = '2026-05-31';
+const STORAGE_KEY = 'ft_state_v3';
+const START_DATE = '2026-07-30';
+const FIRST_MEASURE_DATE = '2026-08-09';
 const WEEKLY_MEASURE_DAY = 0;
 const SLEEP_TARGET = 49;
 const WORKOUT_TARGET = 180;
-const VERIFIED_WEEK_TOTALS = {
-  '2026-05-31': { sleep: 53.5, workouts: 265, sleepNights: 7 },
-  '2026-06-07': { sleep: 55, workouts: 202.5, sleepNights: 7 },
-};
+const VERIFIED_WEEK_TOTALS = {};
 
 const WORKOUT_CATALOG = {
   Kuvvet: ['Full Body A', 'Full Body B', 'Full Body C', 'Full Body D', 'Core', 'Travel Full Body A', 'Travel Full Body B', 'Other Strength'],
@@ -227,9 +225,14 @@ function today() {
 
 function getSuggestedMeasureDate() {
   const latest = getSortedMeasurements().at(-1);
+  const latestSkipped = getSkippedMeasurements().at(-1);
+  const latestDate = [latest?.date, latestSkipped?.date]
+    .filter(Boolean)
+    .sort()
+    .at(-1);
 
-  if (latest?.date) {
-    const parts = parseIsoDateParts(latest.date);
+  if (latestDate) {
+    const parts = parseIsoDateParts(latestDate);
     if (parts) {
       const next = new Date(parts.year, parts.month - 1, parts.day);
       next.setDate(next.getDate() + 7);
@@ -237,10 +240,7 @@ function getSuggestedMeasureDate() {
     }
   }
 
-  const date = new Date();
-  const diff = (date.getDay() - WEEKLY_MEASURE_DAY + 7) % 7;
-  date.setDate(date.getDate() - diff);
-  return date.toISOString().slice(0, 10);
+  return FIRST_MEASURE_DATE;
 }
 
 function getUserId() {
@@ -492,13 +492,13 @@ function toLocalIsoDate(date) {
 
 function normalizeMeasurementDate(date) {
   const parts = parseIsoDateParts(date);
-  const startParts = parseIsoDateParts(START_DATE);
-  if (!parts || !startParts) return null;
+  const firstMeasureParts = parseIsoDateParts(FIRST_MEASURE_DATE);
+  if (!parts || !firstMeasureParts) return null;
 
-  if (date >= START_DATE) return date;
+  if (date >= FIRST_MEASURE_DATE) return date;
 
-  const isStartDayWrongYear = parts.month === startParts.month && parts.day === startParts.day;
-  return isStartDayWrongYear ? START_DATE : null;
+  const isFirstMeasureDayWrongYear = parts.month === firstMeasureParts.month && parts.day === firstMeasureParts.day;
+  return isFirstMeasureDayWrongYear ? FIRST_MEASURE_DATE : null;
 }
 
 function isCloudRecordId(id) {
@@ -768,62 +768,14 @@ function getSortedMeasurements() {
 }
 
 function getMeasurementTrendData() {
-  const byDate = new Map(
-    getSortedMeasurements().map(item => [item.date, item])
-  );
-
-  if (Number.isFinite(Number(state.startWeight))) {
-    const existing = byDate.get(START_DATE);
-    byDate.set(START_DATE, {
-      ...existing,
-      date: START_DATE,
-      weight: Number(existing?.weight ?? state.startWeight),
-      waist: parseOptionalNumber(existing?.waist ?? state.startWaist),
-    });
-  }
-
-  return [...byDate.values()]
-    .filter(item => item.date >= START_DATE && Number.isFinite(Number(item.weight)))
+  return getSortedMeasurements()
+    .filter(item => item.date >= FIRST_MEASURE_DATE && Number.isFinite(Number(item.weight)))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function getChartMeasurementData() {
   normalizeProfileState();
-
-  const data = getMeasurementTrendData();
-
-  if (data.length >= 2) return data;
-
-  const sorted = getSortedMeasurements();
-  if (sorted.length >= 2) return sorted;
-
-  const first = sorted[0];
-  const last = sorted[sorted.length - 1];
-  const startWeight = Number(state.startWeight ?? first?.weight);
-  const startWaist = parseOptionalNumber(state.startWaist ?? first?.waist);
-  const lastWeight = Number(last?.weight);
-
-  if (
-    Number.isFinite(startWeight) &&
-    last &&
-    Number.isFinite(lastWeight) &&
-    (last.date !== START_DATE || lastWeight !== startWeight)
-  ) {
-    return [
-      {
-        date: START_DATE,
-        weight: startWeight,
-        waist: startWaist,
-      },
-      {
-        ...last,
-        weight: lastWeight,
-        waist: parseOptionalNumber(last.waist),
-      },
-    ].sort((a, b) => a.date.localeCompare(b.date));
-  }
-
-  return data;
+  return getMeasurementTrendData();
 }
 
 function getSkippedMeasurements() {
@@ -2944,9 +2896,13 @@ async function loadMeasurementsFromSupabase() {
     date: item.date,
     weight: parseFloat(item.weight),
     waist: parseOptionalNumber(item.waist),
-  })).filter(item => !isRecordDeleted('measurements', item));
+  })).filter(item =>
+    item.date >= FIRST_MEASURE_DATE &&
+    !isRecordDeleted('measurements', item)
+  );
 
   const localOnlyMeasurements = localMeasurements.filter(local =>
+    local.date >= FIRST_MEASURE_DATE &&
     !isRecordDeleted('measurements', local) &&
     !cloudMeasurements.some(cloud => cloud.date === local.date)
   );
@@ -2980,9 +2936,13 @@ async function loadSleepFromSupabase() {
     id: item.id,
     date: item.date,
     hours: parseFloat(item.hours),
-  })).filter(item => !isRecordDeleted('sleep', item));
+  })).filter(item =>
+    item.date >= START_DATE &&
+    !isRecordDeleted('sleep', item)
+  );
 
   const localOnlySleep = localSleep.filter(local =>
+    local.date >= START_DATE &&
     !isRecordDeleted('sleep', local) &&
     !cloudSleep.some(cloud => cloud.date === local.date)
   );
@@ -3017,9 +2977,13 @@ async function loadWorkoutsFromSupabase() {
     type: item.type,
     duration: Number(item.duration),
     note: item.note || '',
-  })).filter(item => !isRecordDeleted('workouts', item));
+  })).filter(item =>
+    item.date >= START_DATE &&
+    !isRecordDeleted('workouts', item)
+  );
 
   const localOnlyWorkouts = localWorkouts.filter(local =>
+    local.date >= START_DATE &&
     !isRecordDeleted('workouts', local) &&
     !isCloudRecordId(local.id) &&
     !cloudWorkouts.some(cloud => cloud.id === local.id)
@@ -3051,9 +3015,13 @@ async function loadNotesFromSupabase() {
     id: item.id,
     date: item.date,
     text: item.text,
-  })).filter(item => !isRecordDeleted('notes', item));
+  })).filter(item =>
+    item.date >= START_DATE &&
+    !isRecordDeleted('notes', item)
+  );
 
   const localOnlyNotes = localNotes.filter(local =>
+    local.date >= START_DATE &&
     !isRecordDeleted('notes', local) &&
     !isCloudRecordId(local.id) &&
     !cloudNotes.some(cloud => cloud.id === local.id)
@@ -3438,8 +3406,8 @@ async function saveMeasurementFromForm() {
     return;
   }
 
-  if (date < START_DATE) {
-    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
+  if (date < FIRST_MEASURE_DATE) {
+    alert('İlk tartı tarihi 9 Ağustos 2026. Bu tarihten önce ölçüm eklenemez.');
     return;
   }
 
@@ -3504,8 +3472,8 @@ async function addMeasurement() {
     return;
   }
 
-  if (date < START_DATE) {
-    alert('Başlangıç tarihi 31 Mayıs 2026. Bu tarihten önce ölçüm eklenemez.');
+  if (date < FIRST_MEASURE_DATE) {
+    alert('İlk tartı tarihi 9 Ağustos 2026. Bu tarihten önce ölçüm eklenemez.');
     return;
   }
 
@@ -3945,25 +3913,6 @@ function editGoals() {
   state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
   ensureSyncMeta().pendingProfile = true;
 
-  if (!state.measurements?.length) {
-    state.measurements = [{
-      date: state.startDate || START_DATE,
-      weight: state.startWeight,
-      waist: state.startWaist,
-    }];
-  } else {
-    const sorted = [...state.measurements].sort((a, b) => a.date.localeCompare(b.date));
-    sorted[0] = {
-      ...sorted[0],
-      weight: state.startWeight,
-      waist: state.startWaist,
-    };
-    state.measurements = sorted;
-  }
-
-  const firstDate = getSortedMeasurements()[0]?.date;
-  if (firstDate) markPendingSync('measurements', firstDate);
-
   stateSave();
   renderAll();
   if (canUseCloud()) {
@@ -4329,7 +4278,7 @@ async function completeOnboarding() {
   }
 
   if (startDate < START_DATE) {
-    alert('Başlangıç tarihi 31 Mayıs 2026’dan önce olamaz.');
+    alert('Başlangıç tarihi 30 Temmuz 2026’dan önce olamaz.');
     return;
   }
 
@@ -4341,11 +4290,7 @@ async function completeOnboarding() {
   state.goalWeight = parseFloat(goalWeight.toFixed(1));
   state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
   ensureSyncMeta().pendingProfile = true;
-  state.measurements = [{
-    date: startDate,
-    weight: state.startWeight,
-    waist: state.startWaist,
-  }];
+  state.measurements = [];
   state.skippedMeasurements = [];
   state.sleep = [];
   state.workouts = [];
@@ -4368,27 +4313,19 @@ async function completeOnboarding() {
     return;
   }
 
-  await saveProfileToSupabase();
-
-  const { error } = await db
-    .from('measurements')
-    .insert([{
-      user_id: getUserId(),
-      date: startDate,
-      weight: state.startWeight,
-      waist: state.startWaist,
-    }]);
-
-  if (error) {
-    console.warn('İlk ölçüm cloud kaydı yapılamadı:', error);
-    setStatus('Kurulum kaydedildi, cloud ölçüm daha sonra senkronlanacak', 'ok');
-  } else {
+  let cloudReady = true;
+  try {
+    await saveProfileToSupabase();
     setStatus('Kurulum tamamlandı ✓', 'ok');
+  } catch (error) {
+    cloudReady = false;
+    recordSyncError(error);
+    setStatus('Kurulum yerel kaydedildi - cloud daha sonra senkronlanacak', 'ok');
   }
 
   document.getElementById('onboardingModal')?.remove();
   renderAll();
-  if (!error) {
+  if (cloudReady) {
     await loadAllCloudData();
   }
 }
