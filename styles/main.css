@@ -3233,7 +3233,7 @@ body,
   display: none !important;
 }
 
-/* v275.14 — skipped measurement support */
+/* v276.0 - fresh start and skipped measurement support */
 #pWeight #skipMeasurementBtn {
   background: rgba(255, 255, 255, .72) !important;
   color: var(--text) !important;
