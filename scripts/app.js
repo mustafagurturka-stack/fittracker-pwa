@@ -1341,7 +1341,7 @@ function renderDashboardWeekLabel() {
     <div class="week-card-head">
       <div>
         <div class="week-card-title">${getDashboardWeekTitle()}</div>
-        <div class="week-card-date">${getDashboardWeekContext() || `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`}</div>
+        <div class="week-card-date">${getDashboardWeekContext() || formatReportRange(range)}</div>
       </div>
 
       <div class="week-card-pill">
@@ -1927,6 +1927,22 @@ function getSleepRangeForReportWeek(range) {
   };
 }
 
+function isFirstPreparationRange(range) {
+  return range?.start === START_DATE && range?.end === FIRST_REPORT_END;
+}
+
+function formatReportRange(range) {
+  if (!range?.start || !range?.end) return '';
+  const endDate = isFirstPreparationRange(range) ? range.end : shiftIsoDate(range.end, 1);
+  return `${formatDate(range.start)} - ${formatDate(endDate)}`;
+}
+
+function getFirstMeasureHint(range) {
+  return isFirstPreparationRange(range)
+    ? `İlk tartı: ${formatDate(FIRST_MEASURE_DATE)} Pazar`
+    : '';
+}
+
 function getDashboardWeekRange() {
   const dates = [
     ...(state.sleep || []).map(item => item.date),
@@ -1950,8 +1966,9 @@ function getDashboardWeekTitle() {
 function getDashboardWeekContext() {
   const range = getDashboardWeekRange();
   const current = getWeekRange(today());
-  if (range.start === current.start) return '';
-  return `Bu hafta henüz kayıt yok · ${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))} gösteriliyor`;
+  const firstMeasureHint = getFirstMeasureHint(range);
+  if (range.start === current.start) return firstMeasureHint;
+  return `Bu hafta henüz kayıt yok · ${formatReportRange(range)} gösteriliyor${firstMeasureHint ? ` · ${firstMeasureHint}` : ''}`;
 }
 
 function getDailyViewRange() {
@@ -2445,8 +2462,9 @@ function renderProgressSummary() {
     ? `${formatDate(insights.bestWorkout.date)} · ${formatMinutes(insights.bestWorkout.duration)} dk`
     : 'Veri bekleniyor';
 
-  const periodTitle = `${formatDate(range.start)} - ${formatDate(shiftIsoDate(range.end, 1))}`;
+  const periodTitle = formatReportRange(range);
   const periodLabel = range.start === getWeekRange(today()).start ? 'Bu hafta' : 'Son aktif hafta';
+  const firstMeasureHint = getFirstMeasureHint(range);
   const sleepComparison = prev && previousDailyTotals.sleep.length
     ? `${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / önceki hafta`
     : 'Önceki hafta kaydı yok';
@@ -2458,6 +2476,7 @@ function renderProgressSummary() {
     <div class="progress-period">
       <span>${periodLabel}</span>
       <strong>${periodTitle}</strong>
+      ${firstMeasureHint ? `<small>${firstMeasureHint}</small>` : ''}
     </div>
     <div class="progress-grid">
       <div class="progress-metric-card">
