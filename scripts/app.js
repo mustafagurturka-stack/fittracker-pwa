@@ -20,6 +20,7 @@ const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
 const STORAGE_KEY = 'ft_state_v3';
 const START_DATE = '2026-07-30';
 const FIRST_MEASURE_DATE = '2026-08-09';
+const FIRST_REPORT_END = shiftIsoDate(FIRST_MEASURE_DATE, -1);
 const WEEKLY_MEASURE_DAY = 0;
 const SLEEP_TARGET = 49;
 const WORKOUT_TARGET = 180;
@@ -778,6 +779,29 @@ function getChartMeasurementData() {
   return getMeasurementTrendData();
 }
 
+function getProfileStartMeasurement() {
+  const weight = Number(state.startWeight);
+  if (!Number.isFinite(weight)) return null;
+
+  return {
+    date: state.startDate || START_DATE,
+    weight,
+    waist: parseOptionalNumber(state.startWaist),
+    isProfileStart: true,
+  };
+}
+
+function getMeasurementSummaryData() {
+  const trendData = getMeasurementTrendData();
+  const profileStart = getProfileStartMeasurement();
+
+  if (!profileStart) return trendData;
+  if (!trendData.length) return [profileStart];
+  if (trendData[0].date <= profileStart.date) return trendData;
+
+  return [profileStart, ...trendData];
+}
+
 function getSkippedMeasurements() {
   return (Array.isArray(state.skippedMeasurements) ? state.skippedMeasurements : [])
     .filter(item => item?.date)
@@ -1372,7 +1396,7 @@ function renderDashboardGoalCard() {
   const el = document.getElementById('dashboardGoalCard');
   if (!el) return;
 
-  const data = getMeasurementTrendData();
+  const data = getMeasurementSummaryData();
 
   if (!data.length) {
     setEmptyState(
@@ -1461,12 +1485,12 @@ function renderStats() {
   const el = document.getElementById('dashboardProgressCard');
   if (!el) return;
 
-  const data = getMeasurementTrendData();
+  const data = getMeasurementSummaryData();
 
   if (!data.length) {
     el.innerHTML = `
       <div class="empty-state">
-        İlk ölçümünü eklediğinde kilo ve bel kartları burada görünecek.
+        Başlangıç kilo ve bel bilgilerini eklediğinde kartlar burada görünecek.
       </div>
     `;
     return;
@@ -1476,29 +1500,35 @@ function renderStats() {
   const last = data[data.length - 1];
   const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+  const profileWaist = parseOptionalNumber(state.startWaist);
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
+    Number.isFinite(Number(profileWaist))
+      ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
+      : null
+  );
   const weightDiff = Number(last.weight - first.weight);
   const waistDiff = waistMeasurements.length >= 2 ? Number(lastWaist.waist - firstWaist.waist) : null;
   const startDateText = formatDate(first.date);
+  const isProfileOnly = Boolean(last.isProfileStart);
 
   el.innerHTML = `
     <div class="dashboard-measure-grid">
       <div class="progress-summary-card">
         <div class="progress-summary-main">
-          <div class="progress-summary-label">Son Kilo</div>
+          <div class="progress-summary-label">${isProfileOnly ? 'Başlangıç Kilosu' : 'Son Kilo'}</div>
           <div class="progress-summary-value">${last.weight} <span>kg</span></div>
         </div>
         <div class="progress-summary-side">
           <div class="progress-summary-diff ${weightDiff <= 0 ? 'good' : 'bad'}">
             ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
           </div>
-          <div class="progress-summary-small">${startDateText} başlangıcından beri</div>
+          <div class="progress-summary-small">${isProfileOnly ? `${startDateText} başlangıç bilgisi` : `${startDateText} başlangıcından beri`}</div>
         </div>
       </div>
 
       <div class="progress-summary-card">
         <div class="progress-summary-main">
-          <div class="progress-summary-label">Son Bel Ölçümü</div>
+          <div class="progress-summary-label">${lastWaist?.isProfileStart ? 'Başlangıç Bel Ölçümü' : 'Son Bel Ölçümü'}</div>
           <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
         </div>
         <div class="progress-summary-side">
@@ -1608,7 +1638,7 @@ function renderWeightSummary() {
   const el = document.getElementById('weightSummary');
   if (!el) return;
 
-  const data = getSortedMeasurements();
+  const data = getMeasurementSummaryData();
 
   if (!data.length) {
     el.innerHTML = '';
@@ -1619,11 +1649,17 @@ function renderWeightSummary() {
   const last = data[data.length - 1];
   const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+  const profileWaist = parseOptionalNumber(state.startWaist);
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
+    Number.isFinite(Number(profileWaist))
+      ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
+      : null
+  );
 
   const weightDiff = last.weight - first.weight;
   const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
   const latestSkipped = getSkippedMeasurements().at(-1);
+  const isProfileOnly = Boolean(last.isProfileStart);
 
   const milestones = state.milestones || [95, 90, 85, 80, 75];
 
@@ -1648,7 +1684,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          SON KİLO
+          ${isProfileOnly ? 'BAŞLANGIÇ KİLOSU' : 'SON KİLO'}
         </div>
 
         <div style="font-size:24px;font-weight:900;margin-top:6px">
@@ -1706,7 +1742,7 @@ function renderWeightSummary() {
 
       <div class="card" style="padding:16px">
         <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          BEL DEĞİŞİMİ
+          ${lastWaist?.isProfileStart ? 'BAŞLANGIÇ BELİ' : 'BEL DEĞİŞİMİ'}
         </div>
 
         <div style="
@@ -1715,7 +1751,7 @@ function renderWeightSummary() {
           margin-top:6px;
           color:${waistDiff === null || waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
         ">
-          ${waistDiff === null ? 'Sonraki ölçüm 4. tartıda' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
+          ${lastWaist?.isProfileStart ? `${lastWaist.waist} cm` : (waistDiff === null ? 'Sonraki ölçüm 4. tartıda' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`)}
         </div>
       </div>
 
@@ -1857,6 +1893,14 @@ function getWeekRange(dateValue) {
   const date = parts.length === 3 && parts.every(Number.isFinite)
     ? new Date(parts[0], parts[1] - 1, parts[2])
     : new Date(dateValue);
+  const isoDate = toLocalIsoDate(date);
+
+  if (isoDate >= START_DATE && isoDate < FIRST_MEASURE_DATE) {
+    return {
+      start: START_DATE,
+      end: FIRST_REPORT_END,
+    };
+  }
 
   const sunday = new Date(date);
   sunday.setDate(date.getDate() - date.getDay());
@@ -2359,13 +2403,19 @@ function renderProgressSummary() {
   const previousRange = getWeekRange(toLocalIsoDate(dayBeforeRange));
   const prev = weekly.find(item => item.start === previousRange.start);
   const previousDailyTotals = getWeekDailyTotals(previousRange);
-  const measurements = getSortedMeasurements();
+  const measurements = getMeasurementSummaryData();
   const first = measurements[0];
   const last = measurements[measurements.length - 1];
-  const previousMeasure = measurements[measurements.length - 2];
+  const realMeasurements = getSortedMeasurements();
+  const previousMeasure = realMeasurements[realMeasurements.length - 2];
   const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1];
+  const profileWaist = parseOptionalNumber(state.startWaist);
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
+    Number.isFinite(Number(profileWaist))
+      ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
+      : null
+  );
   const previousWaist = waistMeasurements[waistMeasurements.length - 2];
 
   const sleepPct = Math.min(100, Math.round((current.sleep / SLEEP_TARGET) * 100));
@@ -2373,7 +2423,7 @@ function renderProgressSummary() {
   const sleepDiff = prev ? current.sleep - prev.sleep : 0;
   const workoutDiff = prev ? current.workouts - prev.workouts : 0;
   const weightDiff = first && last ? last.weight - first.weight : 0;
-  const lastWeightDiff = previousMeasure && last ? last.weight - previousMeasure.weight : 0;
+  const lastWeightDiff = previousMeasure && last && !last.isProfileStart ? last.weight - previousMeasure.weight : 0;
   const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
   const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
   const categories = getWorkoutCategoriesForRange(range);
