@@ -2383,17 +2383,19 @@ function renderProgressWeekPicker(weekly = getWeeklyProgressData()) {
 
   const sorted = [...weekly].sort((a, b) => b.start.localeCompare(a.start));
   const selected = getSelectedProgressWeek(sorted);
+  const firstMeasureHint = getFirstMeasureHint(selected);
 
   el.innerHTML = `
     <div class="progress-week-picker">
       <div>
         <span>Görüntülenen hafta</span>
-        <strong>${formatDate(selected.start)} - ${formatDate(shiftIsoDate(selected.end, 1))}</strong>
+        <strong>${formatReportRange(selected)}</strong>
+        ${firstMeasureHint ? `<small>${firstMeasureHint}</small>` : ''}
       </div>
       <select id="progressWeekSelect" aria-label="İlerleme haftası seç">
         ${sorted.map(item => `
           <option value="${item.start}" ${item.start === selected.start ? 'selected' : ''}>
-            ${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}
+            ${formatReportRange(item)}
           </option>
         `).join('')}
       </select>
@@ -2730,7 +2732,7 @@ function renderProgressList() {
         return `
           <div class="weekly-report-row">
             <div>
-              <strong>${formatDate(item.start)} - ${formatDate(shiftIsoDate(item.end, 1))}</strong>
+              <strong>${formatReportRange(item)}</strong>
               <span>${status}</span>
               <small>${activitySummary}</small>
               ${verifiedNote ? `<small>${verifiedNote}</small>` : ''}
