@@ -1307,10 +1307,12 @@ function renderDashboardWeekLabel() {
   const range = getDashboardWeekRange();
 
   const sleepTotal = getCurrentWeekSleepTotal();
-  const sleepPct = Math.min(100, Math.round((sleepTotal / SLEEP_TARGET) * 100));
+  const sleepTarget = getSleepTargetForRange(range);
+  const sleepPct = Math.min(100, Math.round((sleepTotal / sleepTarget) * 100));
 
   const workoutTotal = getCurrentWeekWorkoutTotal();
-  const workoutPct = Math.min(100, Math.round((workoutTotal / WORKOUT_TARGET) * 100));
+  const workoutTarget = getWorkoutTargetForRange(range);
+  const workoutPct = Math.min(100, Math.round((workoutTotal / workoutTarget) * 100));
   const dailyTotals = getWeekDailyTotals(range);
   const sleepDays = VERIFIED_WEEK_TOTALS[range.start]?.sleepNights || dailyTotals.sleep.length;
   const workoutDays = dailyTotals.workouts.length;
@@ -1355,7 +1357,7 @@ function renderDashboardWeekLabel() {
       <div class="week-metric">
         <div class="week-metric-top">
           <span>Uyku</span>
-          <strong>${sleepTotal.toFixed(1)} / ${SLEEP_TARGET} saat</strong>
+          <strong>${sleepTotal.toFixed(1)} / ${sleepTarget} saat</strong>
         </div>
         <div class="week-track">
           <div class="week-fill sleep" style="width:${sleepPct}%"></div>
@@ -1365,7 +1367,7 @@ function renderDashboardWeekLabel() {
       <div class="week-metric">
         <div class="week-metric-top">
           <span>Antrenman</span>
-          <strong>${workoutTotal} / ${WORKOUT_TARGET} dk</strong>
+          <strong>${workoutTotal} / ${workoutTarget} dk</strong>
         </div>
         <div class="week-track">
           <div class="week-fill workout" style="width:${workoutPct}%"></div>
@@ -1922,6 +1924,29 @@ function shiftIsoDate(dateValue, days) {
   return toLocalIsoDate(new Date(parts.year, parts.month - 1, parts.day + days));
 }
 
+function getInclusiveDayCount(startDate, endDate) {
+  const startParts = parseIsoDateParts(startDate);
+  const endParts = parseIsoDateParts(endDate);
+  if (!startParts || !endParts) return 7;
+
+  const start = new Date(startParts.year, startParts.month - 1, startParts.day);
+  const end = new Date(endParts.year, endParts.month - 1, endParts.day);
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+function getRangeDayCount(range) {
+  if (!range?.start || !range?.end) return 7;
+  return getInclusiveDayCount(range.start, range.end);
+}
+
+function getSleepTargetForRange(range) {
+  return getRangeDayCount(range) * 7;
+}
+
+function getWorkoutTargetForRange(range) {
+  return Math.round((WORKOUT_TARGET / 7) * getRangeDayCount(range));
+}
+
 function getSleepRangeForReportWeek(range) {
   return {
     start: range.start,
@@ -2047,8 +2072,9 @@ function renderSleepSummary() {
   const viewTotal = sleep
     .filter(itemMatchesSleepDailyView)
     .reduce((total, item) => total + Number(item.hours || 0), 0);
+  const sleepTarget = getSleepTargetForRange(range);
   const viewValue = range.targetMode === 'week'
-    ? `${viewTotal.toFixed(1)} / ${SLEEP_TARGET} saat`
+    ? `${viewTotal.toFixed(1)} / ${sleepTarget} saat`
     : `${viewTotal.toFixed(1)} saat`;
 
   el.innerHTML = `
@@ -2110,8 +2136,9 @@ function renderWorkoutSummary() {
   const viewTotal = workouts
     .filter(itemMatchesDailyView)
     .reduce((total, item) => total + Number(item.duration || 0), 0);
+  const workoutTarget = getWorkoutTargetForRange(range);
   const viewValue = range.targetMode === 'week'
-    ? `${viewTotal} / ${WORKOUT_TARGET} dk`
+    ? `${viewTotal} / ${workoutTarget} dk`
     : `${viewTotal} dk`;
 
   el.innerHTML = `
@@ -2313,8 +2340,10 @@ function getWeekInsights(current, range) {
 
 function getProgressCoachInsight(current, range, prev) {
   const insights = getWeekInsights(current, range);
-  const sleepPct = Math.min(100, Math.round((Number(current.sleep || 0) / SLEEP_TARGET) * 100));
-  const workoutPct = Math.min(100, Math.round((Number(current.workouts || 0) / WORKOUT_TARGET) * 100));
+  const sleepTarget = getSleepTargetForRange(range);
+  const workoutTarget = getWorkoutTargetForRange(range);
+  const sleepPct = Math.min(100, Math.round((Number(current.sleep || 0) / sleepTarget) * 100));
+  const workoutPct = Math.min(100, Math.round((Number(current.workouts || 0) / workoutTarget) * 100));
   const walkingStats = getWalkingStatsForRange(range);
   const workoutDiff = prev ? Number(current.workouts || 0) - Number(prev.workouts || 0) : 0;
   const sleepDiff = prev ? Number(current.sleep || 0) - Number(prev.sleep || 0) : 0;
@@ -2443,8 +2472,10 @@ function renderProgressSummary() {
   );
   const previousWaist = waistMeasurements[waistMeasurements.length - 2];
 
-  const sleepPct = Math.min(100, Math.round((current.sleep / SLEEP_TARGET) * 100));
-  const workoutPct = Math.min(100, Math.round((current.workouts / WORKOUT_TARGET) * 100));
+  const sleepTarget = getSleepTargetForRange(range);
+  const workoutTarget = getWorkoutTargetForRange(range);
+  const sleepPct = Math.min(100, Math.round((current.sleep / sleepTarget) * 100));
+  const workoutPct = Math.min(100, Math.round((current.workouts / workoutTarget) * 100));
   const sleepDiff = prev ? current.sleep - prev.sleep : 0;
   const workoutDiff = prev ? current.workouts - prev.workouts : 0;
   const weightDiff = first && last ? last.weight - first.weight : 0;
@@ -2567,6 +2598,7 @@ function renderProgressCharts() {
 
   if (sleepWrap) {
     const sleepData = getWeekDailyTotals(latestWeek).sleep;
+    const sleepTarget = getSleepTargetForRange(latestWeek);
     const sleepAvg = sleepData.length ? latestWeek.sleep / sleepData.length : 0;
     const bestSleep = sleepData.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
 
@@ -2585,7 +2617,7 @@ function renderProgressCharts() {
           <strong>Günlük uyku dağılımı</strong>
           <span>Hedef aralık: 7-9 saat. Kayıtlı gün ortalaması ${sleepAvg.toFixed(1)} saat/gün</span>
         </div>
-        <em>${latestWeek.sleep.toFixed(1)} / ${SLEEP_TARGET} saat</em>
+        <em>${latestWeek.sleep.toFixed(1)} / ${sleepTarget} saat</em>
       </div>
       <div class="chart-stat-row">
         <div><span>Kayıtlı gün ort.</span><strong>${sleepAvg.toFixed(1)} saat</strong></div>
@@ -2706,8 +2738,11 @@ function renderProgressList() {
   el.innerHTML = `
     <div class="weekly-report-list">
       ${data.map(item => {
-        const sleepPct = Math.min(100, Math.round((item.sleep / SLEEP_TARGET) * 100));
-        const workoutPct = Math.min(100, Math.round((item.workouts / WORKOUT_TARGET) * 100));
+        const rangeDays = getRangeDayCount(item);
+        const sleepTarget = getSleepTargetForRange(item);
+        const workoutTarget = getWorkoutTargetForRange(item);
+        const sleepPct = Math.min(100, Math.round((item.sleep / sleepTarget) * 100));
+        const workoutPct = Math.min(100, Math.round((item.workouts / workoutTarget) * 100));
         const isStrong = sleepPct >= 90 && workoutPct >= 90;
         const isLight = sleepPct < 65 || workoutPct < 65;
         const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
@@ -2747,7 +2782,7 @@ function renderProgressList() {
               <div>
                 <span>Uyku</span>
                 <strong>${item.sleep.toFixed(1)} saat</strong>
-                <small>${sleepDays}/7 gece${item.verified ? ' · doğrulandı' : ''}</small>
+                <small>${sleepDays}/${rangeDays} gece${item.verified ? ' · doğrulandı' : ''}</small>
                 <i><b style="width:${sleepPct}%"></b></i>
               </div>
               <div>
