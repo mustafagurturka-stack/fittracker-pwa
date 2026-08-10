@@ -130,6 +130,7 @@ let authMode = 'signIn';
 let dailyView = 'week';
 let achievementSessionReady = false;
 let progressWeekStart = '';
+let progressWeekManuallySelected = false;
 
 function withTimeout(promise, ms = 10000, label = 'İşlem') {
   let timer;
@@ -776,7 +777,8 @@ function getMeasurementTrendData() {
 
 function getChartMeasurementData() {
   normalizeProfileState();
-  return getMeasurementTrendData();
+  return getMeasurementSummaryData()
+    .filter(item => Number.isFinite(Number(item.weight)));
 }
 
 function getProfileStartMeasurement() {
@@ -1947,6 +1949,8 @@ function getDashboardWeekRange() {
   const dates = [
     ...(state.sleep || []).map(item => item.date),
     ...(state.workouts || []).map(item => item.date),
+    ...getSortedMeasurements().map(item => item.date),
+    ...getSkippedMeasurements().map(item => item.date),
   ].filter(Boolean);
 
   if (!dates.length) {
@@ -2155,10 +2159,8 @@ function renderWorkoutList() {
 function getWeeklyProgressData() {
   const weeks = {};
 
-  (state.sleep || []).forEach(item => {
-    const range = getWeekRange(item.date);
+  const ensureWeek = range => {
     const key = `${range.start}_${range.end}`;
-
     if (!weeks[key]) {
       weeks[key] = {
         start: range.start,
@@ -2167,25 +2169,21 @@ function getWeeklyProgressData() {
         workouts: 0,
       };
     }
+    return weeks[key];
+  };
 
-    weeks[key].sleep += Number(item.hours || 0);
+  (state.sleep || []).forEach(item => {
+    const range = getWeekRange(item.date);
+    ensureWeek(range).sleep += Number(item.hours || 0);
   });
 
   (state.workouts || []).forEach(item => {
     const range = getWeekRange(item.date);
-    const key = `${range.start}_${range.end}`;
-
-    if (!weeks[key]) {
-      weeks[key] = {
-        start: range.start,
-        end: range.end,
-        sleep: 0,
-        workouts: 0,
-      };
-    }
-
-    weeks[key].workouts += Number(item.duration || 0);
+    ensureWeek(range).workouts += Number(item.duration || 0);
   });
+
+  getSortedMeasurements().forEach(item => ensureWeek(getWeekRange(item.date)));
+  getSkippedMeasurements().forEach(item => ensureWeek(getWeekRange(item.date)));
 
   Object.values(weeks).forEach(week => {
     const verified = VERIFIED_WEEK_TOTALS[week.start];
@@ -2365,7 +2363,14 @@ function getProgressCoachInsight(current, range, prev) {
 function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
   if (!weekly.length) return null;
   const sorted = [...weekly].sort((a, b) => a.start.localeCompare(b.start));
+  const currentRange = getWeekRange(today());
+  const current = sorted.find(item => item.start === currentRange.start);
   const selected = sorted.find(item => item.start === progressWeekStart);
+  if (selected && progressWeekManuallySelected) return selected;
+  if (current) {
+    progressWeekStart = current.start;
+    return current;
+  }
   if (selected) return selected;
   const latest = sorted[sorted.length - 1];
   progressWeekStart = latest.start;
@@ -2404,6 +2409,7 @@ function renderProgressWeekPicker(weekly = getWeeklyProgressData()) {
 
   document.getElementById('progressWeekSelect')?.addEventListener('change', event => {
     progressWeekStart = event.target.value;
+    progressWeekManuallySelected = true;
     renderProgressSummary();
     renderProgressCharts();
     renderProgressWeekPicker();
