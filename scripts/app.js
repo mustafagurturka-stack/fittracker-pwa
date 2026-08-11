@@ -222,7 +222,7 @@ function recordSyncError(error) {
 }
 // HELPERS
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalIsoDate(new Date());
 }
 
 function getSuggestedMeasureDate() {
@@ -1971,12 +1971,15 @@ function getFirstMeasureHint(range) {
 }
 
 function getDashboardWeekRange() {
-  const dates = [
+  const activityDates = [
     ...(state.sleep || []).map(item => item.date),
     ...(state.workouts || []).map(item => item.date),
+  ].filter(Boolean);
+  const measurementDates = [
     ...getSortedMeasurements().map(item => item.date),
     ...getSkippedMeasurements().map(item => item.date),
   ].filter(Boolean);
+  const dates = activityDates.length ? activityDates : measurementDates;
 
   if (!dates.length) {
     return getWeekRange(today());
@@ -2396,6 +2399,16 @@ function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
   const current = sorted.find(item => item.start === currentRange.start);
   const selected = sorted.find(item => item.start === progressWeekStart);
   if (selected && progressWeekManuallySelected) return selected;
+  const hasActivity = item => Number(item?.sleep || 0) > 0 || Number(item?.workouts || 0) > 0;
+  if (current && hasActivity(current)) {
+    progressWeekStart = current.start;
+    return current;
+  }
+  const latestActive = [...sorted].reverse().find(hasActivity);
+  if (latestActive) {
+    progressWeekStart = latestActive.start;
+    return latestActive;
+  }
   if (current) {
     progressWeekStart = current.start;
     return current;
