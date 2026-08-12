@@ -1134,13 +1134,20 @@ function getAchievementMetrics() {
   const activityCount = (state.sleep || []).length + (state.workouts || []).length + (state.notes || []).length;
   const weeks = new Map();
 
-  [...(state.sleep || []), ...(state.workouts || [])].forEach(item => {
+  (state.sleep || []).forEach(item => {
+    if (!item?.date) return;
+    const start = getSleepReportRangeForDate(item.date).start;
+    if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
+    const bucket = weeks.get(start);
+    bucket.sleep.add(item.date);
+  });
+
+  (state.workouts || []).forEach(item => {
     if (!item?.date) return;
     const start = getWeekRange(item.date).start;
     if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
     const bucket = weeks.get(start);
-    if ((state.sleep || []).includes(item)) bucket.sleep.add(item.date);
-    else bucket.workouts.add(item.date);
+    bucket.workouts.add(item.date);
   });
 
   VERIFIED_WEEK_TOTALS && Object.entries(VERIFIED_WEEK_TOTALS).forEach(([start, values]) => {
@@ -1947,11 +1954,25 @@ function getWorkoutTargetForRange(range) {
   return Math.round((WORKOUT_TARGET / 7) * getRangeDayCount(range));
 }
 
-function getSleepRangeForReportWeek(range) {
-  return {
-    start: range.start,
-    end: range.end,
-  };
+function isSundayDate(dateValue) {
+  const parts = parseIsoDateParts(dateValue);
+  if (!parts) return false;
+  return new Date(parts.year, parts.month - 1, parts.day).getDay() === WEEKLY_MEASURE_DAY;
+}
+
+function getSleepReportRangeForDate(dateValue) {
+  if (dateValue >= FIRST_MEASURE_DATE && isSundayDate(dateValue)) {
+    return getWeekRange(shiftIsoDate(dateValue, -1));
+  }
+  return getWeekRange(dateValue);
+}
+
+function itemMatchesReportRange(item, range, mode = 'activity') {
+  if (!item?.date || !range?.start || !range?.end) return false;
+  const reportRange = mode === 'sleep'
+    ? getSleepReportRangeForDate(item.date)
+    : getWeekRange(item.date);
+  return reportRange.start === range.start && reportRange.end === range.end;
 }
 
 function isFirstPreparationRange(range) {
@@ -1971,21 +1992,28 @@ function getFirstMeasureHint(range) {
 }
 
 function getDashboardWeekRange() {
-  const activityDates = [
-    ...(state.sleep || []).map(item => item.date),
-    ...(state.workouts || []).map(item => item.date),
-  ].filter(Boolean);
+  const activityRanges = [
+    ...(state.sleep || [])
+      .filter(item => item?.date)
+      .map(item => getSleepReportRangeForDate(item.date)),
+    ...(state.workouts || [])
+      .filter(item => item?.date)
+      .map(item => getWeekRange(item.date)),
+  ];
   const measurementDates = [
     ...getSortedMeasurements().map(item => item.date),
     ...getSkippedMeasurements().map(item => item.date),
   ].filter(Boolean);
-  const dates = activityDates.length ? activityDates : measurementDates;
 
-  if (!dates.length) {
+  if (activityRanges.length) {
+    return activityRanges.sort((a, b) => b.start.localeCompare(a.start))[0];
+  }
+
+  if (!measurementDates.length) {
     return getWeekRange(today());
   }
 
-  const latestDate = dates.sort((a, b) => b.localeCompare(a))[0];
+  const latestDate = measurementDates.sort((a, b) => b.localeCompare(a))[0];
   return getWeekRange(latestDate);
 }
 
@@ -2029,8 +2057,7 @@ function itemMatchesSleepDailyView(item) {
   if (!range.start || !range.end) return true;
   if (range.targetMode !== 'week') return item.date >= range.start && item.date <= range.end;
 
-  const sleepRange = getSleepRangeForReportWeek(range);
-  return item.date >= sleepRange.start && item.date <= sleepRange.end;
+  return itemMatchesReportRange(item, range, 'sleep');
 }
 
 function renderDailyViewControls() {
@@ -2054,12 +2081,11 @@ function renderDailyViewControls() {
 function getCurrentWeekSleepTotal() {
   const sleep = Array.isArray(state.sleep) ? state.sleep : [];
   const range = getDashboardWeekRange();
-  const sleepRange = getSleepRangeForReportWeek(range);
   const verified = VERIFIED_WEEK_TOTALS[range.start];
   if (verified) return verified.sleep;
 
   return sleep
-    .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
+    .filter(item => itemMatchesReportRange(item, range, 'sleep'))
     .reduce((total, item) => total + Number(item.hours || 0), 0);
 }
 
@@ -2203,7 +2229,7 @@ function getWeeklyProgressData() {
   };
 
   (state.sleep || []).forEach(item => {
-    const range = getWeekRange(item.date);
+    const range = getSleepReportRangeForDate(item.date);
     ensureWeek(range).sleep += Number(item.hours || 0);
   });
 
@@ -2286,10 +2312,8 @@ function getVerifiedAdjustment(week, field) {
 function getWeekDailyTotals(range) {
   const sleepByDay = {};
   const workoutByDay = {};
-  const sleepRange = getSleepRangeForReportWeek(range);
-
   (state.sleep || [])
-    .filter(item => item.date >= sleepRange.start && item.date <= sleepRange.end)
+    .filter(item => itemMatchesReportRange(item, range, 'sleep'))
     .forEach(item => {
       sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
     });
@@ -3453,6 +3477,9 @@ function saveSleepLocally(payload) {
   if (!Array.isArray(state.sleep)) state.sleep = [];
   unmarkRecordDeleted('sleep', payload);
   markPendingSync('sleep', payload.date);
+  const reportRange = getSleepReportRangeForDate(payload.date);
+  progressWeekStart = reportRange.start;
+  progressWeekManuallySelected = false;
 
   const nextSleep = {
     id: payload.id || `local-sleep-${payload.date}`,
@@ -3479,6 +3506,9 @@ function saveSleepLocally(payload) {
 function saveWorkoutLocally(payload) {
   if (!Array.isArray(state.workouts)) state.workouts = [];
   unmarkRecordDeleted('workouts', payload);
+  const reportRange = getWeekRange(payload.date);
+  progressWeekStart = reportRange.start;
+  progressWeekManuallySelected = false;
 
   const id = payload.id || `local-workout-${Date.now()}`;
   state.workouts.push({
