@@ -2021,8 +2021,7 @@ function isFirstPreparationRange(range) {
 
 function formatReportRange(range) {
   if (!range?.start || !range?.end) return '';
-  const endDate = isFirstPreparationRange(range) ? range.end : shiftIsoDate(range.end, 1);
-  return `${formatDate(range.start)} - ${formatDate(endDate)}`;
+  return `${formatDate(range.start)} - ${formatDate(range.end)}`;
 }
 
 function getFirstMeasureHint(range) {
@@ -2742,13 +2741,13 @@ function renderProgressCharts() {
     const categoryText = workoutAdjustment
       ? `${recordedTypeText}${distanceText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
       : `${recordedTypeText}${distanceText}`;
-    const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
-    const workoutDays = workoutData.length;
     const workoutRecords = (state.workouts || [])
       .filter(item => item.date >= latestWeek.start && item.date <= latestWeek.end)
       .sort((a, b) => a.date.localeCompare(b.date));
+    const workoutDays = new Set(workoutRecords.map(item => item.date)).size;
+    const bestWorkout = workoutRecords.reduce((best, item) => Number(item.duration || 0) > Number(best?.duration || 0) ? item : best, null);
 
-    if (!workoutData.length) {
+    if (!workoutRecords.length) {
       setEmptyState(
         workoutWrap,
         'Bu hafta antrenman kaydı yok',
@@ -2760,41 +2759,32 @@ function renderProgressCharts() {
     workoutWrap.innerHTML = `
       <div class="chart-mini-head enhanced">
         <div>
-          <strong>Günlük antrenman dağılımı</strong>
+          <strong>Haftalık antrenman kayıtları</strong>
           <span>${categoryText}</span>
         </div>
-        <em>${workoutDays} antrenman günü</em>
+        <em>${workoutRecords.length} antrenman kaydı</em>
       </div>
       <div class="chart-stat-row">
         <div><span>Antrenman yapılan gün</span><strong>${workoutDays} gün</strong></div>
-        <div><span>En yoğun gün</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
+        <div><span>Kayıt sayısı</span><strong>${workoutRecords.length} kayıt</strong></div>
+        <div><span>En yoğun kayıt</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
         <div><span>Odak</span><strong>${workoutTypes[0] ? getWorkoutTypeDisplay(workoutTypes[0][0]) : (categories[0] ? categories[0][0] : '—')}</strong></div>
       </div>
       <div class="bar-chart workout-chart enhanced">
-        ${workoutData.map(item => {
-          const h = Math.min(140, Math.max(18, item.duration * 1.35));
-          const category = Object.entries(item.categories)
-            .sort((a, b) => b[1] - a[1])
-            .map(([name, duration]) => `${name}: ${formatMinutes(duration)} dk`)
-            .join(' · ');
-          const typeText = Object.entries(item.types || {})
-            .sort((a, b) => b[1] - a[1])
-            .map(([name, duration]) => `${name}: ${formatMinutes(duration)} dk`)
-            .join(' · ');
-          const topType = Object.entries(item.types || {})
-            .sort((a, b) => b[1] - a[1])[0]?.[0];
+        ${workoutRecords.map(item => {
+          const h = Math.min(140, Math.max(18, Number(item.duration || 0) * 1.35));
+          const category = getWorkoutCategoryFromNote(item.note, item.type);
+          const typeText = `${getWorkoutTypeDisplay(item.type || category)}: ${formatMinutes(item.duration)} dk`;
 
           return `
             <div class="bar-item">
-              <div class="bar-fill workout" style="height:${h}px" title="${typeText || category}">
+              <div class="bar-fill workout" style="height:${h}px" title="${typeText}">
                 <span>${formatMinutes(item.duration)} dk</span>
               </div>
               <div class="bar-label">
                 ${getShortWeekday(item.date)}
               </div>
-              <div class="bar-value workout-type-label">${topType
-                ? renderWorkoutTypeLabel(topType)
-                : (Object.entries(item.categories).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman')}</div>
+              <div class="bar-value workout-type-label">${renderWorkoutTypeLabel(item.type || category)}</div>
             </div>
           `;
         }).join('')}
