@@ -119,6 +119,8 @@ let state = {
     lastError: '',
     pendingMeasurements: [],
     pendingSleep: [],
+    pendingWorkouts: [],
+    pendingNotes: [],
     pendingProfile: false,
   },
 };
@@ -131,6 +133,7 @@ let dailyView = 'week';
 let achievementSessionReady = false;
 let progressWeekStart = '';
 let progressWeekManuallySelected = false;
+let autoSyncTimer = null;
 
 function withTimeout(promise, ms = 10000, label = 'İşlem') {
   let timer;
@@ -156,6 +159,8 @@ function ensureSyncMeta() {
     lastError: state.syncMeta.lastError || '',
     pendingMeasurements: Array.isArray(state.syncMeta.pendingMeasurements) ? state.syncMeta.pendingMeasurements : [],
     pendingSleep: Array.isArray(state.syncMeta.pendingSleep) ? state.syncMeta.pendingSleep : [],
+    pendingWorkouts: Array.isArray(state.syncMeta.pendingWorkouts) ? state.syncMeta.pendingWorkouts : [],
+    pendingNotes: Array.isArray(state.syncMeta.pendingNotes) ? state.syncMeta.pendingNotes : [],
     pendingProfile: Boolean(state.syncMeta.pendingProfile),
   };
   return state.syncMeta;
@@ -164,13 +169,28 @@ function ensureSyncMeta() {
 function markPendingSync(type, key) {
   if (!key) return;
   const syncMeta = ensureSyncMeta();
-  const bucket = type === 'measurements' ? syncMeta.pendingMeasurements : syncMeta.pendingSleep;
+  const bucketMap = {
+    measurements: 'pendingMeasurements',
+    sleep: 'pendingSleep',
+    workouts: 'pendingWorkouts',
+    notes: 'pendingNotes',
+  };
+  const bucketName = bucketMap[type];
+  if (!bucketName) return;
+  const bucket = syncMeta[bucketName];
   if (!bucket.includes(key)) bucket.push(key);
 }
 
 function clearPendingSync(type, key) {
   const syncMeta = ensureSyncMeta();
-  const bucketName = type === 'measurements' ? 'pendingMeasurements' : 'pendingSleep';
+  const bucketMap = {
+    measurements: 'pendingMeasurements',
+    sleep: 'pendingSleep',
+    workouts: 'pendingWorkouts',
+    notes: 'pendingNotes',
+  };
+  const bucketName = bucketMap[type];
+  if (!bucketName) return;
   syncMeta[bucketName] = syncMeta[bucketName].filter(item => item !== key);
 }
 
@@ -181,7 +201,14 @@ function getPendingSyncCount() {
   const deletionBuckets = Object.values(state.deletedRecords || {})
     .reduce((total, bucket) => total + (Array.isArray(bucket) && bucket.length ? 1 : 0), 0);
 
-  return syncMeta.pendingMeasurements.length + syncMeta.pendingSleep.length + Number(syncMeta.pendingProfile) + localWorkouts + localNotes + deletionBuckets;
+  return syncMeta.pendingMeasurements.length +
+    syncMeta.pendingSleep.length +
+    syncMeta.pendingWorkouts.length +
+    syncMeta.pendingNotes.length +
+    Number(syncMeta.pendingProfile) +
+    localWorkouts +
+    localNotes +
+    deletionBuckets;
 }
 
 function formatSyncTimestamp(value) {
@@ -275,6 +302,19 @@ function releaseMobileInputFocus() {
 function getWorkoutCategory(type) {
   return Object.entries(WORKOUT_CATALOG)
     .find(([, items]) => items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
+}
+
+function getWorkoutSyncSignature(item = {}) {
+  return [
+    item.date || '',
+    item.type || '',
+    formatDecimal(item.duration || 0, 1),
+    item.note || '',
+  ].join('|');
+}
+
+function getNoteSyncSignature(item = {}) {
+  return [item.date || '', item.text || ''].join('|');
 }
 
 function updateWorkoutTypes() {
@@ -1004,6 +1044,8 @@ function stateLoad() {
         lastError: savedState.syncMeta?.lastError || '',
         pendingMeasurements: Array.isArray(savedState.syncMeta?.pendingMeasurements) ? savedState.syncMeta.pendingMeasurements : [],
         pendingSleep: Array.isArray(savedState.syncMeta?.pendingSleep) ? savedState.syncMeta.pendingSleep : [],
+        pendingWorkouts: Array.isArray(savedState.syncMeta?.pendingWorkouts) ? savedState.syncMeta.pendingWorkouts : [],
+        pendingNotes: Array.isArray(savedState.syncMeta?.pendingNotes) ? savedState.syncMeta.pendingNotes : [],
         pendingProfile: Boolean(savedState.syncMeta?.pendingProfile),
       },
       measurements: Array.isArray(savedState.measurements) ? savedState.measurements : [],
@@ -3130,13 +3172,17 @@ async function loadWorkoutsFromSupabase() {
     item.date >= START_DATE &&
     !isRecordDeleted('workouts', item)
   );
+  const cloudWorkoutSignatures = new Set(cloudWorkouts.map(getWorkoutSyncSignature));
 
   const localOnlyWorkouts = localWorkouts.filter(local =>
     local.date >= START_DATE &&
     !isRecordDeleted('workouts', local) &&
     !isCloudRecordId(local.id) &&
-    !cloudWorkouts.some(cloud => cloud.id === local.id)
+    !cloudWorkouts.some(cloud => cloud.id === local.id) &&
+    !cloudWorkoutSignatures.has(getWorkoutSyncSignature(local))
   );
+
+  localOnlyWorkouts.forEach(item => markPendingSync('workouts', item.id));
 
   state.workouts = [...cloudWorkouts, ...localOnlyWorkouts]
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -3168,13 +3214,17 @@ async function loadNotesFromSupabase() {
     item.date >= START_DATE &&
     !isRecordDeleted('notes', item)
   );
+  const cloudNoteSignatures = new Set(cloudNotes.map(getNoteSyncSignature));
 
   const localOnlyNotes = localNotes.filter(local =>
     local.date >= START_DATE &&
     !isRecordDeleted('notes', local) &&
     !isCloudRecordId(local.id) &&
-    !cloudNotes.some(cloud => cloud.id === local.id)
+    !cloudNotes.some(cloud => cloud.id === local.id) &&
+    !cloudNoteSignatures.has(getNoteSyncSignature(local))
   );
+
+  localOnlyNotes.forEach(item => markPendingSync('notes', item.id));
 
   state.notes = [...cloudNotes, ...localOnlyNotes]
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -3261,10 +3311,16 @@ async function pushLocalPendingToSupabase() {
     clearPendingSync('sleep', item.date);
   }
 
+  const pendingWorkoutIds = new Set(syncMeta.pendingWorkouts);
   const localWorkouts = (Array.isArray(state.workouts) ? state.workouts : [])
-    .filter(item => item?.id && String(item.id).startsWith('local-workout-') && !isRecordDeleted('workouts', item));
+    .filter(item =>
+      item?.id &&
+      !isRecordDeleted('workouts', item) &&
+      (String(item.id).startsWith('local-workout-') || pendingWorkoutIds.has(item.id))
+    );
 
   for (const item of localWorkouts) {
+    const previousId = item.id;
     const { data, error } = await db
       .from('workout_logs')
       .insert([{
@@ -3279,12 +3335,19 @@ async function pushLocalPendingToSupabase() {
 
     if (error) throw error;
     if (data?.id) item.id = data.id;
+    clearPendingSync('workouts', previousId);
   }
 
+  const pendingNoteIds = new Set(syncMeta.pendingNotes);
   const localNotes = (Array.isArray(state.notes) ? state.notes : [])
-    .filter(item => item?.id && String(item.id).startsWith('local-note-') && !isRecordDeleted('notes', item));
+    .filter(item =>
+      item?.id &&
+      !isRecordDeleted('notes', item) &&
+      (String(item.id).startsWith('local-note-') || pendingNoteIds.has(item.id))
+    );
 
   for (const item of localNotes) {
+    const previousId = item.id;
     const { data, error } = await db
       .from('notes')
       .insert([{
@@ -3297,6 +3360,7 @@ async function pushLocalPendingToSupabase() {
 
     if (error) throw error;
     if (data?.id) item.id = data.id;
+    clearPendingSync('notes', previousId);
   }
 
   await flushPendingDeletes();
@@ -3317,6 +3381,14 @@ async function loadAllCloudData({ force = false } = {}) {
   renderSettings();
 
   try {
+    let pushError = null;
+
+    try {
+      await runSyncStage('Bekleyen kayıtları gönderme', pushLocalPendingToSupabase);
+    } catch (error) {
+      pushError = error;
+    }
+
     const results = await Promise.allSettled([
       runSyncStage('Profil ve hedefleri okuma', loadProfileFromSupabase),
       runSyncStage('Ölçümleri okuma', loadMeasurementsFromSupabase),
@@ -3328,13 +3400,6 @@ async function loadAllCloudData({ force = false } = {}) {
     recoverOnboardingFromData();
     normalizeProfileState();
     const rejected = results.filter(result => result.status === 'rejected');
-    let pushError = null;
-
-    try {
-      await runSyncStage('Bekleyen kayıtları gönderme', pushLocalPendingToSupabase);
-    } catch (error) {
-      pushError = error;
-    }
 
     if (rejected.length || pushError) {
       const errorText = [
@@ -3511,6 +3576,7 @@ function saveWorkoutLocally(payload) {
   progressWeekManuallySelected = false;
 
   const id = payload.id || `local-workout-${Date.now()}`;
+  markPendingSync('workouts', id);
   state.workouts.push({
     id,
     date: payload.date,
@@ -3530,6 +3596,7 @@ function saveNoteLocally(payload) {
   unmarkRecordDeleted('notes', payload);
 
   const id = payload.id || `local-note-${Date.now()}`;
+  markPendingSync('notes', id);
   state.notes.push({
     id,
     date: payload.date,
@@ -3808,6 +3875,7 @@ async function addNote() {
 
   const localNote = state.notes.find(item => item.id === localId);
   if (localNote && data?.id) localNote.id = data.id;
+  clearPendingSync('notes', localId);
   recordSyncSuccess();
 
   await loadNotesFromSupabase();
@@ -3923,9 +3991,14 @@ async function saveWorkout() {
 
   const localWorkout = state.workouts.find(item => item.id === localId);
   if (localWorkout && data?.id) localWorkout.id = data.id;
+  clearPendingSync('workouts', localId);
   recordSyncSuccess();
 
   await loadWorkoutsFromSupabase();
+  progressWeekStart = getWeekRange(payload.date).start;
+  progressWeekManuallySelected = false;
+  stateSave();
+  renderAll();
 }
 
 async function editWorkout(sortedIdx) {
@@ -4306,6 +4379,8 @@ async function signOut() {
       lastError: '',
       pendingMeasurements: [],
       pendingSleep: [],
+      pendingWorkouts: [],
+      pendingNotes: [],
     },
   };
   document.getElementById('authModal')?.remove();
@@ -4515,6 +4590,15 @@ async function syncNow() {
 
   const result = await loadAllCloudData({ force: true });
   if (result?.ok) setStatus('Web ve PWA verileri senkronize edildi', 'ok');
+}
+
+function startAutoSync() {
+  if (autoSyncTimer) window.clearInterval(autoSyncTimer);
+  autoSyncTimer = window.setInterval(() => {
+    if (!document.hidden && state.onboarded && hasActiveUser() && navigator.onLine) {
+      loadAllCloudData({ force: true });
+    }
+  }, 30000);
 }
 
 // PWA INSTALL
@@ -4783,6 +4867,7 @@ function init() {
   bindUiEvents();
   updateOnlineStatus();
   setupAuthListener();
+  startAutoSync();
   checkAuthSession();
 }
 
