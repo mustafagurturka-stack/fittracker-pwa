@@ -10105,3 +10105,52 @@ html[data-theme="light"] #pHome .week-chip {
     grid-column: 1 !important;
   }
 }
+
+.progress-record-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.progress-record-list > span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.progress-record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .62);
+}
+
+.progress-record-row strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.progress-record-row small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .progress-record-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .progress-record-row small {
+    text-align: left;
+  }
+}
