@@ -18,7 +18,7 @@ console.log('Supabase hazır:', db);
 const PANELS = ['pHome', 'pWeight', 'pDaily', 'pProgress', 'pSettings'];
 const BN_IDS = ['bn0', 'bn1', 'bn2', 'bn3', 'bn4'];
 const STORAGE_KEY = 'ft_state_v3';
-const START_DATE = '2026-07-30';
+const START_DATE = '2026-08-02';
 const FIRST_MEASURE_DATE = '2026-08-09';
 const FIRST_REPORT_END = shiftIsoDate(FIRST_MEASURE_DATE, -1);
 const WEEKLY_MEASURE_DAY = 0;
@@ -282,6 +282,10 @@ function hasActiveUser() {
 
 function canUseCloud() {
   return Boolean(navigator.onLine && hasActiveUser());
+}
+
+function isTrackableActivityDate(dateValue) {
+  return Boolean(dateValue && dateValue >= START_DATE);
 }
 
 function getStateStorageKey() {
@@ -1167,16 +1171,19 @@ function renderMoti() {
 
 function getAchievementMetrics() {
   const measurements = getSortedMeasurements();
+  const trackedSleep = (state.sleep || []).filter(item => isTrackableActivityDate(item.date));
+  const trackedWorkouts = (state.workouts || []).filter(item => isTrackableActivityDate(item.date));
+  const trackedNotes = (state.notes || []).filter(item => isTrackableActivityDate(item.date));
   const firstWeight = Number(measurements[0]?.weight ?? state.startWeight ?? 0);
   const lastWeight = Number(measurements.at(-1)?.weight ?? firstWeight);
   const weightLoss = Math.max(0, firstWeight - lastWeight);
   const firstGoal = Number((state.milestones || [])[0]);
-  const walkingDistance = (state.workouts || [])
+  const walkingDistance = trackedWorkouts
     .reduce((total, item) => total + getWorkoutDistanceFromNote(item.note), 0);
-  const activityCount = (state.sleep || []).length + (state.workouts || []).length + (state.notes || []).length;
+  const activityCount = trackedSleep.length + trackedWorkouts.length + trackedNotes.length;
   const weeks = new Map();
 
-  (state.sleep || []).forEach(item => {
+  trackedSleep.forEach(item => {
     if (!item?.date) return;
     const start = getSleepReportRangeForDate(item.date).start;
     if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
@@ -1184,7 +1191,7 @@ function getAchievementMetrics() {
     bucket.sleep.add(item.date);
   });
 
-  (state.workouts || []).forEach(item => {
+  trackedWorkouts.forEach(item => {
     if (!item?.date) return;
     const start = getWeekRange(item.date).start;
     if (!weeks.has(start)) weeks.set(start, { sleep: new Set(), workouts: new Set() });
@@ -1996,16 +2003,7 @@ function getWorkoutTargetForRange(range) {
   return Math.round((WORKOUT_TARGET / 7) * getRangeDayCount(range));
 }
 
-function isSundayDate(dateValue) {
-  const parts = parseIsoDateParts(dateValue);
-  if (!parts) return false;
-  return new Date(parts.year, parts.month - 1, parts.day).getDay() === WEEKLY_MEASURE_DAY;
-}
-
 function getSleepReportRangeForDate(dateValue) {
-  if (dateValue >= FIRST_MEASURE_DATE && isSundayDate(dateValue)) {
-    return getWeekRange(shiftIsoDate(dateValue, -1));
-  }
   return getWeekRange(dateValue);
 }
 
@@ -2037,9 +2035,11 @@ function getDashboardWeekRange() {
   const activityRanges = [
     ...(state.sleep || [])
       .filter(item => item?.date)
+      .filter(item => isTrackableActivityDate(item.date))
       .map(item => getSleepReportRangeForDate(item.date)),
     ...(state.workouts || [])
       .filter(item => item?.date)
+      .filter(item => isTrackableActivityDate(item.date))
       .map(item => getWeekRange(item.date)),
   ];
   const measurementDates = [
@@ -2089,6 +2089,7 @@ function getDailyViewRange() {
 function itemMatchesDailyView(item) {
   const range = getDailyViewRange();
   if (!item?.date) return false;
+  if (!isTrackableActivityDate(item.date)) return false;
   if (!range.start || !range.end) return true;
   return item.date >= range.start && item.date <= range.end;
 }
@@ -2096,6 +2097,7 @@ function itemMatchesDailyView(item) {
 function itemMatchesSleepDailyView(item) {
   const range = getDailyViewRange();
   if (!item?.date) return false;
+  if (!isTrackableActivityDate(item.date)) return false;
   if (!range.start || !range.end) return true;
   if (range.targetMode !== 'week') return item.date >= range.start && item.date <= range.end;
 
@@ -2270,12 +2272,12 @@ function getWeeklyProgressData() {
     return weeks[key];
   };
 
-  (state.sleep || []).forEach(item => {
+  (state.sleep || []).filter(item => isTrackableActivityDate(item.date)).forEach(item => {
     const range = getSleepReportRangeForDate(item.date);
     ensureWeek(range).sleep += Number(item.hours || 0);
   });
 
-  (state.workouts || []).forEach(item => {
+  (state.workouts || []).filter(item => isTrackableActivityDate(item.date)).forEach(item => {
     const range = getWeekRange(item.date);
     ensureWeek(range).workouts += Number(item.duration || 0);
   });
@@ -2742,6 +2744,9 @@ function renderProgressCharts() {
       : `${recordedTypeText}${distanceText}`;
     const bestWorkout = workoutData.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
     const workoutDays = workoutData.length;
+    const workoutRecords = (state.workouts || [])
+      .filter(item => item.date >= latestWeek.start && item.date <= latestWeek.end)
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     if (!workoutData.length) {
       setEmptyState(
@@ -2790,6 +2795,18 @@ function renderProgressCharts() {
               <div class="bar-value workout-type-label">${topType
                 ? renderWorkoutTypeLabel(topType)
                 : (Object.entries(item.categories).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman')}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="progress-record-list">
+        <span>Haftanın antrenman kayıtları</span>
+        ${workoutRecords.map(item => {
+          const distance = getWorkoutDistanceFromNote(item.note);
+          return `
+            <div class="progress-record-row">
+              <strong>${formatDate(item.date)}</strong>
+              <small>${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</small>
             </div>
           `;
         }).join('')}
@@ -4508,7 +4525,7 @@ async function completeOnboarding() {
   }
 
   if (startDate < START_DATE) {
-    alert('Başlangıç tarihi 30 Temmuz 2026’dan önce olamaz.');
+    alert('Başlangıç tarihi 2 Ağustos 2026’dan önce olamaz.');
     return;
   }
 
