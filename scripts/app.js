@@ -22,16 +22,32 @@ const START_DATE = '2026-08-02';
 const FIRST_MEASURE_DATE = '2026-08-09';
 const FIRST_REPORT_END = shiftIsoDate(FIRST_MEASURE_DATE, -1);
 const WEEKLY_MEASURE_DAY = 0;
+const DEFAULT_START_WEIGHT = 105;
 const SLEEP_TARGET = 49;
 const WORKOUT_TARGET = 180;
 const VERIFIED_WEEK_TOTALS = {};
 
 const WORKOUT_CATALOG = {
-  Kuvvet: ['Full Body A', 'Full Body B', 'Full Body C', 'Full Body D', 'Core', 'Travel Full Body A', 'Travel Full Body B', 'Other Strength'],
+  Kuvvet: ['A - Upper Body Focus', 'B - Lower Body & Core', 'C - Hypertrophy & Pumping', 'Arm & Core Pump', 'Core', 'Travel Full Body A', 'Travel Full Body B', 'Other Strength'],
   Kardiyo: ['Yürüyüş', 'Bisiklet', 'GrowwithJo', 'Diğer Kardiyo'],
 };
 
+const WORKOUT_TYPE_LABELS = {
+  'Full Body A': 'A - Upper Body Focus',
+  'Full Body B': 'B - Lower Body & Core',
+  'Full Body C': 'C - Hypertrophy & Pumping',
+  'Full Body D': 'Arm & Core Pump',
+};
+
 const LEGACY_WORKOUT_CATEGORY_MAP = {
+  'Full Body A': 'Kuvvet',
+  'Full Body B': 'Kuvvet',
+  'Full Body C': 'Kuvvet',
+  'Full Body D': 'Kuvvet',
+  'A - Upper Body Focus': 'Kuvvet',
+  'B - Lower Body & Core': 'Kuvvet',
+  'C - Hypertrophy & Pumping': 'Kuvvet',
+  'Arm & Core Pump': 'Kuvvet',
   'Core Temel': 'Kuvvet',
   'Core / Tabata': 'Kuvvet',
   'Karın Bölgesi': 'Kuvvet',
@@ -88,7 +104,7 @@ let state = {
   onboarded: false,
   name: '',
   startDate: START_DATE,
-  startWeight: null,
+  startWeight: DEFAULT_START_WEIGHT,
   startWaist: null,
   measurements: [],
   skippedMeasurements: [],
@@ -359,7 +375,7 @@ function getWorkoutGuidance(category = 'Kuvvet', type = '') {
   const guide = {
     Kuvvet: {
       title: 'Kuvvet planı',
-      text: 'Full Body A/B/C/D rotasyonunu sürdür. Şehir dışı günlerde Travel Full Body A/B ile band ve vücut ağırlığı rotasyonunu ayrı takip edebilirsin.',
+      text: 'A/B/C rotasyonunu ve Arm & Core Pump gününü sürdür. Şehir dışı günlerde Travel Full Body A/B ile band ve vücut ağırlığı rotasyonunu ayrı takip edebilirsin.',
     },
     Kardiyo: {
       title: 'Kardiyo planı',
@@ -938,8 +954,8 @@ function normalizeProfileState() {
     }
   }
 
-  if ((state.startWeight === null || state.startWeight === undefined) && first) {
-    state.startWeight = first.weight;
+  if (!Number.isFinite(Number(state.startWeight)) || Number(state.startWeight) !== DEFAULT_START_WEIGHT) {
+    state.startWeight = DEFAULT_START_WEIGHT;
   }
 
   if ((state.startWaist === null || state.startWaist === undefined) && first) {
@@ -1170,11 +1186,11 @@ function renderMoti() {
 }
 
 function getAchievementMetrics() {
-  const measurements = getSortedMeasurements();
+  const measurements = getMeasurementSummaryData();
   const trackedSleep = (state.sleep || []).filter(item => isTrackableActivityDate(item.date));
   const trackedWorkouts = (state.workouts || []).filter(item => isTrackableActivityDate(item.date));
   const trackedNotes = (state.notes || []).filter(item => isTrackableActivityDate(item.date));
-  const firstWeight = Number(measurements[0]?.weight ?? state.startWeight ?? 0);
+  const firstWeight = Number(state.startWeight ?? measurements[0]?.weight ?? 0);
   const lastWeight = Number(measurements.at(-1)?.weight ?? firstWeight);
   const weightLoss = Math.max(0, firstWeight - lastWeight);
   const firstGoal = Number((state.milestones || [])[0]);
@@ -1840,10 +1856,17 @@ function renderWeightList() {
   const empty = document.getElementById('weightEmpty');
   if (!list || !empty) return;
 
-  const data = getSortedMeasurements().sort((a, b) => b.date.localeCompare(a.date));
+  const measurementData = getSortedMeasurements();
+  const measurementDataDesc = [...measurementData].sort((a, b) => b.date.localeCompare(a.date));
+  const summaryData = getMeasurementSummaryData();
+  const data = [...summaryData].sort((a, b) => b.date.localeCompare(a.date));
   const skipped = getSkippedMeasurements().map(item => ({ ...item, isSkipped: true }));
   const rows = [
-    ...data.map((item, index) => ({ ...item, measurementIndex: index, isSkipped: false })),
+    ...data.map(item => ({
+      ...item,
+      measurementIndex: measurementDataDesc.findIndex(measurement => measurement.date === item.date),
+      isSkipped: false,
+    })),
     ...skipped,
   ].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -1868,14 +1891,17 @@ function renderWeightList() {
       `;
     }
 
-    const prev = data[m.measurementIndex + 1];
+    const prev = summaryData
+      .filter(item => item.date < m.date && Number.isFinite(Number(item.weight)))
+      .at(-1);
 
     const weightDiff = prev && m.weight != null && prev.weight != null
       ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
       : null;
 
     const isWaistWeek = shouldTrackWaist(m.date);
-    const prevWaist = getWaistMeasurements()
+    const prevWaist = summaryData
+      .filter(item => Number.isFinite(Number(item.waist)))
       .filter(item => item.date < m.date)
       .at(-1);
     const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist)) && Number.isFinite(Number(prevWaist.waist))
@@ -1912,9 +1938,11 @@ function renderWeightList() {
           <div>${waistDiffHtml}</div>
         </div>
 
-        <button onclick="deleteWeight(${m.measurementIndex})"
-          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
-          aria-label="Sil">×</button>
+        ${m.isProfileStart || m.measurementIndex < 0
+          ? '<span style="width:20px"></span>'
+          : `<button onclick="deleteWeight(${m.measurementIndex})"
+              style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+              aria-label="Sil">×</button>`}
       </div>
     `;
   }).join('');
@@ -2330,15 +2358,17 @@ function getWorkoutTypesForRange(range) {
 
 function getWorkoutTypeDisplay(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
+  const displayType = WORKOUT_TYPE_LABELS[cleanType] || cleanType;
   const category = getWorkoutCategory(cleanType);
-  return `${category} · ${cleanType}`;
+  return `${category} · ${displayType}`;
 }
 
 function renderWorkoutTypeLabel(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
+  const displayType = WORKOUT_TYPE_LABELS[cleanType] || cleanType;
   return `
     <span class="workout-type-category">${getWorkoutCategory(cleanType)}</span>
-    <strong>${cleanType}</strong>
+    <strong>${displayType}</strong>
   `;
 }
 
