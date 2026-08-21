@@ -28,8 +28,8 @@ const WORKOUT_TARGET = 180;
 const VERIFIED_WEEK_TOTALS = {};
 
 const WORKOUT_CATALOG = {
-  Kuvvet: ['A - Upper Body Focus', 'B - Lower Body & Core', 'C - Hypertrophy & Pumping', 'Arm & Core Pump', 'Core', 'Travel Full Body A', 'Travel Full Body B', 'Other Strength'],
-  Kardiyo: ['Yürüyüş', 'Bisiklet', 'GrowwithJo', 'Diğer Kardiyo'],
+  Kuvvet: ['A - Upper Body Focus', 'B - Lower Body & Core', 'C - Hypertrophy & Pumping', 'Arm & Core Pump'],
+  Kardiyo: ['Yürüyüş', 'Halı saha maçı'],
 };
 
 const WORKOUT_TYPE_LABELS = {
@@ -37,6 +37,15 @@ const WORKOUT_TYPE_LABELS = {
   'Full Body B': 'B - Lower Body & Core',
   'Full Body C': 'C - Hypertrophy & Pumping',
   'Full Body D': 'Arm & Core Pump',
+  Core: 'Arm & Core Pump',
+  'Travel Full Body A': 'A - Upper Body Focus',
+  'Travel Full Body B': 'B - Lower Body & Core',
+  'Other Strength': 'Arm & Core Pump',
+  Bisiklet: 'Yürüyüş',
+  GrowWithJo: 'Yürüyüş',
+  'GrowWithJo Challenge': 'Yürüyüş',
+  GrowwithJo: 'Yürüyüş',
+  'Diğer Kardiyo': 'Yürüyüş',
 };
 
 const LEGACY_WORKOUT_CATEGORY_MAP = {
@@ -48,6 +57,7 @@ const LEGACY_WORKOUT_CATEGORY_MAP = {
   'B - Lower Body & Core': 'Kuvvet',
   'C - Hypertrophy & Pumping': 'Kuvvet',
   'Arm & Core Pump': 'Kuvvet',
+  'Halı saha maçı': 'Kardiyo',
   'Core Temel': 'Kuvvet',
   'Core / Tabata': 'Kuvvet',
   'Karın Bölgesi': 'Kuvvet',
@@ -375,11 +385,11 @@ function getWorkoutGuidance(category = 'Kuvvet', type = '') {
   const guide = {
     Kuvvet: {
       title: 'Kuvvet planı',
-      text: 'A/B/C rotasyonunu ve Arm & Core Pump gününü sürdür. Şehir dışı günlerde Travel Full Body A/B ile band ve vücut ağırlığı rotasyonunu ayrı takip edebilirsin.',
+      text: 'A/B/C rotasyonunu ve Arm & Core Pump gününü sürdür. Bu alanı sadece belirlediğin kuvvet programları için kullan.',
     },
     Kardiyo: {
       title: 'Kardiyo planı',
-      text: 'Yürüyüş, bisiklet, GrowwithJo veya diğer kardiyo seanslarını burada tut. Tempoyu zorluk alanıyla ayırman yeterli.',
+      text: 'Kardiyo tarafında sadece yürüyüş ve halı saha maçını takip et. Yürüyüşte mesafeyi de ekleyebilirsin.',
     },
   };
 
@@ -2272,7 +2282,7 @@ function renderWorkoutList() {
     return `
     <div class="daily-row">
       <div>
-        <div class="daily-row-title">${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
+        <div class="daily-row-title">${getWorkoutTypeName(item.type)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
         <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
       <div class="row-actions">
@@ -2358,14 +2368,19 @@ function getWorkoutTypesForRange(range) {
 
 function getWorkoutTypeDisplay(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
-  const displayType = WORKOUT_TYPE_LABELS[cleanType] || cleanType;
+  const displayType = getWorkoutTypeName(cleanType);
   const category = getWorkoutCategory(cleanType);
   return `${category} · ${displayType}`;
 }
 
+function getWorkoutTypeName(type = '') {
+  const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
+  return WORKOUT_TYPE_LABELS[cleanType] || cleanType;
+}
+
 function renderWorkoutTypeLabel(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
-  const displayType = WORKOUT_TYPE_LABELS[cleanType] || cleanType;
+  const displayType = getWorkoutTypeName(cleanType);
   return `
     <span class="workout-type-category">${getWorkoutCategory(cleanType)}</span>
     <strong>${displayType}</strong>
@@ -2826,7 +2841,7 @@ function renderProgressCharts() {
           return `
             <div class="progress-record-row">
               <strong>${formatDate(item.date)}</strong>
-              <small>${item.type} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</small>
+              <small>${getWorkoutTypeName(item.type)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</small>
             </div>
           `;
         }).join('')}
