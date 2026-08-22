@@ -334,6 +334,18 @@ function getWorkoutCategory(type) {
     .find(([, items]) => items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
 }
 
+function hasKnownWorkoutType(type = '') {
+  const cleanType = String(type || '').trim();
+  return Boolean(
+    cleanType &&
+    (
+      Object.values(WORKOUT_CATALOG).some(items => items.includes(cleanType)) ||
+      LEGACY_WORKOUT_CATEGORY_MAP[cleanType] ||
+      WORKOUT_TYPE_LABELS[cleanType]
+    )
+  );
+}
+
 function getWorkoutSyncSignature(item = {}) {
   return [
     item.date || '',
@@ -368,6 +380,10 @@ function updateWorkoutTypes() {
 
 function isWalkingWorkout(type = '') {
   return String(type).toLocaleLowerCase('tr-TR').includes('yürü');
+}
+
+function isFootballWorkout(type = '') {
+  return String(type).toLocaleLowerCase('tr-TR').includes('halı saha');
 }
 
 function updateWorkoutDistanceField() {
@@ -451,6 +467,7 @@ function getWalkingStatsForRange(range) {
 }
 
 function getWorkoutCategoryFromNote(note = '', type = '') {
+  if (hasKnownWorkoutType(type)) return getWorkoutCategory(type);
   const match = String(note).match(/Kategori:\s*([^·]+)/i);
   return match ? match[1].trim() : getWorkoutCategory(type);
 }
@@ -2282,8 +2299,8 @@ function renderWorkoutList() {
     return `
     <div class="daily-row">
       <div>
-        <div class="daily-row-title">${getWorkoutTypeName(item.type)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
-        <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutCategoryFromNote(item.note, item.type)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
+        <div class="daily-row-title">${getWorkoutDisplayType(item)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
+        <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutDisplayCategory(item)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
       </div>
       <div class="row-actions">
         <button onclick="editWorkout(${item.sortedIndex})" class="row-edit" aria-label="Düzenle">Düzenle</button>
@@ -2344,7 +2361,7 @@ function getWorkoutCategoriesForRange(range) {
   (state.workouts || [])
     .filter(item => item.date >= range.start && item.date <= range.end)
     .forEach(item => {
-      const category = getWorkoutCategoryFromNote(item.note, item.type);
+      const category = getWorkoutDisplayCategory(item);
       categories[category] = (categories[category] || 0) + Number(item.duration || 0);
     });
 
@@ -2358,7 +2375,7 @@ function getWorkoutTypesForRange(range) {
   (state.workouts || [])
     .filter(item => item.date >= range.start && item.date <= range.end)
     .forEach(item => {
-      const type = item.type || getWorkoutCategoryFromNote(item.note, item.type);
+      const type = getWorkoutDisplayType(item);
       types[type] = (types[type] || 0) + Number(item.duration || 0);
     });
 
@@ -2376,6 +2393,27 @@ function getWorkoutTypeDisplay(type = '') {
 function getWorkoutTypeName(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
   return WORKOUT_TYPE_LABELS[cleanType] || cleanType;
+}
+
+function getWorkoutDisplayType(item = {}) {
+  const cleanType = String(item.type || '').trim();
+  const noteCategory = String(item.note || '').match(/Kategori:\s*([^·]+)/i)?.[1]?.trim() || '';
+
+  if (
+    cleanType === 'Yürüyüş' &&
+    noteCategory === 'Kuvvet' &&
+    Number(item.duration || 0) >= 45 &&
+    getWorkoutDistanceFromNote(item.note) <= 0
+  ) {
+    return 'Halı saha maçı';
+  }
+
+  return getWorkoutTypeName(cleanType);
+}
+
+function getWorkoutDisplayCategory(item = {}) {
+  const displayType = getWorkoutDisplayType(item);
+  return getWorkoutCategory(displayType);
 }
 
 function renderWorkoutTypeLabel(type = '') {
@@ -2418,8 +2456,8 @@ function getWeekDailyTotals(range) {
         };
       }
 
-      const category = getWorkoutCategoryFromNote(item.note, item.type);
-      const type = item.type || category;
+      const category = getWorkoutDisplayCategory(item);
+      const type = getWorkoutDisplayType(item);
       workoutByDay[item.date].duration += Number(item.duration || 0);
       workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
       workoutByDay[item.date].types[type] = (workoutByDay[item.date].types[type] || 0) + Number(item.duration || 0);
@@ -2818,8 +2856,9 @@ function renderProgressCharts() {
       <div class="bar-chart workout-chart enhanced">
         ${workoutRecords.map(item => {
           const h = Math.min(140, Math.max(18, Number(item.duration || 0) * 1.35));
-          const category = getWorkoutCategoryFromNote(item.note, item.type);
-          const typeText = `${getWorkoutTypeDisplay(item.type || category)}: ${formatMinutes(item.duration)} dk`;
+          const category = getWorkoutDisplayCategory(item);
+          const displayType = getWorkoutDisplayType(item);
+          const typeText = `${getWorkoutTypeDisplay(displayType || category)}: ${formatMinutes(item.duration)} dk`;
 
           return `
             <div class="bar-item">
@@ -2829,7 +2868,7 @@ function renderProgressCharts() {
               <div class="bar-label">
                 ${getShortWeekday(item.date)}
               </div>
-              <div class="bar-value workout-type-label">${renderWorkoutTypeLabel(item.type || category)}</div>
+              <div class="bar-value workout-type-label">${renderWorkoutTypeLabel(displayType || category)}</div>
             </div>
           `;
         }).join('')}
@@ -2841,7 +2880,7 @@ function renderProgressCharts() {
           return `
             <div class="progress-record-row">
               <strong>${formatDate(item.date)}</strong>
-              <small>${getWorkoutTypeName(item.type)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</small>
+              <small>${getWorkoutDisplayType(item)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</small>
             </div>
           `;
         }).join('')}
@@ -3987,8 +4026,9 @@ async function saveWorkout() {
   if (!dateInput || !typeInput || !durationInput) return;
 
   const date = dateInput.value || today();
-  const type = typeInput.value;
-  const category = categoryInput ? categoryInput.value : getWorkoutCategory(type);
+  const category = categoryInput ? categoryInput.value : getWorkoutCategory(typeInput.value);
+  const catalogItems = WORKOUT_CATALOG[category] || WORKOUT_CATALOG.Kuvvet;
+  const type = catalogItems.includes(typeInput.value) ? typeInput.value : catalogItems[0];
   const intensity = intensityInput ? intensityInput.value : 'Orta';
   const duration = parseLocaleNumber(durationInput.value);
   const distance = isWalkingWorkout(type) && distanceInput?.value
