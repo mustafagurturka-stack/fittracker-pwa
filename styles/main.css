@@ -10154,3 +10154,89 @@ html[data-theme="light"] #pHome .week-chip {
     text-align: left;
   }
 }
+
+
+/* v177.8 — final waist summary and measurement history alignment */
+.progress-summary-side {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: 190px;
+}
+
+.progress-summary-side .progress-summary-diff {
+  margin-top: 0;
+}
+
+.progress-summary-small {
+  line-height: 1.35;
+  text-align: right;
+}
+
+.measurement-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.measurement-history-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.measurement-history-deltas {
+  display: grid;
+  justify-items: stretch;
+  gap: 4px;
+  min-width: 112px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+}
+
+.measurement-history-deltas .delta-pill {
+  width: 100%;
+  min-width: 112px;
+}
+
+.measurement-history-action-placeholder,
+.measurement-history-delete {
+  flex: 0 0 20px;
+  width: 20px;
+}
+
+.measurement-history-delete {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+@media (max-width: 700px) {
+  .progress-summary-side {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .progress-summary-small {
+    text-align: left;
+  }
+
+  .measurement-history-row {
+    gap: 8px;
+    padding: 11px 12px;
+  }
+
+  .measurement-history-deltas {
+    min-width: 104px;
+  }
+
+  .measurement-history-deltas .delta-pill {
+    min-width: 104px;
+  }
+}
