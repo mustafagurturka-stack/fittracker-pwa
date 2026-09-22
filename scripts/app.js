@@ -686,10 +686,12 @@ function renderFallbackMeasurementChart(host, data) {
   const first = data[0];
   const last = data[data.length - 1];
   const diff = last && first ? Number(last.weight - first.weight) : 0;
-  const waistData = data.filter(item =>
-    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
-  );
+  const waistData = data.filter(item => Number.isFinite(Number(item.waist)));
+  const firstWaist = waistData[0];
   const lastWaist = waistData[waistData.length - 1];
+  const waistDiff = firstWaist && lastWaist
+    ? Number(lastWaist.waist - firstWaist.waist)
+    : null;
 
   const weights = data.map(item => Number(item.weight));
   const min = Math.min(...weights);
@@ -737,11 +739,21 @@ function renderFallbackMeasurementChart(host, data) {
       </div>
       <div class="waist-tracking-panel">
         <span>Bel Takibi</span>
-        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
-        <p>Bel ölçümü başlangıçta ve her 4. tartıda takip edilir.</p>
+        <strong>${firstWaist && lastWaist
+          ? (waistData.length >= 2
+            ? `${Number(firstWaist.waist).toFixed(1)} → ${Number(lastWaist.waist).toFixed(1)} cm`
+            : `${Number(lastWaist.waist).toFixed(1)} cm`)
+          : 'Bekleniyor'}</strong>
+        <p>${firstWaist && lastWaist
+          ? `${formatDate(firstWaist.date)} → ${formatDate(lastWaist.date)}`
+          : 'İlk bel ölçümü bekleniyor.'}</p>
+        <p>${waistDiff === null
+          ? 'Karşılaştırma için bir sonraki bel ölçümü bekleniyor.'
+          : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
         <div class="waist-rhythm">
           <i class="active"></i><i></i><i></i><i></i>
         </div>
+        <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
       </div>
     </div>
   `;
@@ -767,16 +779,15 @@ function renderWaistRhythm(step) {
 }
 
 function renderMeasurementInsight(host, data, canvasHtml = '') {
-  const waistData = data.filter(item =>
-    shouldTrackWaist(item.date) && Number.isFinite(Number(item.waist))
-  );
+  const waistData = data.filter(item => Number.isFinite(Number(item.waist)));
   const first = data[0];
   const last = data[data.length - 1];
   const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
-  const waistDiff = waistData.length >= 2
-    ? Number(waistData[waistData.length - 1].waist - waistData[0].waist)
-    : null;
+  const firstWaist = waistData[0];
   const lastWaist = waistData[waistData.length - 1];
+  const waistDiff = waistData.length >= 2
+    ? Number(lastWaist.waist - firstWaist.waist)
+    : null;
   const rhythmStep = getWaistRhythmStep();
 
   host.innerHTML = `
@@ -812,12 +823,21 @@ function renderMeasurementInsight(host, data, canvasHtml = '') {
 
       <div class="waist-tracking-panel">
         <span>Bel Takibi</span>
-        <strong>${lastWaist ? `${Number(lastWaist.waist).toFixed(1)} cm` : 'Bekleniyor'}</strong>
-        <p>${waistDiff === null ? 'Yeni bel ölçümü 4. tartıda alınacak. Şimdilik başlangıç değeri referans olarak tutuluyor.' : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
+        <strong>${firstWaist && lastWaist
+          ? (waistData.length >= 2
+            ? `${Number(firstWaist.waist).toFixed(1)} → ${Number(lastWaist.waist).toFixed(1)} cm`
+            : `${Number(lastWaist.waist).toFixed(1)} cm`)
+          : 'Bekleniyor'}</strong>
+        <p>${firstWaist && lastWaist
+          ? `${formatDate(firstWaist.date)} → ${formatDate(lastWaist.date)}`
+          : 'İlk bel ölçümü bekleniyor.'}</p>
+        <p>${waistDiff === null
+          ? 'Karşılaştırma için bir sonraki bel ölçümü bekleniyor.'
+          : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
         <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
           ${renderWaistRhythm(rhythmStep)}
         </div>
-        <small>4 tartıda 1 bel ölçümü</small>
+        <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
       </div>
     </div>
   `;
@@ -1926,26 +1946,27 @@ function renderWeightList() {
       ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
       : null;
 
-    const isWaistWeek = shouldTrackWaist(m.date);
+    const hasWaist = Number.isFinite(Number(m.waist));
     const prevWaist = summaryData
-      .filter(item => Number.isFinite(Number(item.waist)))
-      .filter(item => item.date < m.date)
+      .filter(item => item.date < m.date && Number.isFinite(Number(item.waist)))
       .at(-1);
-    const waistDiff = isWaistWeek && prevWaist && Number.isFinite(Number(m.waist)) && Number.isFinite(Number(prevWaist.waist))
-      ? (parseFloat(m.waist) - parseFloat(prevWaist.waist)).toFixed(1)
+    const waistDiff = hasWaist && prevWaist
+      ? (Number(m.waist) - Number(prevWaist.waist)).toFixed(1)
       : null;
 
-    const weightDiffHtml = weightDiff
-      ? `<span class="delta-pill ${weightDiff < 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff} kg</span>`
+    const weightDiffHtml = weightDiff !== null
+      ? `<span class="delta-pill ${Number(weightDiff) < 0 ? 'good' : Number(weightDiff) > 0 ? 'bad' : 'neutral'}">${Number(weightDiff) > 0 ? '+' : ''}${weightDiff} kg</span>`
       : '<span class="delta-pill neutral">Başlangıç</span>';
 
-    const waistDiffHtml = waistDiff
-      ? `<span class="delta-pill ${waistDiff < 0 ? 'good' : 'bad'}">${waistDiff > 0 ? '+' : ''}${waistDiff} cm</span>`
-      : `<span class="delta-pill neutral">${isWaistWeek ? 'İlk bel' : '4. tartıda'}</span>`;
+    const waistDiffHtml = !hasWaist
+      ? '<span class="delta-pill neutral">Bel ölçümü yok</span>'
+      : waistDiff !== null
+        ? `<span class="delta-pill ${Number(waistDiff) < 0 ? 'good' : Number(waistDiff) > 0 ? 'bad' : 'neutral'}">${Number(waistDiff) > 0 ? '+' : ''}${waistDiff} cm</span>`
+        : '<span class="delta-pill neutral">İlk bel</span>';
 
-    const waistText = isWaistWeek && Number.isFinite(Number(m.waist))
-      ? `${m.waist} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
-      : `<span style="font-size:12px;color:var(--muted)">Bel: aylık takip</span>`;
+    const waistText = hasWaist
+      ? `${Number(m.waist).toFixed(1)} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
+      : '<span style="font-size:12px;color:var(--muted)">Bel ölçümü yok</span>';
 
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
