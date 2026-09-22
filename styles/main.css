@@ -10240,3 +10240,109 @@ html[data-theme="light"] #pHome .week-chip {
     min-width: 104px;
   }
 }
+
+
+/* v177.9 — polished waist trend card */
+.waist-tracking-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: 22px 20px;
+}
+
+.waist-tracking-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.waist-tracking-head > span {
+  margin: 0;
+}
+
+.waist-tracking-change {
+  justify-self: end;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.waist-tracking-change.good {
+  background: rgba(16,185,129,.12);
+  color: #047857;
+}
+
+.waist-tracking-change.bad {
+  background: rgba(239,68,68,.12);
+  color: #b91c1c;
+}
+
+.waist-tracking-change.neutral {
+  background: var(--surface2);
+  color: var(--muted);
+}
+
+.waist-tracking-panel .waist-tracking-values {
+  display: block;
+  margin-top: 18px;
+  color: var(--text);
+  font-size: clamp(23px, 2.2vw, 30px);
+  font-weight: 950;
+  line-height: 1.15;
+  letter-spacing: -.6px;
+  white-space: nowrap;
+}
+
+.waist-tracking-panel .waist-tracking-dates {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.waist-tracking-footer {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(203,213,225,.58);
+}
+
+.waist-tracking-footer .waist-rhythm {
+  width: 100%;
+}
+
+.waist-tracking-footer small {
+  display: block;
+  margin-top: 11px;
+  line-height: 1.35;
+}
+
+[data-theme="dark"] .waist-tracking-footer {
+  border-top-color: rgba(71,85,105,.65);
+}
+
+@media (max-width: 760px) {
+  .waist-tracking-panel {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .waist-tracking-panel .waist-tracking-values {
+    font-size: 24px;
+    white-space: normal;
+  }
+
+  .waist-tracking-panel .waist-tracking-dates {
+    white-space: normal;
+  }
+
+  .waist-tracking-footer {
+    margin-top: 18px;
+    padding-top: 15px;
+  }
+}

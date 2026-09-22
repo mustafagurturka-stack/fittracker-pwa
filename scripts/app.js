@@ -747,22 +747,26 @@ function renderFallbackMeasurementChart(host, data) {
         </div>
       </div>
       <div class="waist-tracking-panel">
-        <span>Bel Takibi</span>
-        <strong>${firstWaist && lastWaist
+        <div class="waist-tracking-head">
+          <span>Bel Takibi</span>
+          <div class="waist-tracking-change ${waistDiff === null ? 'neutral' : waistDiff <= 0 ? 'good' : 'bad'}">
+            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
+          </div>
+        </div>
+        <strong class="waist-tracking-values">${firstWaist && lastWaist
           ? (waistData.length >= 2
             ? `${Number(firstWaist.waist).toFixed(1)} → ${Number(lastWaist.waist).toFixed(1)} cm`
             : `${Number(lastWaist.waist).toFixed(1)} cm`)
           : 'Bekleniyor'}</strong>
-        <p>${firstWaist && lastWaist
+        <p class="waist-tracking-dates">${firstWaist && lastWaist
           ? `${formatDate(firstWaist.date)} → ${formatDate(lastWaist.date)}`
           : 'İlk bel ölçümü bekleniyor.'}</p>
-        <p>${waistDiff === null
-          ? 'Karşılaştırma için bir sonraki bel ölçümü bekleniyor.'
-          : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
-        <div class="waist-rhythm">
-          <i class="active"></i><i></i><i></i><i></i>
+        <div class="waist-tracking-footer">
+          <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
+            <i class="active"></i><i></i><i></i><i></i>
+          </div>
+          <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
         </div>
-        <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
       </div>
     </div>
   `;
@@ -831,22 +835,26 @@ function renderMeasurementInsight(host, data, canvasHtml = '') {
       </div>
 
       <div class="waist-tracking-panel">
-        <span>Bel Takibi</span>
-        <strong>${firstWaist && lastWaist
+        <div class="waist-tracking-head">
+          <span>Bel Takibi</span>
+          <div class="waist-tracking-change ${waistDiff === null ? 'neutral' : waistDiff <= 0 ? 'good' : 'bad'}">
+            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
+          </div>
+        </div>
+        <strong class="waist-tracking-values">${firstWaist && lastWaist
           ? (waistData.length >= 2
             ? `${Number(firstWaist.waist).toFixed(1)} → ${Number(lastWaist.waist).toFixed(1)} cm`
             : `${Number(lastWaist.waist).toFixed(1)} cm`)
           : 'Bekleniyor'}</strong>
-        <p>${firstWaist && lastWaist
+        <p class="waist-tracking-dates">${firstWaist && lastWaist
           ? `${formatDate(firstWaist.date)} → ${formatDate(lastWaist.date)}`
           : 'İlk bel ölçümü bekleniyor.'}</p>
-        <p>${waistDiff === null
-          ? 'Karşılaştırma için bir sonraki bel ölçümü bekleniyor.'
-          : `Toplam değişim: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}</p>
-        <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
-          ${renderWaistRhythm(rhythmStep)}
+        <div class="waist-tracking-footer">
+          <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
+            ${renderWaistRhythm(rhythmStep)}
+          </div>
+          <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
         </div>
-        <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
       </div>
     </div>
   `;
