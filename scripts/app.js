@@ -566,6 +566,15 @@ function parseOptionalNumber(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function parseWaist(value) {
+  const numeric = parseOptionalNumber(value);
+  return numeric !== null && numeric > 0 ? numeric : null;
+}
+
+function isValidWaist(value) {
+  return parseWaist(value) !== null;
+}
+
 function parseIsoDateParts(value) {
   const parts = String(value || '').split('-').map(Number);
   if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
@@ -686,7 +695,7 @@ function renderFallbackMeasurementChart(host, data) {
   const first = data[0];
   const last = data[data.length - 1];
   const diff = last && first ? Number(last.weight - first.weight) : 0;
-  const waistData = data.filter(item => Number.isFinite(Number(item.waist)));
+  const waistData = data.filter(item => isValidWaist(item.waist));
   const firstWaist = waistData[0];
   const lastWaist = waistData[waistData.length - 1];
   const waistDiff = firstWaist && lastWaist
@@ -779,7 +788,7 @@ function renderWaistRhythm(step) {
 }
 
 function renderMeasurementInsight(host, data, canvasHtml = '') {
-  const waistData = data.filter(item => Number.isFinite(Number(item.waist)));
+  const waistData = data.filter(item => isValidWaist(item.waist));
   const first = data[0];
   const last = data[data.length - 1];
   const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
@@ -862,7 +871,7 @@ function getSortedMeasurements() {
         ...item,
         date: normalizedDate,
         weight: Number(item.weight),
-        waist: parseOptionalNumber(item.waist),
+        waist: parseWaist(item.waist),
       };
 
       const existing = byDate.get(normalizedDate);
@@ -895,7 +904,7 @@ function getProfileStartMeasurement() {
   return {
     date: state.startDate || START_DATE,
     weight,
-    waist: parseOptionalNumber(state.startWaist),
+    waist: parseWaist(state.startWaist),
     isProfileStart: true,
   };
 }
@@ -919,13 +928,13 @@ function getSkippedMeasurements() {
 
 function getLatestWaistMeasurement() {
   return getSortedMeasurements()
-    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date))
+    .filter(item => isValidWaist(item.waist) && shouldTrackWaist(item.date))
     .at(-1);
 }
 
 function getWaistMeasurements() {
   return getSortedMeasurements()
-    .filter(item => Number.isFinite(Number(item.waist)) && shouldTrackWaist(item.date));
+    .filter(item => isValidWaist(item.waist) && shouldTrackWaist(item.date));
 }
 
 function getMeasurementSequenceNumber(date) {
@@ -1623,9 +1632,9 @@ function renderStats() {
   const last = data[data.length - 1];
   const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
-  const profileWaist = parseOptionalNumber(state.startWaist);
+  const profileWaist = parseWaist(state.startWaist);
   const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
-    Number.isFinite(Number(profileWaist))
+    isValidWaist(profileWaist)
       ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
       : null
   );
@@ -1772,9 +1781,9 @@ function renderWeightSummary() {
   const last = data[data.length - 1];
   const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
-  const profileWaist = parseOptionalNumber(state.startWaist);
+  const profileWaist = parseWaist(state.startWaist);
   const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
-    Number.isFinite(Number(profileWaist))
+    isValidWaist(profileWaist)
       ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
       : null
   );
@@ -1946,9 +1955,9 @@ function renderWeightList() {
       ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
       : null;
 
-    const hasWaist = Number.isFinite(Number(m.waist));
+    const hasWaist = isValidWaist(m.waist);
     const prevWaist = summaryData
-      .filter(item => item.date < m.date && Number.isFinite(Number(item.waist)))
+      .filter(item => item.date < m.date && isValidWaist(item.waist))
       .at(-1);
     const waistDiff = hasWaist && prevWaist
       ? (Number(m.waist) - Number(prevWaist.waist)).toFixed(1)
@@ -2648,9 +2657,9 @@ function renderProgressSummary() {
   const previousMeasure = realMeasurements[realMeasurements.length - 2];
   const waistMeasurements = getWaistMeasurements();
   const firstWaist = waistMeasurements[0];
-  const profileWaist = parseOptionalNumber(state.startWaist);
+  const profileWaist = parseWaist(state.startWaist);
   const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
-    Number.isFinite(Number(profileWaist))
+    isValidWaist(profileWaist)
       ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
       : null
   );
@@ -3120,7 +3129,7 @@ function getProfileCloudPayload() {
     name: String(state.name || '').trim(),
     start_date: state.startDate || START_DATE,
     start_weight: parseOptionalNumber(state.startWeight),
-    start_waist: parseOptionalNumber(state.startWaist),
+    start_waist: parseWaist(state.startWaist),
     first_goal: parseOptionalNumber((state.milestones || [])[0]),
     goal_weight: parseOptionalNumber(state.goalWeight),
     preferences: {
@@ -3159,7 +3168,7 @@ async function loadProfileFromSupabase() {
   state.name = data.name || state.name;
   state.startDate = data.start_date || state.startDate || START_DATE;
   state.startWeight = parseOptionalNumber(data.start_weight);
-  state.startWaist = parseOptionalNumber(data.start_waist);
+  state.startWaist = parseWaist(data.start_waist);
   state.onboarded = true;
 
   const firstGoal = parseOptionalNumber(data.first_goal);
@@ -3198,7 +3207,7 @@ async function loadMeasurementsFromSupabase() {
   const cloudMeasurements = (data || []).map(item => ({
     date: item.date,
     weight: parseFloat(item.weight),
-    waist: parseOptionalNumber(item.waist),
+    waist: parseWaist(item.waist),
   })).filter(item =>
     item.date >= FIRST_MEASURE_DATE &&
     !isRecordDeleted('measurements', item)
@@ -3403,7 +3412,7 @@ async function pushLocalPendingToSupabase() {
       user_id: getUserId(),
       date: item.date,
       weight: Number(item.weight),
-      waist: parseOptionalNumber(item.waist),
+      waist: parseWaist(item.waist),
     }));
     if (error) throw new Error(`Ölçüm gönderme: ${getSyncErrorMessage(error)}`);
     clearPendingSync('measurements', item.date);
