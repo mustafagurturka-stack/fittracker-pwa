@@ -1631,16 +1631,17 @@ function renderStats() {
   const first = data[0];
   const last = data[data.length - 1];
   const waistMeasurements = getWaistMeasurements();
-  const firstWaist = waistMeasurements[0];
   const profileWaist = parseWaist(state.startWaist);
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
-    isValidWaist(profileWaist)
-      ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
-      : null
-  );
+  const waistStart = isValidWaist(profileWaist)
+    ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
+    : waistMeasurements[0] || null;
+  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || waistStart;
   const weightDiff = Number(last.weight - first.weight);
-  const waistDiff = waistMeasurements.length >= 2 ? Number(lastWaist.waist - firstWaist.waist) : null;
+  const waistDiff = waistStart && lastWaist
+    ? Number(lastWaist.waist - waistStart.waist)
+    : null;
   const startDateText = formatDate(first.date);
+  const waistStartDateText = waistStart ? formatDate(waistStart.date) : startDateText;
   const isProfileOnly = Boolean(last.isProfileStart);
 
   el.innerHTML = `
@@ -1667,7 +1668,9 @@ function renderStats() {
           <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
             ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
           </div>
-          <div class="progress-summary-small">${waistMeasurements.length ? 'Sonraki bel 4. tartıda' : 'Her 4. tartıda'}</div>
+          <div class="progress-summary-small">${lastWaist?.isProfileStart
+            ? `${waistStartDateText} başlangıç bilgisi`
+            : `${waistStartDateText} başlangıcından beri`}</div>
         </div>
       </div>
     </div>
@@ -1971,15 +1974,15 @@ function renderWeightList() {
       ? '<span class="delta-pill neutral">Bel ölçümü yok</span>'
       : waistDiff !== null
         ? `<span class="delta-pill ${Number(waistDiff) < 0 ? 'good' : Number(waistDiff) > 0 ? 'bad' : 'neutral'}">${Number(waistDiff) > 0 ? '+' : ''}${waistDiff} cm</span>`
-        : '<span class="delta-pill neutral">İlk bel</span>';
+        : '<span class="delta-pill neutral">Başlangıç beli</span>';
 
     const waistText = hasWaist
       ? `${Number(m.waist).toFixed(1)} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
       : '<span style="font-size:12px;color:var(--muted)">Bel ölçümü yok</span>';
 
     return `
-      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
-        <div style="flex:1">
+      <div class="measurement-history-row">
+        <div class="measurement-history-main">
           <div style="font-weight:700">
             ${m.weight ?? '?'} <span style="font-size:12px;color:var(--muted)">kg</span>
             ·
@@ -1990,15 +1993,15 @@ function renderWeightList() {
           </div>
         </div>
 
-        <div style="font-family:var(--font-mono);font-size:11px;text-align:right">
+        <div class="measurement-history-deltas">
           <div>${weightDiffHtml}</div>
           <div>${waistDiffHtml}</div>
         </div>
 
         ${m.isProfileStart || m.measurementIndex < 0
-          ? '<span style="width:20px"></span>'
+          ? '<span class="measurement-history-action-placeholder"></span>'
           : `<button onclick="deleteWeight(${m.measurementIndex})"
-              style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"
+              class="measurement-history-delete"
               aria-label="Sil">×</button>`}
       </div>
     `;
