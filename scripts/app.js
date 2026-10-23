@@ -4298,6 +4298,7 @@ function updatePreference(key, value) {
 }
 
 function showAuth() {
+  window.startupReady?.();
   if (document.getElementById('authModal')) return;
 
   const modal = document.createElement('div');
@@ -4546,6 +4547,7 @@ async function continueWithSession(session, options = {}) {
   renderAll();
   updateOnlineStatus();
 
+  window.startupReady?.();
   setStatus('Veriler yükleniyor...', '');
   const cloudLoad = withTimeout(loadAllCloudData({ force: true }), options.skipCloudWait ? 4500 : 12000, 'Bulut veri yükleme');
 
@@ -4914,41 +4916,22 @@ function bindUiEvents() {
 
 async function checkAuthSession() {
   setStatus('Oturum kontrol ediliyor...', '');
-
-  const fallback = window.setTimeout(() => {
-    setStatus('Giriş bekleniyor', '');
-    showAuth();
-  }, 4500);
-
   try {
-    const { data } = await db.auth.getSession();
-    window.clearTimeout(fallback);
-
-    if (!data.session) {
-      updateOnlineStatus();
-      setStatus('Giriş bekleniyor', '');
-      showAuth();
-      return;
-    }
-
-    if (activeSessionLoad) {
-      await activeSessionLoad;
-      return;
-    }
-
-    activeSessionLoad = continueWithSession(data.session)
-      .finally(() => {
-        activeSessionLoad = null;
-      });
+    const result = await withTimeout(db.auth.getSession(), 8000, 'Oturum kontrolü');
+    if (result.timedOut || result.error) throw result.error || new Error('Bağlantı gecikti');
+    const {data,error} = result.value;
+    if (error) throw error;
+    if (!data.session) { updateOnlineStatus(); setStatus('Giriş bekleniyor', ''); showAuth(); return; }
+    if (activeSessionLoad) { await activeSessionLoad; return; }
+    activeSessionLoad = continueWithSession(data.session, {skipCloudWait:true})
+      .finally(() => { activeSessionLoad = null; });
     await activeSessionLoad;
-  } catch (error) {
-    window.clearTimeout(fallback);
-    console.warn('Oturum kontrolü yapılamadı:', error);
-    updateOnlineStatus();
-    setStatus('Giriş bekleniyor', '');
-    showAuth();
+  } catch {
+    setStatus('Oturum kontrolü gecikti. Yeniden deneyin; kayıtlarınız silinmedi.', 'error');
+    window.startupFailure?.();
   }
 }
+window.retryStartup = checkAuthSession;
 
 function setupAuthListener() {
   db.auth.onAuthStateChange((_event, session) => {
@@ -5012,3 +4995,4 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
+

@@ -21,18 +21,48 @@
 
   <title>FitTracker Pro</title>
 
-  <link
+  <link media="print" onload="this.media='all'"
     rel="preconnect"
     href="https://fonts.googleapis.com"
     crossorigin
   />
-  <link
+  <link media="print" onload="this.media='all'"
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=177.9" />
+  <link rel="stylesheet" href="/styles/main.css?v=177.9" media="print" onload="this.media='all'" />
 </head>
 <body>
+<section id="startup-shell" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:99999;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:#f6f7f8;color:#243444;font:16px system-ui,sans-serif">
+  <div style="max-width:420px;width:100%;background:#fff;border:1px solid #dde3e8;border-radius:20px;padding:24px;box-sizing:border-box">
+    <h1 style="font-size:22px;margin:0 0 12px;color:#2563eb">FitTracker</h1>
+    <p id="startup-message" style="line-height:1.6;margin:0 0 16px">Uygulama hazırlanıyor…</p>
+    <button id="startup-retry" type="button" hidden style="min-height:44px;padding:10px 18px;border:1px solid #2563eb;background:#fff;color:#2563eb;border-radius:12px;font:inherit;font-weight:600">Yeniden dene</button>
+    <noscript>Uygulamayı kullanmak için tarayıcınızda JavaScript etkin olmalıdır.</noscript>
+  </div>
+</section>
+<script>
+(function () {
+  var timer;
+  function fail() {
+    var message = document.getElementById('startup-message');
+    var retry = document.getElementById('startup-retry');
+    if (message) message.textContent = 'Uygulama dosyaları veya bağlantı gecikiyor. Kayıtlarınız silinmedi. Bağlantınızı kontrol edip tekrar deneyin.';
+    if (retry) retry.hidden = false;
+  }
+  window.startupFailure = fail;
+  window.startupReady = function () { clearTimeout(timer); document.getElementById('startup-shell')?.remove(); };
+  document.getElementById('startup-retry').onclick = function () {
+    if (typeof window.retryStartup === 'function') window.retryStartup();
+    else location.reload();
+  };
+  timer = setTimeout(fail, 8000);
+  var observer = new MutationObserver(function () {
+    if (!document.getElementById('startup-shell')) { clearTimeout(timer); observer.disconnect(); }
+  });
+  observer.observe(document.body, {childList:true,subtree:true});
+})();
+</script>
 
 <div class="app-shell">
 
@@ -533,8 +563,9 @@
 
   <!-- trigger deploy -->
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/scripts/app.js?v=277.11" defer></script>
+  <script src="/scripts/vendor/supabase-2.112.3.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" async onload="if(typeof renderMeasurementChart==='function')renderMeasurementChart()"></script>
+  <script src="/scripts/app.js?v=277.12-startup" defer></script>
 </body>
 </html>
+
