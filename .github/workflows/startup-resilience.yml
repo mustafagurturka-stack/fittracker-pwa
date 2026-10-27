@@ -11,5 +11,7 @@ jobs:
         with:
           node-version: 24
       - run: node --check scripts/app.js
+      - run: node --check scripts/monthly.js
       - run: node --check service-worker.js
       - run: node --test tests/*.test.mjs
+

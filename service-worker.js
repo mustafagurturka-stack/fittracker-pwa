@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'fittracker-pro-';
-const CACHE_NAME = 'fittracker-pro-startup-20261023-static';
-const BUILD_ASSETS = /*__BUILD_ASSETS__*/ ['/styles/main.css?v=177.9','/scripts/vendor/supabase-2.112.3.js','/scripts/app.js?v=277.12-startup','/manifest.json?v=277.7','/icons/icon-192.png?v=229','/icons/icon-512.png?v=229'];
+const CACHE_NAME = 'fittracker-pro-monthly-20261027-static';
+const BUILD_ASSETS = /*__BUILD_ASSETS__*/ ['/styles/main.css?v=178.0-monthly','/scripts/vendor/supabase-2.112.3.js','/scripts/monthly.js?v=20261027','/scripts/app.js?v=277.13-monthly','/manifest.json?v=277.7','/icons/icon-192.png?v=229','/icons/icon-512.png?v=229'];
 const SHELL = ['/index.html', ...BUILD_ASSETS];
 async function boundedFetch(request, ms = 8000) {
   const controller = new AbortController();
@@ -61,4 +61,5 @@ self.addEventListener('fetch', event => {
     } catch { return Response.error(); }
   })());
 });
+
 

@@ -10346,3 +10346,40 @@ html[data-theme="light"] #pHome .week-chip {
     padding-top: 15px;
   }
 }
+
+/* Monthly insights: responsive, read-only and consistent with both themes. */
+.monthly-heading,.monthly-picker,.monthly-type>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.monthly-heading h2{font-size:24px;text-transform:capitalize;color:var(--text)}
+.monthly-eyebrow{font-size:11px;letter-spacing:.12em;color:var(--blue);font-weight:800}
+.monthly-picker{margin:18px 0 8px;justify-content:center}
+.monthly-picker label{display:grid;gap:4px;flex:1;max-width:280px;font-size:12px;color:var(--text2)}
+.monthly-picker input{width:100%;min-width:0;min-height:44px;border:1px solid var(--border);border-radius:12px;padding:8px 12px;background:var(--surface);color:var(--text);font:inherit;font-size:16px;color-scheme:light}
+[data-theme="dark"] .monthly-picker input{color-scheme:dark}
+.monthly-button{min-height:44px;min-width:44px;padding:8px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
+.monthly-button:disabled{opacity:.4;cursor:default}
+.monthly-button:focus-visible,.monthly-picker input:focus-visible,.monthly-weekly summary:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.monthly-hint{font-size:12px;color:var(--text2);line-height:1.65;margin:8px 0}
+.monthly-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.monthly-stat{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);border-radius:14px;padding:16px;display:grid;gap:6px;min-width:0}
+.monthly-stat>span{font-size:12px;color:var(--text2)}
+.monthly-stat strong{font-size:25px;color:var(--text);overflow-wrap:anywhere}
+.monthly-stat small{font-size:11px;color:var(--text2)}
+.monthly-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.monthly-box{padding:18px;border-radius:14px;background:var(--surface);border:1px solid var(--border);min-width:0}
+.monthly-box h3{font-size:15px;margin-bottom:12px;color:var(--text)}
+.monthly-box p{overflow-wrap:anywhere}
+.monthly-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.monthly-day{min-height:40px;border-radius:8px;background:var(--surface2);color:var(--text2);display:flex;align-items:center;justify-content:center;gap:3px;font-size:12px;border:1px solid var(--border)}
+.monthly-day.has-activity{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+[data-theme="dark"] .monthly-day.has-activity{background:#1e3a5f;color:#dbeafe;border-color:#60a5fa}
+.monthly-day b{font-size:10px}
+.monthly-day.future{opacity:.4}
+.monthly-type{margin:12px 0}
+.monthly-type>div{font-size:12px;align-items:flex-start}
+.monthly-type span{overflow-wrap:anywhere;min-width:0}
+.monthly-track{height:6px;background:var(--surface2);border-radius:10px;margin-top:6px;overflow:hidden}
+.monthly-track span{display:block;height:100%;background:var(--blue);border-radius:10px}
+.monthly-empty{border:1px dashed var(--border);border-radius:12px;padding:18px;color:var(--text2)}
+.monthly-weekly{margin:20px 0}
+.monthly-weekly>summary{min-height:48px;cursor:pointer;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;color:var(--text);font-weight:700}
+@media(max-width:640px){.monthly-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.monthly-columns{grid-template-columns:1fr}.monthly-stat{padding:12px}.monthly-stat strong{font-size:22px}.monthly-heading h2{font-size:22px}.monthly-box{padding:14px}}

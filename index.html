@@ -30,7 +30,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/styles/main.css?v=177.9" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/styles/main.css?v=178.0-monthly" media="print" onload="this.media='all'" />
 </head>
 <body>
 <section id="startup-shell" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:99999;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:#f6f7f8;color:#243444;font:16px system-ui,sans-serif">
@@ -360,10 +360,13 @@
       <span class="sec-title">İlerleme</span>
     </div>
     <p style="color:var(--muted);font-size:13px;font-family:var(--font-mono)">
-      Haftalık uyku, antrenman ve gelişim analizi.
+      Aylık ritmin, antrenmanların ve ölçüm değişimlerin.
     </p>
   </div>
 
+  <section class="section" id="monthlyOverview" aria-label="Aylık istatistikler" aria-live="polite"></section>
+  <details class="monthly-weekly">
+    <summary>Haftalık detayları göster</summary>
   <div class="section">
     <div class="sec-head">
       <span class="sec-title">Haftalık Özet</span>
@@ -409,6 +412,7 @@
       <div id="progressList"></div>
     </div>
   </div>
+  </details>
 </section>
 
     <!-- PANEL: PROFILE -->
@@ -565,7 +569,9 @@
 
   <script src="/scripts/vendor/supabase-2.112.3.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js" async onload="if(typeof renderMeasurementChart==='function')renderMeasurementChart()"></script>
-  <script src="/scripts/app.js?v=277.12-startup" defer></script>
+  <script src="/scripts/monthly.js?v=20261027" defer></script>
+  <script src="/scripts/app.js?v=277.13-monthly" defer></script>
 </body>
 </html>
+
 

@@ -1206,6 +1206,7 @@ function goPanel(idx) {
       renderMeasurementChart();
       renderProgressCharts();
       renderProgressList();
+      renderMonthlyOverview();
     }
 
     window.scrollTo(0, 0);
@@ -3096,6 +3097,37 @@ function renderSettings() {
   if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
 }
 
+let selectedStatisticsMonth = null;
+function renderMonthlyOverview() {
+  const host = document.getElementById('monthlyOverview');
+  if (!host || !window.FitMonthly) return;
+  const current = today().slice(0, 7);
+  if (!selectedStatisticsMonth || selectedStatisticsMonth > current) selectedStatisticsMonth = current;
+  host.innerHTML = window.FitMonthly.markup(state, selectedStatisticsMonth, today());
+  const weekly = document.querySelector('.monthly-weekly');
+  if (weekly) weekly.ontoggle = () => {
+    if (weekly.open) requestAnimationFrame(() => {
+      renderMeasurementChart();
+      renderProgressCharts();
+    });
+  };
+  host.onclick = event => {
+    const button = event.target.closest('button');
+    if (!button || button.disabled) return;
+    if (button.hasAttribute('data-month-current')) selectedStatisticsMonth = current;
+    else if (button.hasAttribute('data-month-step')) selectedStatisticsMonth = window.FitMonthly.shiftMonth(selectedStatisticsMonth, Number(button.dataset.monthStep));
+    else return;
+    if (selectedStatisticsMonth < '2000-01') selectedStatisticsMonth = '2000-01';
+    renderMonthlyOverview();
+  };
+  host.onchange = event => {
+    if (event.target.type !== 'month' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
+    if (event.target.value > current || event.target.value < '2000-01') return;
+    selectedStatisticsMonth = event.target.value;
+    renderMonthlyOverview();
+  };
+}
+
 function renderAll() {
   normalizeProfileState();
 
@@ -3117,6 +3149,7 @@ function renderAll() {
     renderWorkoutList,
     updateWorkoutGuidance,
     renderProgressSummary,
+    renderMonthlyOverview,
     renderProgressWeekPicker,
     renderProgressCharts,
     renderProgressList,
@@ -4995,4 +5028,5 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
+
 
