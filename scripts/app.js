@@ -3121,7 +3121,7 @@ function renderMonthlyOverview() {
     renderMonthlyOverview();
   };
   host.onchange = event => {
-    if (event.target.dataset?.statMonth !== 'true' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
+    if (event.target.type !== 'month' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
     if (event.target.value > current || event.target.value < '2000-01') return;
     selectedStatisticsMonth = event.target.value;
     renderMonthlyOverview();
@@ -4935,7 +4935,16 @@ function bindUiEvents() {
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', updateOnlineStatus);
 
-  window.FitPwaUpdates?.start();
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/service-worker.js', { scope: '/' })
+        .then(reg => {
+          console.log('[SW] Kayıtlı:', reg.scope);
+        })
+        .catch(err => console.warn('[SW] Kayıt hatası:', err));
+    });
+  }
 }
 
 async function checkAuthSession() {
@@ -5019,7 +5028,5 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
-
-
 
 
