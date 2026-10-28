@@ -21,8 +21,16 @@
 
   <title>FitTracker Pro</title>
 
-  <link rel="stylesheet" href="/styles/local-fonts.css?v=5.3.0" media="print" onload="this.media='all'" />
-  <link rel="stylesheet" href="/styles/main.css?v=178.2-safari" media="print" onload="this.media='all'" />
+  <link media="print" onload="this.media='all'"
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+    crossorigin
+  />
+  <link media="print" onload="this.media='all'"
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/styles/main.css?v=178.0-monthly" media="print" onload="this.media='all'" />
 </head>
 <body>
 <section id="startup-shell" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:99999;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:#f6f7f8;color:#243444;font:16px system-ui,sans-serif">
@@ -560,13 +568,10 @@
   <!-- trigger deploy -->
 
   <script src="/scripts/vendor/supabase-2.112.3.js" defer></script>
-  <script src="/scripts/vendor/chart-4.5.1.umd.min.js" async onload="if(typeof renderMeasurementChart==='function')renderMeasurementChart()"></script>
-  <script src="/scripts/pwa-update.js?v=20261028.2" defer></script>
-  <script src="/scripts/monthly.js?v=20261028.2" defer></script>
-  <script src="/scripts/app.js?v=277.15-safari" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" async onload="if(typeof renderMeasurementChart==='function')renderMeasurementChart()"></script>
+  <script src="/scripts/monthly.js?v=20261027" defer></script>
+  <script src="/scripts/app.js?v=277.13-monthly" defer></script>
 </body>
 </html>
-
-
 
 

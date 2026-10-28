@@ -9,7 +9,7 @@
   const number = value => value === null || value === '' || value === undefined ? null :
     Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const fmt = value => Number(value).toLocaleString('tr-TR', {maximumFractionDigits:2});
+  const fmt = value => Number(value).toLocaleString('tr-TR', {maximumFractionDigits:1});
   function shiftMonth(month, step) {
     const [y,m] = month.split('-').map(Number);
     const date = new Date(Date.UTC(y,m-1+step,1));
@@ -30,15 +30,6 @@
       if (row.id) seen.add(row.id);
       return true;
     });
-    const group = rows => ({
-      sessions:rows.length,
-      days:new Set(rows.map(row=>row.date)).size,
-      minutes:rows.reduce((sum,row)=>sum+(number(row.duration)||0),0),
-      timed:rows.filter(row=>number(row.duration)!==null).length
-    });
-    const isWalk = row => ['yürüyüş','yuruyus','walking','walk'].includes(String(row.type||'').trim().toLocaleLowerCase('tr-TR'));
-    const walking = group(workouts.filter(isWalk));
-    const training = group(workouts.filter(row=>!isWalk(row)));
     const activeDays = new Set(workouts.map(row=>row.date)).size;
     const types = new Map();
     const daily = Array.from({length:days},(_,i)=>({day:i+1,count:0,minutes:0}));
@@ -65,7 +56,7 @@
     const sleepByDate=new Map();
     (state.sleep||[]).filter(inRange).forEach(row=>{const hours=number(row.hours);if(hours!==null)sleepByDate.set(row.date,hours);});
     const sleep=[...sleepByDate.values()];
-    return {month,days,endDay,current,walking,training,activeDays,sessions:workouts.length,minutes,timed,daily,
+    return {month,days,endDay,current,activeDays,sessions:workouts.length,minutes,timed,daily,
       types:[...types].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr')),
       weight:measure('weight'),waist:measure('waist'),
       sleepDays:sleep.length,sleepAverage:sleep.length?sleep.reduce((a,b)=>a+b,0)/sleep.length:null};
@@ -80,62 +71,26 @@
     const previous=summary(state,prevMonth,cutoff);
     return {now,previous,delta:now.activeDays-previous.activeDays};
   }
-  const monthLabel = month => new Intl.DateTimeFormat('tr-TR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T12:00:00Z'));
-  const dateLabel = date => new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
-  const difference = (current,previous,unit) => {
-    const delta=Number((current-previous).toFixed(2));
-    return delta===0?'Değişmedi':fmt(Math.abs(delta))+' '+unit+' '+(delta>0?'artış':'azalış');
-  };
-  function measurementComparison(now,previous,key) {
-    const a=now[key].last,b=previous[key].last;
-    return {now:a,previous:b,delta:a&&b?Number((a.value-b.value).toFixed(2)):null};
-  }
-  function activityCard(title,now,previous,currentLabel,previousLabel,note) {
-    const value=g=>g.sessions+' kayıt';
-    const minutes=g=>g.timed?fmt(g.minutes)+' dk'+(g.timed<g.sessions?' · eksik süre':''):'Süre kaydı yok';
-    const comment=!now.sessions&&!previous.sessions?'İki dönemde de kayıt yok; hareket düzeyi hakkında çıkarım yapılmadı.':
-      !previous.sessions?'Önceki dönemde kayıt yok. Bu dönemde '+now.sessions+' kayıt girdin; yüzde karşılaştırması yapılmadı.':
-      !now.sessions?'Bu dönemde henüz kayıt yok. Önceki dönemde '+previous.sessions+' kayıt vardı; bu, hiç hareket etmediğin anlamına gelmez.':
-      now.sessions===previous.sessions?'Kayıt sayısı önceki dönemle aynı.':
-      'Önceki döneme göre '+Math.abs(now.sessions-previous.sessions)+' '+(now.sessions>previous.sessions?'daha fazla':'daha az')+' kayıt girdin.';
-    const complete=now.sessions&&previous.sessions&&now.timed===now.sessions&&previous.timed===previous.sessions;
-    return '<article class="mreport-card"><header><span class="mreport-icon" aria-hidden="true">'+(title==='Yürüyüş'?'↗':'◆')+'</span><div><h3>'+title+'</h3><p>'+note+'</p></div></header>'+
-      '<div class="mreport-values"><div><span>'+esc(previousLabel)+'</span><strong>'+value(previous)+'</strong><small>'+minutes(previous)+'</small><small>'+previous.days+' farklı gün</small></div><span class="mreport-arrow" aria-hidden="true">→</span><div><span>'+esc(currentLabel)+'</span><strong>'+value(now)+'</strong><small>'+minutes(now)+'</small><small>'+now.days+' farklı gün</small></div></div>'+
-      '<p class="mreport-delta">'+(now.sessions||previous.sessions?difference(now.sessions,previous.sessions,'kayıt'):'Karşılaştırılacak kayıt yok')+'</p>'+
-      '<p class="mreport-comment">'+comment+(complete?' Toplam sürede '+difference(now.minutes,previous.minutes,'dk').toLocaleLowerCase('tr-TR')+'.':'')+'</p></article>';
-  }
-  function measureCard(title,data,unit,currentLabel,previousLabel) {
-    const cell=(entry,label)=>'<div><span>'+esc(label)+'</span><strong>'+(entry?fmt(entry.value)+' <em>'+unit+'</em>':'—')+'</strong><small>'+(entry?dateLabel(entry.date):'Ölçüm kaydı yok')+'</small></div>';
-    const comment=data.delta===null?'Karşılaştırma için iki dönemde de en az bir '+title.toLocaleLowerCase('tr-TR')+' ölçümü gerekli. Eksik değer sıfır sayılmaz.':
-      data.delta===0?'İki dönemin son kayıtlı ölçümleri aynı.':
-      'Son kayıtlı '+title.toLocaleLowerCase('tr-TR')+' ölçümün önceki döneme göre '+fmt(Math.abs(data.delta))+' '+unit+' '+(data.delta>0?'artmış':'azalmış')+'.';
-    return '<article class="mreport-card"><header><span class="mreport-icon" aria-hidden="true">'+(unit==='kg'?'±':'↔')+'</span><div><h3>'+title+'</h3><p>Her dönemin son kayıtlı ölçümü</p></div></header><div class="mreport-values">'+cell(data.previous,previousLabel)+'<span class="mreport-arrow" aria-hidden="true">→</span>'+cell(data.now,currentLabel)+'</div><p class="mreport-delta">'+(data.delta===null?'Karşılaştırma için ölçüm eksik':difference(data.now.value,data.previous.value,unit))+'</p><p class="mreport-comment">'+comment+'</p></article>';
-  }
   function markup(state, month, asOf) {
-    const {now:s,previous}=compare(state,month,asOf);
-    const currentLabel=monthLabel(month), previousLabel=monthLabel(previous.month);
-    // Standard select avoids native month-field sizing bugs in installed iOS PWAs.
-    let earliest=shiftMonth(asOf.slice(0,7),-11);
-    for(const row of [...(state.workouts||[]),...(state.measurements||[]),...(state.sleep||[])]) {
-      if(validDay(row?.date)&&row.date>='2000-01-01'&&row.date.slice(0,7)<earliest)earliest=row.date.slice(0,7);
-    }
-    if(month<earliest)earliest=month;
-    const options=[];
-    for(let m=asOf.slice(0,7);m>=earliest;m=shiftMonth(m,-1)) options.push('<option value="'+m+'" '+(m===month?'selected':'')+'>'+esc(monthLabel(m))+'</option>');
-    const period=s.current?'1–'+s.endDay+' '+currentLabel+' ile 1–'+previous.endDay+' '+previousLabel:
-      currentLabel+' ile '+previousLabel+' · iki tam ay';
-    const typeRows=s.types.map(([type,count])=>'<li><span>'+esc(type)+'</span><strong>'+count+' kayıt</strong></li>').join('');
-    return '<div class="mreport-heading"><div><span class="mreport-eyebrow">AYLIK KARŞILAŞTIRMA</span><h2>'+esc(currentLabel)+'</h2></div><button type="button" class="mreport-button" data-month-current>Bu ay</button></div>'+
-      '<label class="mreport-label" for="statisticsMonth">İstatistik ayı</label><div class="mreport-picker"><select id="statisticsMonth" data-stat-month="true" aria-label="İstatistik ayı">'+options.join('')+'</select><div class="mreport-month-nav"><button type="button" class="mreport-button" data-month-step="-1" aria-label="Önceki ay" '+(month<='2000-01'?'disabled':'')+'>‹ Önceki ay</button><button type="button" class="mreport-button" data-month-step="1" aria-label="Sonraki ay" '+(month>=asOf.slice(0,7)?'disabled':'')+'>Sonraki ay ›</button></div></div>'+
-      '<div class="mreport-period"><strong>'+(s.current?'Ay devam ediyor · eşit gün aralığı':'Tam ay karşılaştırması')+'</strong><p>'+esc(period)+'</p><p>Etkinlik sayıları kayıtlarını, ölçümler ise belirtilen tarihteki son değerleri gösterir.</p></div>'+
-      '<div class="mreport-grid">'+activityCard('Antrenman',s.training,previous.training,currentLabel,previousLabel,'Yürüyüş hariç tüm antrenman kayıtları')+
-      activityCard('Yürüyüş',s.walking,previous.walking,currentLabel,previousLabel,'Yalnızca yürüyüş olarak kaydedilen etkinlikler')+
-      measureCard('Kilo',measurementComparison(s,previous,'weight'),'kg',currentLabel,previousLabel)+measureCard('Bel',measurementComparison(s,previous,'waist'),'cm',currentLabel,previousLabel)+'</div>'+
-      '<details class="mreport-details"><summary>Diğer aylık kayıtlar</summary><div><p>'+s.activeDays+' aktif gün · '+s.sessions+' toplam etkinlik kaydı</p><p>'+(s.timed?fmt(s.minutes)+' dk · '+s.timed+' süreli kayıt':'Süre kaydı yok')+'</p><p>Ortalama uyku: '+(s.sleepAverage===null?'—':fmt(s.sleepAverage)+' saat')+' · '+s.sleepDays+' kayıtlı gün</p>'+(typeRows?'<ul aria-label="Antrenman türleri">'+typeRows+'</ul>':'<p>Bu ay henüz kayıt yok.</p>')+'</div></details>'+
-      '<p class="mreport-footnote">Yorumlar yalnızca girilmiş kayıtları karşılaştırır; eksik kayıtlar hareketsizlik olarak değerlendirilmez. Kilo ve bel değişimi tek başına bir sağlık değerlendirmesi değildir. Eşitlenmemiş kayıtlar cihazlar arasında geçici olarak farklı görünebilir.</p>';
+    const {now:s,previous,delta}=compare(state,month,asOf);
+    const label=new Intl.DateTimeFormat('tr-TR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T12:00:00Z'));
+    const card=(title,value,note)=>'<article class="monthly-stat"><span>'+title+'</span><strong>'+value+'</strong><small>'+note+'</small></article>';
+    const change=(entry,unit)=>entry.change===null?'En az iki farklı günde ölçüm gerekli':
+      (entry.change>0?'+':'')+fmt(entry.change)+' '+unit+' · '+esc(entry.first.date.slice(8))+ '–'+esc(entry.last.date.slice(8))+'. gün';
+    const max=Math.max(1,...s.types.map(row=>row[1]));
+    const rows=s.types.map(([name,count])=>'<div class="monthly-type"><div><span>'+esc(name)+'</span><strong>'+count+'</strong></div><div class="monthly-track"><span style="width:'+Math.round(count/max*100)+'%"></span></div></div>').join('');
+    return '<div class="monthly-heading"><div><span class="monthly-eyebrow">AYLIK İSTATİSTİKLER</span><h2>'+esc(label)+'</h2></div><button type="button" class="monthly-button" data-month-current>Bu ay</button></div>'+
+      '<div class="monthly-picker"><button type="button" class="monthly-button" data-month-step="-1" aria-label="Önceki ay">‹</button><label>Ay seç<input type="month" aria-label="İstatistik ayı" value="'+month+'" max="'+asOf.slice(0,7)+'"></label><button type="button" class="monthly-button" data-month-step="1" aria-label="Sonraki ay" '+(month>=asOf.slice(0,7)?'disabled':'')+'>›</button></div>'+
+      '<p class="monthly-hint">'+(s.current?'Ay devam ediyor · 1–'+s.endDay+'. gün':'Ayın tamamı')+' · Yalnızca kaydettiğiniz veriler kullanılır.</p>'+
+      '<div class="monthly-stats">'+card('Aktif gün',s.activeDays,'Antrenman kaydı olan farklı gün')+card('Antrenman',s.sessions,'Aynı gündeki ayrı seanslar dahil')+card('Toplam süre',s.timed?fmt(s.minutes)+' dk':'—',s.timed?s.timed+' süreli kayıt':'Süre kaydı yok')+
+      card('Ortalama uyku',s.sleepAverage===null?'—':fmt(s.sleepAverage)+' sa',s.sleepDays+' günün uyku kaydı')+'</div>'+
+      '<div class="monthly-columns"><section class="monthly-box"><h3>Ayın hareket ritmi</h3><div class="monthly-days" aria-label="Günlük antrenman sayıları">'+s.daily.map(d=>'<span class="monthly-day '+(d.count?'has-activity':'')+(d.day>s.endDay?' future':'')+'" aria-label="'+d.day+'. gün: '+d.count+' antrenman" title="'+d.day+'. gün · '+d.count+' antrenman · '+fmt(d.minutes)+' dk">'+d.day+(d.count?'<b>'+d.count+'</b>':'')+'</span>').join('')+'</div><p class="monthly-hint">Mavi günlerde antrenman kaydı var. Diğer günler başarısızlık anlamına gelmez.</p></section>'+
+      '<section class="monthly-box"><h3>Antrenman dağılımı</h3>'+(rows||'<p class="monthly-hint">Bu ay henüz antrenman kaydı yok.</p>')+'</section></div>'+
+      '<div class="monthly-columns"><section class="monthly-box"><h3>Ölçüm özeti</h3><p>Kilo: <strong>'+(s.weight.last?fmt(s.weight.last.value)+' kg':'—')+'</strong></p><p class="monthly-hint">'+change(s.weight,'kg')+'</p><p>Bel: <strong>'+(s.waist.last?fmt(s.waist.last.value)+' cm':'—')+'</strong></p><p class="monthly-hint">'+change(s.waist,'cm')+'</p><p class="monthly-hint">Değişim, bu ayın ilk ve son kayıtlı ölçümü arasındadır.</p></section>'+
+      '<section class="monthly-box"><h3>Önceki ayla karşılaştırma</h3><p>'+(s.sessions&&previous.sessions?'<strong>'+(delta>0?delta+' gün daha fazla':delta<0?Math.abs(delta)+' gün daha az':'Aynı sayıda gün')+'</strong> antrenman kaydı var.':'Karşılaştırma için iki dönemde de antrenman kaydı gerekli.')+'</p><p class="monthly-hint">'+(s.current?'Her iki ayın ilk '+s.endDay+' günü (kısa ayın sonuna kadar) karşılaştırılır.':'İki tam ay karşılaştırılır.')+' Kayıt olmayan günler değerlendirilmez.</p></section></div>'+
+      (!s.sessions&&!s.sleepDays&&!s.weight.count&&!s.waist.count?'<p class="monthly-empty">Bu ay henüz kayıt yok. Günlük kayıtlarını ekledikçe özetin burada oluşacak.</p>':'')+
+      '<p class="monthly-hint">Cihazdaki mevcut kayıtlar gösterilir. Çevrimdışı değişiklikler eşitlenince diğer cihazda da görünür.</p>';
   }
-  root.FitMonthly={summary,compare,shiftMonth,markup,measurementComparison};
+  root.FitMonthly={summary,compare,shiftMonth,markup};
 })(typeof window!=='undefined'?window:globalThis);
-
-
 
