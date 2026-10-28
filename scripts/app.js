@@ -3121,7 +3121,7 @@ function renderMonthlyOverview() {
     renderMonthlyOverview();
   };
   host.onchange = event => {
-    if (event.target.type !== 'month' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
+    if (event.target.dataset?.statMonth !== 'true' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
     if (event.target.value > current || event.target.value < '2000-01') return;
     selectedStatisticsMonth = event.target.value;
     renderMonthlyOverview();
@@ -5028,5 +5028,6 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
+
 
 

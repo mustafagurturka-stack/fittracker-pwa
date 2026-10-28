@@ -35,7 +35,7 @@ test('cold offline navigation returns a readable retry page instead of undefined
  const r=await response;assert.equal(r.status,503);assert.match(await r.text(),/Yeniden dene/);
 });
 test('installation includes build assets and rejects incomplete downloads; cleanup never deletes another app cache',async()=>{
- const h=harness();await h.fire('install',{});assert.ok(h.added.includes('/index.html'));assert.ok(h.added.includes('/scripts/vendor/supabase-2.112.3.js'));assert.ok(h.added.includes('/scripts/app.js?v=277.13-monthly'));
+ const h=harness();await h.fire('install',{});assert.ok(h.added.includes('/index.html'));assert.ok(h.added.includes('/scripts/vendor/supabase-2.112.3.js'));assert.ok(h.added.includes('/scripts/app.js?v=277.14-compare'));
  await h.fire('activate',{});assert.equal(h.deleted.length,1);assert.ok(!h.deleted.includes('unrelated-app-cache'));assert.ok(!h.deleted.some(k=>k.endsWith('previous')));
  const bad=harness({installFails:true});await assert.rejects(bad.fire('install',{}));
 });
@@ -48,4 +48,5 @@ test('Supabase/API/POST requests and cross-origin resources are not cached or in
  ])h.handlers.fetch({request,respondWith:()=>assert.fail('private request intercepted')});
  assert.equal(h.fetches.length,0);
 });
+
 
