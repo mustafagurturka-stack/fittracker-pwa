@@ -1,0 +1,43 @@
+<!doctype html><html lang="tr" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aylık karşılaştırma – örnek veri testi</title><link rel="stylesheet" href="/styles/main.css?v=178.1-compare"></head><body><div class="app-shell"><nav class="topnav"><div class="nav-logo">Fit<span>Tracker</span></div></nav><main id="panels"><section class="panel active" id="pProgress"><div class="section"><h1>İlerleme</h1><p>Örnek veriler · gerçek hesap bağlantısı yok</p><button type="button" id="qaTheme">Temayı değiştir</button></div><section class="section" id="monthlyOverview"></section><details class="monthly-weekly"><summary>Haftalık detayları göster</summary><p>Haftalık rapor uygulamada korunur.</p></details></section></main></div><script src="/scripts/monthly.js?v=20261028"></script><script>
+const state={workouts:[
+{date:'2026-09-03',type:'Kuvvet',duration:45},{date:'2026-09-11',type:'Kuvvet',duration:45},{date:'2026-09-05',type:'Yürüyüş',duration:30},
+{date:'2026-10-03',type:'Kuvvet',duration:50},{date:'2026-10-08',type:'Kuvvet',duration:50},{date:'2026-10-12',type:'Kuvvet',duration:50},
+{date:'2026-10-05',type:'Yürüyüş',duration:45},{date:'2026-10-18',type:'Yürüyüş',duration:40}],
+measurements:[{date:'2026-09-25',weight:102.5,waist:108},{date:'2026-10-26',weight:100.8,waist:106}]};
+function today(){return '2026-10-28';}
+function renderMeasurementChart(){} function renderProgressCharts(){}
+let selectedStatisticsMonth = null;
+function renderMonthlyOverview() {
+  const host = document.getElementById('monthlyOverview');
+  if (!host || !window.FitMonthly) return;
+  const current = today().slice(0, 7);
+  if (!selectedStatisticsMonth || selectedStatisticsMonth > current) selectedStatisticsMonth = current;
+  host.innerHTML = window.FitMonthly.markup(state, selectedStatisticsMonth, today());
+  const weekly = document.querySelector('.monthly-weekly');
+  if (weekly) weekly.ontoggle = () => {
+    if (weekly.open) requestAnimationFrame(() => {
+      renderMeasurementChart();
+      renderProgressCharts();
+    });
+  };
+  host.onclick = event => {
+    const button = event.target.closest('button');
+    if (!button || button.disabled) return;
+    if (button.hasAttribute('data-month-current')) selectedStatisticsMonth = current;
+    else if (button.hasAttribute('data-month-step')) selectedStatisticsMonth = window.FitMonthly.shiftMonth(selectedStatisticsMonth, Number(button.dataset.monthStep));
+    else return;
+    if (selectedStatisticsMonth < '2000-01') selectedStatisticsMonth = '2000-01';
+    renderMonthlyOverview();
+  };
+  host.onchange = event => {
+    if (event.target.dataset?.statMonth !== 'true' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
+    if (event.target.value > current || event.target.value < '2000-01') return;
+    selectedStatisticsMonth = event.target.value;
+    renderMonthlyOverview();
+  };
+}
+
+
+renderMonthlyOverview();
+document.getElementById('qaTheme').onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';};
+</script></body></html>
