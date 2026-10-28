@@ -126,7 +126,7 @@
       currentLabel+' ile '+previousLabel+' · iki tam ay';
     const typeRows=s.types.map(([type,count])=>'<li><span>'+esc(type)+'</span><strong>'+count+' kayıt</strong></li>').join('');
     return '<div class="mreport-heading"><div><span class="mreport-eyebrow">AYLIK KARŞILAŞTIRMA</span><h2>'+esc(currentLabel)+'</h2></div><button type="button" class="mreport-button" data-month-current>Bu ay</button></div>'+
-      '<label class="mreport-label" for="statisticsMonth">İstatistik ayı</label><div class="mreport-picker"><button type="button" class="mreport-button" data-month-step="-1" aria-label="Önceki ay" '+(month<='2000-01'?'disabled':'')+'>‹</button><select id="statisticsMonth" data-stat-month="true" aria-label="İstatistik ayı">'+options.join('')+'</select><button type="button" class="mreport-button" data-month-step="1" aria-label="Sonraki ay" '+(month>=asOf.slice(0,7)?'disabled':'')+'>›</button></div>'+
+      '<label class="mreport-label" for="statisticsMonth">İstatistik ayı</label><div class="mreport-picker"><select id="statisticsMonth" data-stat-month="true" aria-label="İstatistik ayı">'+options.join('')+'</select><div class="mreport-month-nav"><button type="button" class="mreport-button" data-month-step="-1" aria-label="Önceki ay" '+(month<='2000-01'?'disabled':'')+'>‹ Önceki ay</button><button type="button" class="mreport-button" data-month-step="1" aria-label="Sonraki ay" '+(month>=asOf.slice(0,7)?'disabled':'')+'>Sonraki ay ›</button></div></div>'+
       '<div class="mreport-period"><strong>'+(s.current?'Ay devam ediyor · eşit gün aralığı':'Tam ay karşılaştırması')+'</strong><p>'+esc(period)+'</p><p>Etkinlik sayıları kayıtlarını, ölçümler ise belirtilen tarihteki son değerleri gösterir.</p></div>'+
       '<div class="mreport-grid">'+activityCard('Antrenman',s.training,previous.training,currentLabel,previousLabel,'Yürüyüş hariç tüm antrenman kayıtları')+
       activityCard('Yürüyüş',s.walking,previous.walking,currentLabel,previousLabel,'Yalnızca yürüyüş olarak kaydedilen etkinlikler')+
@@ -136,5 +136,6 @@
   }
   root.FitMonthly={summary,compare,shiftMonth,markup,measurementComparison};
 })(typeof window!=='undefined'?window:globalThis);
+
 
 

@@ -1,6 +1,7 @@
 const CACHE_PREFIX = 'fittracker-pro-';
-const CACHE_NAME = 'fittracker-pro-monthly-20261028-static';
-const BUILD_ASSETS = /*__BUILD_ASSETS__*/ ['/styles/main.css?v=178.1-compare','/scripts/vendor/supabase-2.112.3.js','/scripts/monthly.js?v=20261028','/scripts/app.js?v=277.14-compare','/manifest.json?v=277.7','/icons/icon-192.png?v=229','/icons/icon-512.png?v=229'];
+const CACHE_NAME = 'fittracker-pro-safari-20261028-2-static';
+const BUILD_ASSETS = /*__BUILD_ASSETS__*/ ['/styles/main.css?v=178.2-safari','/scripts/vendor/supabase-2.112.3.js','/scripts/monthly.js?v=20261028.2','/scripts/app.js?v=277.15-safari','/manifest.json?v=277.7','/icons/icon-192.png?v=229','/icons/icon-512.png?v=229'];
+BUILD_ASSETS.push('/styles/local-fonts.css?v=5.3.0','/scripts/vendor/chart-4.5.1.umd.min.js','/scripts/pwa-update.js?v=20261028.2','/styles/fonts/dm-sans-latin-ext-wght-normal.woff2','/styles/fonts/dm-sans-latin-wght-normal.woff2','/styles/fonts/dm-mono-latin-ext-400-normal.woff2','/styles/fonts/dm-mono-latin-400-normal.woff2','/styles/fonts/dm-mono-latin-ext-500-normal.woff2','/styles/fonts/dm-mono-latin-500-normal.woff2');
 const SHELL = ['/index.html', ...BUILD_ASSETS];
 async function boundedFetch(request, ms = 8000) {
   const controller = new AbortController();
@@ -61,6 +62,7 @@ self.addEventListener('fetch', event => {
     } catch { return Response.error(); }
   })());
 });
+
 
 
 

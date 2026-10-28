@@ -4935,16 +4935,7 @@ function bindUiEvents() {
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', updateOnlineStatus);
 
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/service-worker.js', { scope: '/' })
-        .then(reg => {
-          console.log('[SW] Kayıtlı:', reg.scope);
-        })
-        .catch(err => console.warn('[SW] Kayıt hatası:', err));
-    });
-  }
+  window.FitPwaUpdates?.start();
 }
 
 async function checkAuthSession() {
@@ -5028,6 +5019,7 @@ window.deleteSleep = deleteSleep;
 window.deleteWorkout = deleteWorkout;
 
 init();
+
 
 
 
