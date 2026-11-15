@@ -58,7 +58,7 @@ test('monthly asset loads before app and is precached with versioned release ass
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../service-worker.js',import.meta.url),'utf8');
  assert.ok(html.indexOf('/scripts/monthly.js')<html.indexOf('/scripts/app.js'));
- for(const path of ['/scripts/monthly.js?v=20261028','/scripts/app.js?v=277.14-compare','/styles/main.css?v=178.1-compare']){assert.ok(html.includes(path));assert.ok(sw.includes(path));}
+ for(const path of ['/scripts/monthly.js?v=20261028','/scripts/app.js?v=278.0-sync','/styles/main.css?v=178.1-compare']){assert.ok(html.includes(path));assert.ok(sw.includes(path));}
  assert.ok(html.includes('id="monthlyOverview"'));assert.ok(html.includes('Haftalık detayları göster'));
  assert.ok(!source.includes('localStorage'));assert.ok(!source.includes('fetch('));
 });
