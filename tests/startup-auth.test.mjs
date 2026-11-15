@@ -26,11 +26,12 @@ test('verified SDK session opens local records; real null session opens login',a
  const signedOut=await check({timedOut:false,value:{data:{session:null}}});
  assert.equal(signedOut.shown,1);assert.equal(signedOut.continued,0);
 });
-test('required SDK is local, optional charts and fonts do not block startup',()=>{
+test('required SDK and font are local; no third-party script or font blocks startup',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  assert.ok(html.includes('/scripts/vendor/supabase-2.112.3.js'));
  assert.ok(!html.includes('https://cdn.jsdelivr.net/npm/@supabase'));
- assert.match(html,/<script[^>]+chart[^>]+async/);
+ assert.ok(!/cdn\.jsdelivr|fonts\.googleapis/.test(html));
+ assert.ok(html.includes('/fonts/dm-sans-latin-wght-normal.woff2'));
  assert.ok(html.includes('id="startup-shell"'));assert.ok(html.includes('id="startup-retry"'));
  const vendor=readFileSync(new URL('../scripts/vendor/supabase-2.112.3.js',import.meta.url),'utf8');
  assert.ok(vendor.length>100000);assert.ok(!vendor.startsWith('<!doctype'));
