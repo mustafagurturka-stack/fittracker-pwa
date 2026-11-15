@@ -232,3 +232,35 @@ test('başka cihazda eklenen kayıt gelir, bekleyen yerel değişiklik ezilmez',
   await web.sync();
   assert.equal(web.state.sleep[0].hours, 6);
 });
+
+test('atlanan tartı diğer cihaza gider; geri alma da senkronlanır', async () => {
+  const cloud = createCloud();
+  const web = createDevice(cloud, 'web');
+  const pwa = createDevice(cloud, 'pwa');
+  pwa.ctx.prompt = () => 'Şehir dışındayım';
+  pwa.run(`saveMeasurementLocally(${JSON.stringify(measurement)})`);
+  await pwa.sync();
+  // 15 Kas tartısını atla
+  pwa.run(`document.getElementById = id => id === 'measureDateInput' ? { value: '2026-11-15' } : null;`);
+  await pwa.run('skipMeasurementForSelectedDate()');
+  await pwa.sync();
+  await web.sync();
+  assert.equal(web.run('getSkippedMeasurements().map(s => s.date).join()'), '2026-11-15');
+  await web.run(`unskipMeasurement('2026-11-15')`);
+  await web.sync();
+  await pwa.sync();
+  assert.equal(pwa.run('getSkippedMeasurements().length'), 0);
+});
+
+test('eski sürümde yalnız cihazda kalan atlama bir kez buluta taşınır', async () => {
+  const cloud = createCloud();
+  const pwa = createDevice(cloud, 'pwa');
+  const web = createDevice(cloud, 'web');
+  cloud.tables.app_profiles.push({ user_id: USER, name: 'M', start_date: '2026-08-02', preferences: { measureReminder: true, dailyReminder: false } });
+  pwa.run(`state.skippedMeasurements = [{ date: '2026-11-15', reason: 'Seyahat' }];`);
+  await pwa.sync(); // profil okunur, taşınması gerektiği anlaşılır
+  await pwa.sync(); // gönderilir
+  assert.equal(cloud.tables.app_profiles[0].preferences.skippedMeasurements.length, 1);
+  await web.sync();
+  assert.equal(web.run('getSkippedMeasurements().length'), 1);
+});
