@@ -21,7 +21,7 @@
   <title>FitTracker Pro</title>
 
   <link rel="preload" href="/fonts/dm-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/styles/main.css?v=300.1-mobil" />
+  <link rel="stylesheet" href="/styles/main.css?v=301.0-canli" />
 </head>
 <body>
 <section id="startup-shell" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:99999;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:#f6f7f8;color:#243444;font:16px system-ui,sans-serif">
@@ -153,8 +153,10 @@
             </select>
           </label>
         </div>
-        <label>Program
-          <select id="workoutTypeInput">
+        <div class="label-row"><label for="workoutTypeInput">Antrenman</label><button type="button" class="link-btn" id="workoutListToggle" aria-expanded="false" aria-controls="workoutListEditor">Listeyi düzenle</button></div>
+        <div class="list-editor" id="workoutListEditor" hidden></div>
+        <label class="sr-label">
+          <select id="workoutTypeInput" aria-label="Antrenman">
             <option value="A - Upper Body Focus">A - Upper Body Focus</option>
             <option value="B - Lower Body &amp; Core">B - Lower Body &amp; Core</option>
             <option value="C - Hypertrophy &amp; Pumping">C - Hypertrophy &amp; Pumping</option>
@@ -271,7 +273,7 @@
 </div>
 
   <script src="/scripts/vendor/supabase-2.112.3.js" defer></script>
-  <script src="/scripts/app.js?v=300.1-mobil" defer></script>
+  <script src="/scripts/app.js?v=301.0-canli" defer></script>
 </body>
 </html>
 

@@ -104,6 +104,8 @@ let state = {
   startWaist: null,
   measurements: [],
   skippedMeasurements: [],
+  workoutCatalog: null,
+  workoutRenames: {},
   weights: [],
   nutrition: [],
   workouts: [],
@@ -187,6 +189,25 @@ function markPendingSync(type, key) {
   if (!bucketName) return;
   const bucket = syncMeta[bucketName];
   if (!bucket.includes(key)) bucket.push(key);
+  pendingRevisions.set(`${type}:${key}`, pendingRevision(type, key) + 1);
+}
+
+// Gönderim sürerken aynı kayıt yeniden değişirse, eski gönderimin başarısı yeni
+// değişikliği "gönderildi" saymasın: her değişiklik bir sürüm numarası artırır.
+const pendingRevisions = new Map();
+let profileRevision = 0;
+
+function pendingRevision(type, key) {
+  return pendingRevisions.get(`${type}:${key}`) || 0;
+}
+
+function clearPendingSyncIfUnchanged(type, key, revision) {
+  if (pendingRevision(type, key) === revision) clearPendingSync(type, key);
+}
+
+function markProfileDirty() {
+  profileRevision += 1;
+  ensureSyncMeta().pendingProfile = true;
 }
 
 const PENDING_BUCKETS = {
@@ -370,9 +391,72 @@ function releaseMobileInputFocus() {
   }, 60);
 }
 
+// Kullanıcının antrenman listesi (profil tercihleriyle senkronlanır). Yoksa varsayılan liste.
+// Yeniden adlandırma geçmiş kayıtlara dokunmaz; eski ad yalnız görünümde yeni ada eşlenir.
+function getWorkoutCatalog() {
+  const custom = state.workoutCatalog;
+  const valid = custom && typeof custom === 'object' && ['Kuvvet', 'Kardiyo'].every(key => Array.isArray(custom[key]));
+  return valid ? custom : WORKOUT_CATALOG;
+}
+
+function getWorkoutRenames() {
+  return state.workoutRenames && typeof state.workoutRenames === 'object' ? state.workoutRenames : {};
+}
+
+function cloneCatalog() {
+  const current = getWorkoutCatalog();
+  return { Kuvvet: [...current.Kuvvet], Kardiyo: [...current.Kardiyo] };
+}
+
+function commitWorkoutCatalog(catalog, renames = getWorkoutRenames()) {
+  state.workoutCatalog = catalog;
+  state.workoutRenames = renames;
+  markProfileDirty();
+  stateSave();
+  updateWorkoutTypes();
+  renderAll();
+  void requestSync();
+}
+
+function addWorkoutType(category, rawName) {
+  const name = String(rawName || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (!name) return 'Antrenman adı boş olamaz.';
+  const catalog = cloneCatalog();
+  const all = [...catalog.Kuvvet, ...catalog.Kardiyo].map(item => item.toLocaleLowerCase('tr-TR'));
+  if (all.includes(name.toLocaleLowerCase('tr-TR'))) return 'Bu isim listede zaten var.';
+  catalog[category] = [...(catalog[category] || []), name];
+  commitWorkoutCatalog(catalog);
+  return '';
+}
+
+function renameWorkoutType(category, oldName, rawName) {
+  const name = String(rawName || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (!name || name === oldName) return '';
+  const catalog = cloneCatalog();
+  const others = [...catalog.Kuvvet, ...catalog.Kardiyo].filter(item => item !== oldName).map(item => item.toLocaleLowerCase('tr-TR'));
+  if (others.includes(name.toLocaleLowerCase('tr-TR'))) return 'Bu isim listede zaten var.';
+  catalog[category] = catalog[category].map(item => (item === oldName ? name : item));
+  // Eski adla girilmiş kayıtlar yeni adla görünsün; zincirleme adlandırmalar da güncellenir.
+  const renames = { ...getWorkoutRenames() };
+  Object.keys(renames).forEach(key => { if (renames[key] === oldName) renames[key] = name; });
+  renames[oldName] = name;
+  delete renames[name];
+  commitWorkoutCatalog(catalog, renames);
+  return '';
+}
+
+function removeWorkoutType(category, name) {
+  const catalog = cloneCatalog();
+  if (catalog[category].length <= 1) return 'Her türde en az bir antrenman kalmalı.';
+  catalog[category] = catalog[category].filter(item => item !== name);
+  commitWorkoutCatalog(catalog);
+  return '';
+}
+
 function getWorkoutCategory(type) {
-  return Object.entries(WORKOUT_CATALOG)
-    .find(([, items]) => items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
+  const name = getWorkoutTypeName(type);
+  return Object.entries(getWorkoutCatalog())
+    .find(([, items]) => items.includes(name) || items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
 }
 
 function updateWorkoutTypes() {
@@ -380,10 +464,11 @@ function updateWorkoutTypes() {
   const typeInput = document.getElementById('workoutTypeInput');
   if (!categoryInput || !typeInput) return;
 
-  const items = WORKOUT_CATALOG[categoryInput.value] || WORKOUT_CATALOG.Kuvvet;
+  const catalog = getWorkoutCatalog();
+  const items = catalog[categoryInput.value] || catalog.Kuvvet;
   const current = typeInput.value;
   typeInput.innerHTML = items
-    .map(item => `<option value="${item}">${item}</option>`)
+    .map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`)
     .join('');
 
   if (items.includes(current)) {
@@ -1244,7 +1329,8 @@ function getWeeklyProgressData() {
 
 function getWorkoutTypeName(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
-  return WORKOUT_TYPE_LABELS[cleanType] || cleanType;
+  const base = WORKOUT_TYPE_LABELS[cleanType] || cleanType;
+  return getWorkoutRenames()[base] || getWorkoutRenames()[cleanType] || base;
 }
 
 function getWorkoutDisplayType(item = {}) {
@@ -1390,7 +1476,7 @@ let entryTab = 'workout';
 let showAllRecent = false;
 let showAllWeights = false;
 let showAllWeeks = false;
-const COLLAPSED_ROWS = 5;
+const COLLAPSED_ROWS = 3;
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -1856,7 +1942,9 @@ function renderRecentEntries() {
         : `deleteNote(${item.stateIndex})`;
     const edit = item.kind === 'workout'
       ? `<button type="button" class="icon-only" onclick="editWorkout(${item.sortedIndex})" aria-label="Antrenmanı düzenle">${icon('edit', 18)}</button>`
-      : '';
+      : item.kind === 'sleep'
+        ? `<button type="button" class="icon-only" onclick="editSleep(${item.sortedIndex})" aria-label="Uyku saatini düzenle">${icon('edit', 18)}</button>`
+        : '';
     return `
       <div class="row">
         <span class="row-dot ${item.kind}" aria-hidden="true"></span>
@@ -1865,6 +1953,11 @@ function renderRecentEntries() {
         <button type="button" class="icon-only" onclick="${del}" aria-label="${kindLabel[item.kind]} kaydını sil">${icon('close', 16)}</button>
       </div>`;
   }).join('');
+}
+
+function isoToDayNumber(iso) {
+  const parts = parseIsoDateParts(iso);
+  return parts ? Date.UTC(parts.year, parts.month - 1, parts.day) / 86400000 : 0;
 }
 
 function renderWeightChart() {
@@ -1876,30 +1969,72 @@ function renderWeightChart() {
     el.innerHTML = '<p class="empty">Grafik için en az iki ölçüm gerekiyor.</p>';
     return;
   }
-  const W = 640, H = 220, padX = 12, padTop = 14, padBottom = 14;
+
+  // Gerçek piksel genişliğinde çizilir: web'de esnemez, yazılar okunur kalır.
+  const W = Math.max(280, Math.round((el.clientWidth || 340) - 32));
+  const H = W > 600 ? 260 : 220;
+  const left = 40, right = 16, top = 20, bottom = 28;
   const values = data.map(item => Number(item.weight));
   const goal = Number(weight.goal);
-  const lo = Math.floor(Math.min(...values, Number.isFinite(goal) ? goal : Infinity) - 1);
-  const hi = Math.ceil(Math.max(...values) + 1);
-  const x = i => padX + (i * (W - padX * 2)) / (data.length - 1);
-  const y = v => padTop + ((hi - v) / (hi - lo)) * (H - padTop - padBottom);
-  const points = data.map((item, i) => `${x(i).toFixed(1)},${y(Number(item.weight)).toFixed(1)}`).join(' ');
-  const area = `${x(0).toFixed(1)},${H - padBottom} ${points} ${x(data.length - 1).toFixed(1)},${H - padBottom}`;
-  const goalY = Number.isFinite(goal) && goal >= lo ? y(goal) : null;
-  const lastPoint = data.at(-1);
+  const showGoal = Number.isFinite(goal) && goal < Math.min(...values) + 0.01 && Math.min(...values) - goal <= 8;
+  const lo = Math.floor(Math.min(...values, showGoal ? goal : Infinity) - 0.5);
+  const hi = Math.ceil(Math.max(...values) + 0.5);
+  const step = hi - lo > 8 ? 2 : 1;
+  const d0 = isoToDayNumber(data[0].date);
+  const d1 = isoToDayNumber(data.at(-1).date);
+  const x = iso => left + ((isoToDayNumber(iso) - d0) / Math.max(1, d1 - d0)) * (W - left - right);
+  const y = v => top + ((hi - v) / (hi - lo)) * (H - top - bottom);
+
+  const grid = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    grid.push(`<line class="chart-grid" x1="${left}" x2="${W - right}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="chart-label" x="${left - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${v}</text>`);
+  }
+  const months = [];
+  const startParts = parseIsoDateParts(data[0].date);
+  for (let m = 0; m < 24; m += 1) {
+    const date = new Date(startParts.year, startParts.month - 1 + m, 1);
+    const iso = toLocalIsoDate(date);
+    if (iso > data.at(-1).date) break;
+    if (iso < data[0].date) {
+      // Başlangıç ayı ilk ölçümün altında etiketlenir (ör. 2 Ağu → "Ağu").
+      if (m === 0) months.push(`<text class="chart-label" x="${left}" y="${H - 8}" text-anchor="start">${date.toLocaleDateString('tr-TR', { month: 'short' })}</text>`);
+      continue;
+    }
+    months.push(`<line class="chart-grid" x1="${x(iso).toFixed(1)}" x2="${x(iso).toFixed(1)}" y1="${top}" y2="${H - bottom}"/><text class="chart-label" x="${x(iso).toFixed(1)}" y="${H - 8}" text-anchor="middle">${date.toLocaleDateString('tr-TR', { month: 'short' })}</text>`);
+  }
+
+  const points = data.map(item => `${x(item.date).toFixed(1)},${y(Number(item.weight)).toFixed(1)}`).join(' ');
+  const area = `${x(data[0].date).toFixed(1)},${H - bottom} ${points} ${x(data.at(-1).date).toFixed(1)},${H - bottom}`;
+  const last = data.at(-1);
+  const lowest = data.reduce((min, item) => (Number(item.weight) < Number(min.weight) ? item : min), data[0]);
+  const lastX = x(last.date), lastY = y(Number(last.weight));
+  const goalY = showGoal ? y(goal) : null;
+
+  const fourWeeksAgo = shiftIsoDate(last.date, -28);
+  const ref = [...data].reverse().find(item => item.date <= fourWeeksAgo);
+  const recent = ref ? Number(last.weight) - Number(ref.weight) : null;
+  const recentTone = recent === null ? '' : recent < 0 ? 'good-text' : recent > 0 ? 'bad-text' : '';
+
   el.innerHTML = `
     <div class="card-head">
       <h2>Kilo trendi</h2>
-      <span class="${weight.lost > 0 ? 'good-text' : 'muted-text'}"><b>${trNum(weight.first.weight)} → ${trNum(lastPoint.weight)} kg</b></span>
+      <span class="${weight.lost > 0 ? 'good-text' : 'muted-text'}"><b>${trNum(weight.first.weight)} → ${trNum(last.weight)} kg</b></span>
     </div>
-    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${formatShortDate(data[0].date)} ${trNum(data[0].weight)} kg'dan ${formatShortDate(lastPoint.date)} ${trNum(lastPoint.weight)} kg'a kilo grafiği">
-      ${goalY !== null ? `<line class="chart-goal" x1="0" x2="${W}" y1="${goalY.toFixed(1)}" y2="${goalY.toFixed(1)}"/>` : ''}
+    <svg class="chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${formatShortDate(data[0].date)} ${trNum(data[0].weight)} kg'dan ${formatShortDate(last.date)} ${trNum(last.weight)} kg'a kilo grafiği">
+      ${grid.join('')}${months.join('')}
+      ${goalY !== null ? `<line class="chart-goal" x1="${left}" x2="${W - right}" y1="${goalY.toFixed(1)}" y2="${goalY.toFixed(1)}"/><text class="chart-goal-label" x="${W - right}" y="${(goalY - 6).toFixed(1)}" text-anchor="end">Ara hedef ${trNum(goal)}</text>` : ''}
       <polygon class="chart-area" points="${area}"/>
       <polyline class="chart-line" points="${points}"/>
-      ${data.map((item, i) => `<circle class="chart-dot" cx="${x(i).toFixed(1)}" cy="${y(Number(item.weight)).toFixed(1)}" r="4"/>`).join('')}
+      ${data.map(item => `<circle class="chart-dot" cx="${x(item.date).toFixed(1)}" cy="${y(Number(item.weight)).toFixed(1)}" r="3.5"><title>${formatShortDate(item.date)} · ${trNum(item.weight)} kg</title></circle>`).join('')}
+      ${lowest !== last ? `<text class="chart-note" x="${x(lowest.date).toFixed(1)}" y="${(y(Number(lowest.weight)) + 18).toFixed(1)}" text-anchor="middle">en düşük ${trNum(lowest.weight)}</text>` : ''}
+      <circle class="chart-last" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="6"/>
+      <text class="chart-value" x="${(lastX - 10).toFixed(1)}" y="${(lastY - 12).toFixed(1)}" text-anchor="end">${trNum(last.weight)} kg</text>
     </svg>
-    <div class="chart-axis"><span>${formatShortDate(data[0].date)}</span><span>${formatShortDate(lastPoint.date)}</span></div>
-    ${goalY !== null ? `<p class="muted-text small">Kesikli çizgi: ara hedef ${trNum(goal)} kg</p>` : ''}`;
+    <div class="trio chart-stats">
+      <div class="tile"><span class="label">Son 4 hafta</span><strong class="${recentTone}">${recent === null ? '—' : `${signedTr(recent)} kg`}</strong></div>
+      <div class="tile"><span class="label">En düşük</span><strong>${trNum(lowest.weight)} kg</strong><small>${formatShortDate(lowest.date)}</small></div>
+      <div class="tile"><span class="label">Hedefe</span><strong>${weight.left > 0 ? `${trNum(weight.left)} kg` : 'Ulaştın'}</strong><small>${trNum(weight.goal)} kg ara hedef</small></div>
+    </div>`;
 }
 
 function renderProgressWeek() {
@@ -1993,6 +2128,65 @@ function renderProgressTable() {
   });
 }
 
+let workoutListOpen = false;
+
+function renderWorkoutListEditor() {
+  const el = document.getElementById('workoutListEditor');
+  const toggle = document.getElementById('workoutListToggle');
+  if (!el) return;
+  el.hidden = !workoutListOpen;
+  if (toggle) {
+    toggle.textContent = workoutListOpen ? 'Bitti' : 'Listeyi düzenle';
+    toggle.setAttribute('aria-expanded', String(workoutListOpen));
+  }
+  if (!workoutListOpen) return;
+  const catalog = getWorkoutCatalog();
+  el.innerHTML = ['Kuvvet', 'Kardiyo'].map(category => `
+    <div class="list-editor-group">
+      <h3>${category}</h3>
+      ${catalog[category].map(name => `
+        <div class="list-editor-row">
+          <span>${escapeHtml(name)}</span>
+          <button type="button" class="icon-only" data-wl-rename="${escapeHtml(name)}" data-wl-cat="${category}" aria-label="${escapeHtml(name)} adını değiştir">${icon('edit', 18)}</button>
+          <button type="button" class="icon-only" data-wl-remove="${escapeHtml(name)}" data-wl-cat="${category}" aria-label="${escapeHtml(name)} listeden kaldır">${icon('close', 16)}</button>
+        </div>`).join('')}
+      <div class="list-editor-add">
+        <input type="text" maxlength="60" placeholder="Yeni ${category.toLocaleLowerCase('tr-TR')} antrenmanı" data-wl-input="${category}" aria-label="Yeni ${category} antrenmanı adı" />
+        <button type="button" class="btn small primary" data-wl-add="${category}">Ekle</button>
+      </div>
+    </div>`).join('') + '<p class="hint">Ad değişikliği geçmiş kayıtları silmez; eski kayıtlar yeni adla görünür. Listeden kaldırmak geçmişi etkilemez.</p>';
+
+  const report = message => { if (message) alert(message); };
+  el.querySelectorAll('[data-wl-add]').forEach(btn => btn.addEventListener('click', () => {
+    const input = el.querySelector(`[data-wl-input="${btn.dataset.wlAdd}"]`);
+    const message = addWorkoutType(btn.dataset.wlAdd, input?.value);
+    report(message);
+    if (!message) {
+      const category = document.getElementById('workoutCategoryInput');
+      const type = document.getElementById('workoutTypeInput');
+      if (category && type) {
+        category.value = btn.dataset.wlAdd;
+        updateWorkoutTypes();
+        type.value = String(input.value).trim().replace(/\s+/g, ' ');
+        updateWorkoutDistanceField();
+        updateWorkoutGuidance();
+      }
+    }
+  }));
+  el.querySelectorAll('[data-wl-input]').forEach(input => input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); el.querySelector(`[data-wl-add="${input.dataset.wlInput}"]`)?.click(); }
+  }));
+  el.querySelectorAll('[data-wl-rename]').forEach(btn => btn.addEventListener('click', () => {
+    const next = prompt('Yeni ad:', btn.dataset.wlRename);
+    if (next === null) return;
+    report(renameWorkoutType(btn.dataset.wlCat, btn.dataset.wlRename, next));
+  }));
+  el.querySelectorAll('[data-wl-remove]').forEach(btn => btn.addEventListener('click', () => {
+    if (!confirm(`"${btn.dataset.wlRemove}" listeden kaldırılsın mı? Geçmiş kayıtlar silinmez.`)) return;
+    report(removeWorkoutType(btn.dataset.wlCat, btn.dataset.wlRemove));
+  }));
+}
+
 function renderProgress() {
   renderWeightChart();
   renderProgressWeek();
@@ -2010,6 +2204,8 @@ function renderAll() {
     renderWeightList,
     renderEntryTabs,
     renderRecentEntries,
+    renderWorkoutListEditor,
+    updateWorkoutTypes,
     updateWorkoutGuidance,
     renderProgress,
     renderSettings,
@@ -2040,18 +2236,21 @@ function getProfileCloudPayload() {
       dailyReminder: state.preferences?.dailyReminder ?? false,
       // Atlanan tartılar da profille senkronlanır; web ve PWA aynı "sıradaki tartı"yı görür.
       skippedMeasurements: getSkippedMeasurements().map(item => ({ date: item.date, reason: item.reason || '' })),
+      workoutCatalog: state.workoutCatalog || null,
+      workoutRenames: getWorkoutRenames(),
     },
     updated_at: new Date().toISOString(),
   };
 }
 
 async function saveProfileToSupabase() {
+  const revision = profileRevision;
   const { error } = await db
     .from('app_profiles')
     .upsert(getProfileCloudPayload(), { onConflict: 'user_id' });
 
   if (error) throw error;
-  ensureSyncMeta().pendingProfile = false;
+  if (revision === profileRevision) ensureSyncMeta().pendingProfile = false;
   stateSave();
 }
 
@@ -2065,7 +2264,7 @@ async function loadProfileFromSupabase() {
   if (error) throw error;
 
   if (!data) {
-    ensureSyncMeta().pendingProfile = true;
+    markProfileDirty();
     stateSave();
     return;
   }
@@ -2090,6 +2289,12 @@ async function loadProfileFromSupabase() {
       measureReminder: data.preferences.measureReminder ?? true,
       dailyReminder: data.preferences.dailyReminder ?? false,
     };
+    if (!localHasPendingProfile && data.preferences.workoutCatalog && typeof data.preferences.workoutCatalog === 'object') {
+      state.workoutCatalog = data.preferences.workoutCatalog;
+      state.workoutRenames = data.preferences.workoutRenames && typeof data.preferences.workoutRenames === 'object'
+        ? data.preferences.workoutRenames
+        : {};
+    }
     if (Array.isArray(data.preferences.skippedMeasurements)) {
       if (!localHasPendingProfile) {
         state.skippedMeasurements = data.preferences.skippedMeasurements
@@ -2280,6 +2485,7 @@ async function pushLocalPendingToSupabase() {
     .filter(item => pendingMeasurementDates.has(item.date));
   for (const item of measurements) {
     if (isRecordDeleted('measurements', item)) { clearPendingSync('measurements', item.date); continue; }
+    const revision = pendingRevision('measurements', item.date);
     const { error } = await runSyncStage('Ölçüm gönderme', () => saveMeasurementToSupabase({
       user_id: getUserId(),
       date: item.date,
@@ -2287,7 +2493,7 @@ async function pushLocalPendingToSupabase() {
       waist: parseWaist(item.waist),
     }));
     if (error) throw new Error(`Ölçüm gönderme: ${getSyncErrorMessage(error)}`);
-    clearPendingSync('measurements', item.date);
+    clearPendingSyncIfUnchanged('measurements', item.date, revision);
   }
 
   const pendingSleepDates = new Set(syncMeta.pendingSleep);
@@ -2295,13 +2501,14 @@ async function pushLocalPendingToSupabase() {
     .filter(item => pendingSleepDates.has(item.date));
   for (const item of sleepItems) {
     if (isRecordDeleted('sleep', item)) { clearPendingSync('sleep', item.date); continue; }
+    const revision = pendingRevision('sleep', item.date);
     const { error } = await runSyncStage('Uyku kaydı gönderme', () => saveSleepToSupabase({
       user_id: getUserId(),
       date: item.date,
       hours: Number(item.hours || 0),
     }));
     if (error) throw new Error(`Uyku kaydı gönderme: ${getSyncErrorMessage(error)}`);
-    clearPendingSync('sleep', item.date);
+    clearPendingSyncIfUnchanged('sleep', item.date, revision);
   }
 
   // Antrenman ve notlar cihazda üretilen kimlikle "upsert" edilir: yanıt telefona
@@ -2319,9 +2526,10 @@ async function pushLocalPendingToSupabase() {
         markPendingSync(type, item.id);
         stateSave();
       }
+      const revision = pendingRevision(type, item.id);
       const { error } = await db.from(table).upsert({ id: item.id, user_id: getUserId(), ...toRow(item) }, { onConflict: 'id' });
       if (error) throw error;
-      clearPendingSync(type, item.id);
+      clearPendingSyncIfUnchanged(type, item.id, revision);
     }
   };
 
@@ -2440,7 +2648,7 @@ function saveMeasurementLocally(payload) {
   if (!Array.isArray(state.measurements)) state.measurements = [];
   if (getSkippedMeasurements().some(item => item.date === payload.date)) {
     state.skippedMeasurements = getSkippedMeasurements().filter(item => item.date !== payload.date);
-    ensureSyncMeta().pendingProfile = true;
+    markProfileDirty();
   }
   unmarkRecordDeleted('measurements', payload);
   markPendingSync('measurements', payload.date);
@@ -2489,7 +2697,7 @@ function skipMeasurementForSelectedDate() {
     },
   ].sort((a, b) => a.date.localeCompare(b.date));
 
-  ensureSyncMeta().pendingProfile = true;
+  markProfileDirty();
   stateSave();
   renderAll();
   setStatus('Ölçüm atlandı olarak işaretlendi', 'ok');
@@ -2499,7 +2707,7 @@ function skipMeasurementForSelectedDate() {
 function unskipMeasurement(date) {
   if (!getSkippedMeasurements().some(item => item.date === date)) return;
   state.skippedMeasurements = getSkippedMeasurements().filter(item => item.date !== date);
-  ensureSyncMeta().pendingProfile = true;
+  markProfileDirty();
   stateSave();
   renderAll();
   syncMeasureFormDate(true);
@@ -2682,6 +2890,30 @@ async function deleteNote(index) {
   await requestSync();
 }
 
+async function editSleep(sortedIdx) {
+  const sorted = [...(state.sleep || [])]
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const target = sorted[sortedIdx];
+  if (!target) return;
+
+  const input = prompt(`${formatShortDate(target.date)} gecesi kaç saat uyudun?`, formatDecimal(target.hours));
+  if (input === null) return;
+  const hours = parseLocaleNumber(input);
+  if (!hours || hours <= 0 || hours > 16) {
+    alert('Geçerli bir uyku saati gir (0–16).');
+    return;
+  }
+
+  state.sleep[target.originalIndex] = { ...state.sleep[target.originalIndex], hours: parseFloat(hours.toFixed(1)) };
+  // Uyku günde tek kayıt: aynı tarih bulutta güncellenir (upsert).
+  markPendingSync('sleep', target.date);
+  stateSave();
+  renderAll();
+  setStatus('Uyku saati güncellendi ✓', 'ok');
+  await requestSync();
+}
+
 async function deleteSleep(sortedIdx) {
   if (!confirm('Bu uyku kaydını silmek istediğinden emin misin?')) return;
 
@@ -2761,7 +2993,7 @@ async function saveWorkout() {
 
   const date = dateInput.value || today();
   const category = categoryInput ? categoryInput.value : getWorkoutCategory(typeInput.value);
-  const catalogItems = WORKOUT_CATALOG[category] || WORKOUT_CATALOG.Kuvvet;
+  const catalogItems = getWorkoutCatalog()[category] || getWorkoutCatalog().Kuvvet;
   const type = catalogItems.includes(typeInput.value) ? typeInput.value : catalogItems[0];
   const intensity = intensityInput ? intensityInput.value : 'Orta';
   const duration = parseLocaleNumber(durationInput.value);
@@ -2872,7 +3104,7 @@ function editName() {
   if (!newName) return;
 
   state.name = newName.trim();
-  ensureSyncMeta().pendingProfile = true;
+  markProfileDirty();
   stateSave();
   renderAll();
   if (canUseCloud()) {
@@ -2914,7 +3146,7 @@ function editGoals() {
   state.startWaist = parseFloat(startWaist.toFixed(1));
   state.goalWeight = parseFloat(finalGoal.toFixed(1));
   state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
-  ensureSyncMeta().pendingProfile = true;
+  markProfileDirty();
 
   stateSave();
   renderAll();
@@ -2931,7 +3163,7 @@ function updatePreference(key, value) {
     ...(state.preferences || {}),
     [key]: Boolean(value),
   };
-  ensureSyncMeta().pendingProfile = true;
+  markProfileDirty();
   stateSave();
   renderSettings();
   if (canUseCloud()) {
@@ -3307,7 +3539,7 @@ async function completeOnboarding() {
   state.startWaist = parseFloat(startWaist.toFixed(1));
   state.goalWeight = parseFloat(goalWeight.toFixed(1));
   state.milestones = [parseFloat(firstGoal.toFixed(1)), state.goalWeight];
-  ensureSyncMeta().pendingProfile = true;
+  markProfileDirty();
   state.measurements = [];
   state.skippedMeasurements = [];
   state.sleep = [];
@@ -3500,6 +3732,22 @@ function bindUiEvents() {
   document.querySelectorAll('[data-entry-tab]').forEach(btn => {
     btn.addEventListener('click', () => setEntryTab(btn.dataset.entryTab));
   });
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      if (document.getElementById('pProgress')?.classList.contains('active')) renderWeightChart();
+    }, 150);
+  });
+
+  const workoutListToggle = document.getElementById('workoutListToggle');
+  if (workoutListToggle) {
+    workoutListToggle.addEventListener('click', () => {
+      workoutListOpen = !workoutListOpen;
+      renderWorkoutListEditor();
+    });
+  }
 
   const recentToggle = document.getElementById('recentToggle');
   if (recentToggle) {
