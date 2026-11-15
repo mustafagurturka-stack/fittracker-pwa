@@ -382,6 +382,21 @@ input, select, textarea {
   font-weight: 600;
 }
 textarea { padding: 12px; min-height: 96px; resize: vertical; font-weight: 500; line-height: 1.4; }
+/* iPhone Safari tarih kutusuna kendi minimum genişliğini verir; kutu yanındaki alanın üstüne taşar.
+   Görünümü sıfırlayıp ızgara hücresine sığmaya zorluyoruz. */
+.form label, .field-grid > * { min-width: 0; }
+input, select { min-width: 0; max-width: 100%; }
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  height: 48px;
+  line-height: 48px;
+  text-align: left;
+}
+input[type='date']::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type='date']::-webkit-calendar-picker-indicator { margin-left: auto; }
+select { -webkit-appearance: none; appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
 input:disabled { opacity: 0.5; }
 input[type='checkbox'] { width: auto; min-height: 0; }
 .hint { font-size: 13px; color: var(--muted); }
@@ -451,6 +466,8 @@ input[type='checkbox'] { width: auto; min-height: 0; }
 .row-main strong { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
 .row-main small { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .row-spacer { width: 44px; flex-shrink: 0; }
+.chip-btn { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--accent); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.more-btn { width: 100%; min-height: 48px; border: none; border-top: 1px solid var(--line); background: transparent; color: var(--accent); font-size: 14px; font-weight: 700; }
 .row-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
 .row-dot.sleep { background: var(--sleep); }
 .row-dot.workout { background: var(--accent); }

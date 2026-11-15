@@ -621,9 +621,14 @@ function setStatus(msg, cls = '') {
   const text = document.getElementById('statusText');
   if (!bar || !text) return;
 
-  const shouldShow = cls === 'error' || !['Hazır', 'Senkron aktif'].includes(msg);
+  const shouldShow = cls === 'error' || !['Hazır', 'Senkron aktif', 'Senkron tamamlandı', 'Çevrimiçi'].includes(msg);
   bar.className = `status-bar ${cls}${shouldShow ? ' visible' : ''}`;
   text.textContent = msg;
+  // Bilgi mesajları kısa süre görünür; yalnız hatalar ekranda kalır.
+  window.clearTimeout(setStatus.hideTimer);
+  if (shouldShow && cls !== 'error') {
+    setStatus.hideTimer = window.setTimeout(() => bar.classList.remove('visible'), 2500);
+  }
 }
 
 function clearInitialLoadingStatus() {
@@ -1383,6 +1388,9 @@ function renderSettings() {
 // ─────────────────────────────────────────────────────────────
 let entryTab = 'workout';
 let showAllRecent = false;
+let showAllWeights = false;
+let showAllWeeks = false;
+const COLLAPSED_ROWS = 5;
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -1753,9 +1761,10 @@ function renderWeightList() {
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   empty.hidden = rows.length > 0;
-  list.innerHTML = rows.map(m => {
+  const visibleRows = showAllWeights ? rows : rows.slice(0, COLLAPSED_ROWS);
+  list.innerHTML = visibleRows.map(m => {
     if (m.isSkipped) {
-      return `<div class="row"><span class="row-date">${formatShortDate(m.date)}</span><span class="row-main"><strong>Atlandı</strong><small>${escapeHtml(m.reason || 'Tartıya erişim yok')}</small></span><span class="chip">—</span><span class="row-spacer"></span></div>`;
+      return `<div class="row"><span class="row-date">${formatShortDate(m.date)}</span><span class="row-main"><strong>Atlandı</strong><small>${escapeHtml(m.reason || 'Tartıya erişim yok')}</small></span><button type="button" class="chip-btn" data-unskip="${m.date}">Geri al</button><span class="row-spacer"></span></div>`;
     }
     const prev = summaryData.filter(item => item.date < m.date && Number.isFinite(Number(item.weight))).at(-1);
     const diff = prev ? Number(m.weight) - Number(prev.weight) : null;
@@ -1772,7 +1781,14 @@ function renderWeightList() {
         <span class="chip ${tone}">${rounded === null ? 'Başlangıç' : `${signedTr(rounded)} kg`}</span>
         ${deleteBtn}
       </div>`;
-  }).join('');
+  }).join('') + (rows.length > COLLAPSED_ROWS
+    ? `<button type="button" class="more-btn" data-toggle-weights>${showAllWeights ? 'Daha az göster' : `Tümünü göster (${rows.length})`}</button>`
+    : '');
+  list.querySelectorAll('[data-unskip]').forEach(btn => btn.addEventListener('click', () => unskipMeasurement(btn.dataset.unskip)));
+  list.querySelector('[data-toggle-weights]')?.addEventListener('click', () => {
+    showAllWeights = !showAllWeights;
+    renderWeightList();
+  });
 }
 
 function setEntryTab(tab) {
@@ -1821,13 +1837,11 @@ function renderRecentEntries() {
   ].filter(item => isTrackableActivityDate(item.date))
     .sort((a, b) => b.date.localeCompare(a.date) || a.kind.localeCompare(b.kind));
 
-  const cutoff = shiftIsoDate(today(), -7);
-  const visible = showAllRecent ? items : items.filter(item => item.date >= cutoff);
-  const shown = visible.length ? visible : items.slice(0, 5);
+  const shown = showAllRecent ? items : items.slice(0, COLLAPSED_ROWS);
 
   if (toggle) {
-    toggle.hidden = items.length <= shown.length && !showAllRecent;
-    toggle.textContent = showAllRecent ? 'Son 7 gün' : 'Tümü';
+    toggle.hidden = items.length <= COLLAPSED_ROWS;
+    toggle.textContent = showAllRecent ? 'Daha az' : `Tümü (${items.length})`;
   }
 
   if (!shown.length) {
@@ -1947,11 +1961,13 @@ function renderProgressTable() {
     el.innerHTML = '';
     return;
   }
+  const allWeeks = data;
+  const visibleWeeks = showAllWeeks ? allWeeks : allWeeks.slice(0, COLLAPSED_ROWS);
   el.innerHTML = `
-    <div class="card-head"><h2>Haftalar</h2><span class="muted-text">${data.length} hafta</span></div>
+    <div class="card-head"><h2>Haftalar</h2>${allWeeks.length > COLLAPSED_ROWS ? `<button type="button" class="link-btn" data-toggle-weeks>${showAllWeeks ? 'Daha az' : `Tümü (${allWeeks.length})`}</button>` : ''}</div>
     <div class="week-table" role="table" aria-label="Haftalık özet">
       <div class="week-row head" role="row"><span role="columnheader">Hafta</span><span role="columnheader">Uyku</span><span role="columnheader">Antrenman</span><span role="columnheader">Durum</span></div>
-      ${data.map(week => {
+      ${visibleWeeks.map(week => {
         const totals = getRangeTotals(week);
         const status = getWeekStatus(totals);
         return `
@@ -1963,6 +1979,10 @@ function renderProgressTable() {
           </button>`;
       }).join('')}
     </div>`;
+  el.querySelector('[data-toggle-weeks]')?.addEventListener('click', () => {
+    showAllWeeks = !showAllWeeks;
+    renderProgressTable();
+  });
   el.querySelectorAll('[data-week-start]').forEach(btn => {
     btn.addEventListener('click', () => {
       progressWeekStart = btn.dataset.weekStart;
@@ -2018,6 +2038,8 @@ function getProfileCloudPayload() {
     preferences: {
       measureReminder: state.preferences?.measureReminder ?? true,
       dailyReminder: state.preferences?.dailyReminder ?? false,
+      // Atlanan tartılar da profille senkronlanır; web ve PWA aynı "sıradaki tartı"yı görür.
+      skippedMeasurements: getSkippedMeasurements().map(item => ({ date: item.date, reason: item.reason || '' })),
     },
     updated_at: new Date().toISOString(),
   };
@@ -2061,14 +2083,26 @@ async function loadProfileFromSupabase() {
     state.milestones = [firstGoal, finalGoal];
   }
 
+  const localHasPendingProfile = ensureSyncMeta().pendingProfile;
+  let needsProfilePush = false;
   if (data.preferences && typeof data.preferences === 'object') {
     state.preferences = {
       measureReminder: data.preferences.measureReminder ?? true,
       dailyReminder: data.preferences.dailyReminder ?? false,
     };
+    if (Array.isArray(data.preferences.skippedMeasurements)) {
+      if (!localHasPendingProfile) {
+        state.skippedMeasurements = data.preferences.skippedMeasurements
+          .filter(item => item?.date)
+          .map(item => ({ date: item.date, reason: item.reason || '' }));
+      }
+    } else if (getSkippedMeasurements().length) {
+      // Eski sürümde yalnız bu cihazda tutulan atlamalar bir kez buluta taşınır.
+      needsProfilePush = true;
+    }
   }
 
-  ensureSyncMeta().pendingProfile = false;
+  ensureSyncMeta().pendingProfile = localHasPendingProfile || needsProfilePush;
   stateSave();
   renderAll();
 }
@@ -2404,7 +2438,10 @@ async function saveMeasurementToSupabase(payload) {
 
 function saveMeasurementLocally(payload) {
   if (!Array.isArray(state.measurements)) state.measurements = [];
-  state.skippedMeasurements = getSkippedMeasurements().filter(item => item.date !== payload.date);
+  if (getSkippedMeasurements().some(item => item.date === payload.date)) {
+    state.skippedMeasurements = getSkippedMeasurements().filter(item => item.date !== payload.date);
+    ensureSyncMeta().pendingProfile = true;
+  }
   unmarkRecordDeleted('measurements', payload);
   markPendingSync('measurements', payload.date);
 
@@ -2452,9 +2489,22 @@ function skipMeasurementForSelectedDate() {
     },
   ].sort((a, b) => a.date.localeCompare(b.date));
 
+  ensureSyncMeta().pendingProfile = true;
   stateSave();
   renderAll();
   setStatus('Ölçüm atlandı olarak işaretlendi', 'ok');
+  void requestSync();
+}
+
+function unskipMeasurement(date) {
+  if (!getSkippedMeasurements().some(item => item.date === date)) return;
+  state.skippedMeasurements = getSkippedMeasurements().filter(item => item.date !== date);
+  ensureSyncMeta().pendingProfile = true;
+  stateSave();
+  renderAll();
+  syncMeasureFormDate(true);
+  setStatus('Atlama geri alındı', 'ok');
+  void requestSync();
 }
 
 async function saveSleepToSupabase(payload) {
