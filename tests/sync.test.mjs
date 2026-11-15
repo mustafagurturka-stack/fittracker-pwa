@@ -34,6 +34,7 @@ function createCloud() {
           return { error: null };
         }
         if (op === 'upsert') {
+          if (cloud.onUpsert) { const hook = cloud.onUpsert; cloud.onUpsert = null; await hook(table, payload); }
           const keys = (options.onConflict || 'id').split(',');
           const existing = rows().find(r => keys.every(k => String(r[k]) === String(payload[k])));
           if (existing) Object.assign(existing, payload);
@@ -97,6 +98,15 @@ function createDevice(cloud, name) {
   return {
     ctx, run,
     sync: () => run('loadAllCloudData({ force: true })'),
+    // Arka planda tetiklenen senkronlar dahil her şey bitene kadar bekler.
+    async settle() {
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise(r => setTimeout(r, 5));
+        if (!run('cloudSyncInProgress') && run('getPendingSyncCount()') === 0) return;
+        if (!run('cloudSyncInProgress')) await run('loadAllCloudData({ force: true })');
+      }
+      throw new Error('senkron bitmedi');
+    },
     get state() { return run('state'); },
     setOnline(v) { ctx.navigator.onLine = v; },
   };
@@ -263,4 +273,52 @@ test('eski sürümde yalnız cihazda kalan atlama bir kez buluta taşınır', as
   assert.equal(cloud.tables.app_profiles[0].preferences.skippedMeasurements.length, 1);
   await web.sync();
   assert.equal(web.run('getSkippedMeasurements().length'), 1);
+});
+
+test('uyku saati düzenlemesi diğer cihaza gider, kopya oluşmaz', async () => {
+  const cloud = createCloud();
+  const web = createDevice(cloud, 'web');
+  const pwa = createDevice(cloud, 'pwa');
+  pwa.run(`saveSleepLocally(${JSON.stringify(sleep)})`);
+  await pwa.sync();
+  pwa.ctx.prompt = () => '6,5';
+  await pwa.run('editSleep(0)');
+  await pwa.sync();
+  assert.equal(cloud.tables.sleep_logs.length, 1);
+  assert.equal(cloud.tables.sleep_logs[0].hours, 6.5);
+  await web.sync();
+  assert.equal(web.state.sleep[0].hours, 6.5);
+});
+
+test('antrenman listesi senkronlanır; yeniden adlandırma geçmişi değiştirmeden görünümü günceller', async () => {
+  const cloud = createCloud();
+  const web = createDevice(cloud, 'web');
+  const pwa = createDevice(cloud, 'pwa');
+  pwa.run(`saveWorkoutLocally(${JSON.stringify({ ...workout, type: 'A - Upper Body Focus' })})`);
+  await pwa.sync();
+  assert.equal(pwa.run(`addWorkoutType('Kardiyo', 'Bisiklet')`), '');
+  assert.notEqual(pwa.run(`addWorkoutType('Kardiyo', 'bisiklet')`), '', 'aynı isim ikinci kez eklenmemeli');
+  assert.equal(pwa.run(`renameWorkoutType('Kuvvet', 'A - Upper Body Focus', 'Üst Vücut A')`), '');
+  await pwa.settle();
+  await web.sync();
+  assert.ok(web.run(`getWorkoutCatalog().Kardiyo.includes('Bisiklet')`));
+  assert.ok(web.run(`getWorkoutCatalog().Kuvvet.includes('Üst Vücut A')`));
+  // Buluttaki kayıt aynı kalır, görünüm yeni adı kullanır
+  assert.equal(cloud.tables.workout_logs[0].type, 'A - Upper Body Focus');
+  assert.equal(web.run(`getWorkoutDisplayType(state.workouts[0])`), 'Üst Vücut A');
+  assert.equal(web.run(`getWorkoutCategory('A - Upper Body Focus')`), 'Kuvvet');
+  assert.notEqual(web.run(`removeWorkoutType('Kardiyo', 'Bisiklet')`), 'x');
+});
+
+test('gönderim sürerken yapılan ikinci değişiklik kaybolmaz', async () => {
+  const cloud = createCloud();
+  const pwa = createDevice(cloud, 'pwa');
+  pwa.run(`saveSleepLocally(${JSON.stringify(sleep)})`);
+  // İlk gönderim yoldayken kullanıcı saati değiştirir
+  cloud.onUpsert = async () => { pwa.run(`saveSleepLocally(${JSON.stringify({ ...sleep, hours: 8 })})`); };
+  await pwa.sync();
+  await pwa.settle();
+  assert.equal(cloud.tables.sleep_logs.length, 1);
+  assert.equal(cloud.tables.sleep_logs[0].hours, 8, 'ikinci değişiklik buluta gitmeli');
+  assert.equal(pwa.state.sleep[0].hours, 8);
 });

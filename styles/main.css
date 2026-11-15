@@ -41,6 +41,8 @@
   --warn-soft: #FEF3C7;
   --sleep: #0E7490;
   --sleep-low: #D97706;
+  --sleep-soft: #E0F2F7;
+  --note-soft: #FEF3C7;
   --radius: 20px;
   --radius-sm: 12px;
   --shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
@@ -70,6 +72,8 @@
   --warn-soft: #3A2A0A;
   --sleep: #22D3EE;
   --sleep-low: #FBBF24;
+  --sleep-soft: #0E2A33;
+  --note-soft: #3A2A0A;
   --shadow: none;
   color-scheme: dark;
 }
@@ -276,6 +280,8 @@ svg[viewBox='0 0 24 24'] { fill: none; stroke: currentColor; stroke-width: 1.9; 
 /* ── Özet ── */
 .dash-grid { display: flex; flex-direction: column; gap: 12px; }
 .focus-card {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   display: flex;
   align-items: center;
@@ -287,6 +293,18 @@ svg[viewBox='0 0 24 24'] { fill: none; stroke: currentColor; stroke-width: 1.9; 
   color: var(--on-accent);
   text-align: left;
 }
+.focus-card::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+.focus-card:active { transform: scale(0.99); }
 .focus-icon {
   width: 48px;
   height: 48px;
@@ -306,7 +324,8 @@ svg[viewBox='0 0 24 24'] { fill: none; stroke: currentColor; stroke-width: 1.9; 
 .ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
 .ring svg { width: 120px; height: 120px; display: block; }
 .ring-track { fill: none; stroke: var(--track); stroke-width: 12; }
-.ring-fill { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
+.ring-fill { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; animation: ring-in 0.9s ease-out; }
+@keyframes ring-in { from { stroke-dasharray: 0 400; } }
 .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ring-label strong { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
 .ring-label small { font-size: 12px; color: var(--muted); margin-top: 2px; }
@@ -318,16 +337,27 @@ svg[viewBox='0 0 24 24'] { fill: none; stroke: currentColor; stroke-width: 1.9; 
 .stat { display: flex; flex-direction: column; gap: 4px; }
 .stat strong { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
 .stat > span:last-child { font-size: 13px; color: var(--muted); }
-.stat-icon { color: var(--accent); }
-.stat-icon.sleep { color: var(--sleep); }
-.stat-icon.good { color: var(--good); }
+.stat-icon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  margin-bottom: 4px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.stat-icon.sleep { color: var(--sleep); background: var(--sleep-soft); }
+.stat-icon.good { color: var(--good); background: var(--good-soft); }
 
 .meter { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .meter:first-of-type { margin-top: 0; }
 .meter-row { display: flex; justify-content: space-between; font-size: 14px; }
 .meter-row > span:first-child { font-weight: 600; }
 .bar { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
-.bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.5s ease; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.5s ease; animation: bar-in 0.8s ease-out; transform-origin: left; }
+@keyframes bar-in { from { transform: scaleX(0); } }
 .bar i.sleep { background: var(--sleep); }
 
 .quick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -345,6 +375,9 @@ svg[viewBox='0 0 24 24'] { fill: none; stroke: currentColor; stroke-width: 1.9; 
   font-weight: 600;
 }
 .quick:active { transform: scale(0.98); }
+.quick[data-entry='sleep'] { background: var(--sleep-soft); border-color: transparent; }
+.quick[data-entry='workout'] { background: var(--accent-soft); border-color: transparent; }
+.quick[data-entry='note'] { background: var(--note-soft); border-color: transparent; }
 .tone-sleep { color: var(--sleep); }
 .tone-accent { color: var(--accent); }
 .tone-warn { color: var(--sleep-low); }
@@ -468,10 +501,11 @@ input[type='checkbox'] { width: auto; min-height: 0; }
 .row-spacer { width: 44px; flex-shrink: 0; }
 .chip-btn { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--accent); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .more-btn { width: 100%; min-height: 48px; border: none; border-top: 1px solid var(--line); background: transparent; color: var(--accent); font-size: 14px; font-weight: 700; }
-.row-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
-.row-dot.sleep { background: var(--sleep); }
-.row-dot.workout { background: var(--accent); }
-.row-dot.note { background: var(--sleep-low); }
+.row-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--muted); box-shadow: 0 0 0 5px var(--seg); }
+.row-dot.sleep { background: var(--sleep); box-shadow: 0 0 0 5px var(--sleep-soft); }
+.row-dot.workout { background: var(--accent); box-shadow: 0 0 0 5px var(--accent-soft); }
+.row-dot.note { background: var(--sleep-low); box-shadow: 0 0 0 5px var(--note-soft); }
+.row-dot { margin: 0 4px; }
 
 .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .trio .mini, .tile { display: flex; flex-direction: column; gap: 2px; padding: 12px; min-width: 0; }
@@ -480,12 +514,19 @@ input[type='checkbox'] { width: auto; min-height: 0; }
 .tile small { font-size: 12px; color: var(--muted); }
 
 /* ── İlerleme ── */
-.chart { width: 100%; height: 190px; display: block; overflow: visible; }
-.chart-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.chart-area { fill: var(--accent); opacity: 0.08; }
-.chart-goal { stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 6 6; vector-effect: non-scaling-stroke; }
-.chart-dot { fill: var(--card); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.chart-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin: 6px 0 4px; }
+.chart { display: block; max-width: 100%; height: auto; overflow: visible; }
+.chart-grid { stroke: var(--line); stroke-width: 1; }
+.chart-label { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart-area { fill: var(--accent); opacity: 0.1; }
+.chart-goal { stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.chart-goal-label { fill: var(--good); font-size: 11px; font-weight: 700; font-family: var(--font); }
+.chart-dot { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
+.chart-last { fill: var(--accent); stroke: var(--card); stroke-width: 3; }
+.chart-value { fill: var(--ink); font-size: 13px; font-weight: 700; font-family: var(--font); }
+.chart-note { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.chart-stats { margin-top: 12px; }
+.chart-stats .tile strong { font-size: 17px; }
 
 .week-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .week-title { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -685,3 +726,15 @@ button.week-row:hover { background: var(--field); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* ── Antrenman listesi düzenleyici ── */
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: -6px; }
+.label-row label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.label-row .link-btn { min-height: 36px; padding: 4px 0; }
+.sr-label { display: block; }
+.list-editor { display: flex; flex-direction: column; gap: 14px; padding: 12px; border-radius: 14px; background: var(--field); border: 1px solid var(--line); }
+.list-editor-group h3 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 4px; }
+.list-editor-row { display: flex; align-items: center; gap: 4px; min-height: 44px; border-bottom: 1px solid var(--line); }
+.list-editor-row span { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.list-editor-add { display: flex; gap: 8px; margin-top: 8px; }
+.list-editor-add input { flex: 1; }
