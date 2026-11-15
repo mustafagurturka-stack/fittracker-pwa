@@ -23,7 +23,6 @@ const FIRST_MEASURE_DATE = '2026-08-09';
 const FIRST_REPORT_END = shiftIsoDate(FIRST_MEASURE_DATE, -1);
 const WEEKLY_MEASURE_DAY = 0;
 const DEFAULT_START_WEIGHT = 105;
-const SLEEP_TARGET = 49;
 const WORKOUT_TARGET = 180;
 const VERIFIED_WEEK_TOTALS = {};
 
@@ -93,19 +92,6 @@ const LEGACY_WORKOUT_CATEGORY_MAP = {
   'Aktif Dinlenme': 'Kardiyo',
 };
 
-const MOTIVATIONS = [
-  'Bugün küçük bir adım at, yarın farkı hissedeceksin.',
-  'Mükemmel olmak zorunda değilsin; devam etmek yeterli.',
-  'Her kayıt, hedefe biraz daha yaklaştığının kanıtı.',
-  'Bugün kendine yatırım yaptığın bir gün olsun.',
-  'Disiplin, motivasyonun azaldığı günlerde seni taşır.',
-  'Uyku, hareket ve istikrar: değişimin üç anahtarı.',
-  'Vücudun emeğini hatırlar; bugün boşa gitmez.',
-  'Küçük kazanımlar büyük dönüşümlerin temelidir.',
-  'Bugün devam edersen, yarın daha güçlü başlarsın.',
-  'Hedef uzak görünse de sıradaki adım çok yakın.',
-];
-
 // STATE
 let state = {
   theme: 'light',
@@ -151,11 +137,7 @@ let state = {
   },
 };
 
-let measurementChart = null;
-let sleepChart = null;
-let workoutChart = null;
 let authMode = 'signIn';
-let dailyView = 'week';
 let achievementSessionReady = false;
 let progressWeekStart = '';
 let progressWeekManuallySelected = false;
@@ -393,18 +375,6 @@ function getWorkoutCategory(type) {
     .find(([, items]) => items.includes(type))?.[0] || LEGACY_WORKOUT_CATEGORY_MAP[type] || 'Kuvvet';
 }
 
-function hasKnownWorkoutType(type = '') {
-  const cleanType = String(type || '').trim();
-  return Boolean(
-    cleanType &&
-    (
-      Object.values(WORKOUT_CATALOG).some(items => items.includes(cleanType)) ||
-      LEGACY_WORKOUT_CATEGORY_MAP[cleanType] ||
-      WORKOUT_TYPE_LABELS[cleanType]
-    )
-  );
-}
-
 function updateWorkoutTypes() {
   const categoryInput = document.getElementById('workoutCategoryInput');
   const typeInput = document.getElementById('workoutTypeInput');
@@ -428,10 +398,6 @@ function isWalkingWorkout(type = '') {
   return String(type).toLocaleLowerCase('tr-TR').includes('yürü');
 }
 
-function isFootballWorkout(type = '') {
-  return String(type).toLocaleLowerCase('tr-TR').includes('halı saha');
-}
-
 function updateWorkoutDistanceField() {
   const typeInput = document.getElementById('workoutTypeInput');
   const distanceInput = document.getElementById('workoutDistanceInput');
@@ -439,6 +405,8 @@ function updateWorkoutDistanceField() {
 
   const visible = isWalkingWorkout(typeInput.value);
   distanceInput.hidden = !visible;
+  const field = distanceInput.closest('.distance-field');
+  if (field) field.hidden = !visible;
   distanceInput.disabled = !visible;
   if (!visible) distanceInput.value = '';
 }
@@ -512,12 +480,6 @@ function getWalkingStatsForRange(range) {
   };
 }
 
-function getWorkoutCategoryFromNote(note = '', type = '') {
-  if (hasKnownWorkoutType(type)) return getWorkoutCategory(type);
-  const match = String(note).match(/Kategori:\s*([^·]+)/i);
-  return match ? match[1].trim() : getWorkoutCategory(type);
-}
-
 function getCleanWorkoutNote(note = '') {
   return String(note)
     .replace(/\s*·?\s*Mesafe:\s*[\d.,]+\s*km/gi, '')
@@ -530,7 +492,7 @@ function getCleanWorkoutNote(note = '') {
 
 function formatDecimal(value, digits = 1) {
   const number = Number(value || 0);
-  return Number.isInteger(number) ? String(number) : number.toFixed(digits);
+  return Number(number.toFixed(digits)).toLocaleString('tr-TR', { maximumFractionDigits: digits });
 }
 
 function formatDistanceKm(value) {
@@ -545,59 +507,12 @@ function formatMinutes(value) {
   return formatDecimal(Number(value || 0), 1);
 }
 
-function getShortWeekday(date) {
-  return new Date(`${date}T12:00:00`)
-    .toLocaleDateString('tr-TR', { weekday: 'short' });
-}
-
 function getSleepQuality(hours) {
   const value = Number(hours || 0);
   if (value >= 7 && value <= 9) return 'Hedefte';
   if (value > 9) return 'Yüksek';
   if (value >= 6) return 'Sınırda';
   return 'Düşük';
-}
-
-function getWorkoutDayLabel(item) {
-  const category = Object.entries(item.categories || {})
-    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Antrenman';
-  return `${category} · ${Number(item.duration || 0)} dk`;
-}
-
-function todayDisplay() {
-  const d = new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
-function parseDisplayDate(value) {
-  if (!value) return null;
-
-  const normalized = value.trim().replaceAll('.', '/').replaceAll('-', '/');
-  const parts = normalized.split('/');
-
-  if (parts.length !== 3) return null;
-
-  const day = parts[0].padStart(2, '0');
-  const month = parts[1].padStart(2, '0');
-  const year = parts[2];
-
-  if (year.length !== 4) return null;
-
-  const date = new Date(`${year}-${month}-${day}`);
-
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== Number(year) ||
-    date.getMonth() + 1 !== Number(month) ||
-    date.getDate() !== Number(day)
-  ) {
-    return null;
-  }
-
-  return `${year}-${month}-${day}`;
 }
 
 function parseLocaleNumber(value) {
@@ -718,194 +633,6 @@ function clearInitialLoadingStatus() {
   }
 }
 
-function setEmptyState(host, title, copy, actionLabel = '', actionPanel = null) {
-  if (!host) return;
-
-  host.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">+</div>
-      <strong>${title}</strong>
-      <p>${copy}</p>
-      ${actionLabel ? `<button class="btn green" type="button" data-empty-panel="${actionPanel}">${actionLabel}</button>` : ''}
-    </div>
-  `;
-
-  host.querySelectorAll('[data-empty-panel]').forEach(button => {
-    button.addEventListener('click', () => goPanel(Number(button.dataset.emptyPanel)));
-  });
-}
-
-function renderFallbackMeasurementChart(host, data) {
-  if (!host) return;
-
-  const first = data[0];
-  const last = data[data.length - 1];
-  const diff = last && first ? Number(last.weight - first.weight) : 0;
-  const waistData = data.filter(item => isValidWaist(item.waist));
-  const firstWaist = waistData[0];
-  const lastWaist = waistData[waistData.length - 1];
-  const waistDiff = firstWaist && lastWaist
-    ? Number(lastWaist.waist - firstWaist.waist)
-    : null;
-
-  const weights = data.map(item => Number(item.weight));
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-  const range = Math.max(1, max - min);
-  const points = data.map((item, index) => {
-    const x = data.length === 1 ? 50 : 8 + (index / (data.length - 1)) * 84;
-    const y = 88 - ((Number(item.weight) - min) / range) * 68;
-    return { ...item, x, y };
-  });
-
-  host.innerHTML = `
-    <div class="measurement-insight-grid">
-      <div class="weight-trend-panel">
-        <div class="measurement-chart-top compact">
-          <div>
-            <span>Kilo Trendi</span>
-            <strong>${first ? Number(first.weight).toFixed(1) : '—'} → ${last ? Number(last.weight).toFixed(1) : '—'} kg</strong>
-          </div>
-          <div class="${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg</div>
-        </div>
-        <div class="fallback-line-chart">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Kilo grafiği">
-            <polyline
-              points="${points.map(point => `${point.x},${point.y}`).join(' ')}"
-              fill="none"
-              stroke="#2563eb"
-              stroke-width="2.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            ${points.map(point => `
-              <circle cx="${point.x}" cy="${point.y}" r="2.4" fill="#2563eb"></circle>
-            `).join('')}
-          </svg>
-          <div class="fallback-chart-labels">
-            ${points.map(point => `
-              <div>
-                <strong>${Number(point.weight).toFixed(1)} kg</strong>
-                <span>${formatDate(point.date)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="waist-tracking-panel">
-        <div class="waist-tracking-head">
-          <span>Bel Takibi</span>
-          <div class="waist-tracking-change ${waistDiff === null ? 'neutral' : waistDiff <= 0 ? 'good' : 'bad'}">
-            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
-          </div>
-        </div>
-        <strong class="waist-tracking-values">${firstWaist && lastWaist
-          ? (waistData.length >= 2
-            ? `${Number(firstWaist.waist).toFixed(1)} → ${Number(lastWaist.waist).toFixed(1)} cm`
-            : `${Number(lastWaist.waist).toFixed(1)} cm`)
-          : 'Bekleniyor'}</strong>
-        <p class="waist-tracking-dates">${firstWaist && lastWaist
-          ? `${formatDate(firstWaist.date)} → ${formatDate(lastWaist.date)}`
-          : 'İlk bel ölçümü bekleniyor.'}</p>
-        <div class="waist-tracking-footer">
-          <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
-            <i class="active"></i><i></i><i></i><i></i>
-          </div>
-          <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function getWeightChartSuggestion(first, last, diff) {
-  if (!first || !last) return 'İlk iki ölçümden sonra trend netleşir.';
-  if (diff < 0) return `${formatDate(first.date)} başlangıcından beri düşüş var.`;
-  if (diff > 0) return 'Bu hafta artış var; uyku, su ve antrenman ritmini kontrol et.';
-  return 'Kilo aynı seviyede; trend için sonraki pazar ölçümünü bekle.';
-}
-
-function getWaistRhythmStep() {
-  const nextSequence = getMeasurementSequenceNumber(getSuggestedMeasureDate());
-  const remainder = ((nextSequence - 1) % 4) + 1;
-  return Math.max(1, Math.min(4, remainder));
-}
-
-function renderWaistRhythm(step) {
-  return Array.from({ length: 4 }, (_, index) =>
-    `<i class="${index < step ? 'active' : ''}"></i>`
-  ).join('');
-}
-
-function renderMeasurementInsight(host, data, canvasHtml = '') {
-  const waistData = data.filter(item => isValidWaist(item.waist));
-  const first = data[0];
-  const last = data[data.length - 1];
-  const weightDiff = first && last ? Number(last.weight - first.weight) : 0;
-  const firstWaist = waistData[0];
-  const lastWaist = waistData[waistData.length - 1];
-  const waistDiff = waistData.length >= 2
-    ? Number(lastWaist.waist - firstWaist.waist)
-    : null;
-  const rhythmStep = getWaistRhythmStep();
-
-  host.innerHTML = `
-    <div class="measurement-insight-grid">
-      <div class="weight-trend-panel">
-        <div class="measurement-chart-top">
-          <div>
-            <span>Kilo Trendi</span>
-            <strong>${Number(first.weight).toFixed(1)} → ${Number(last.weight).toFixed(1)} kg</strong>
-          </div>
-          <div class="${weightDiff <= 0 ? 'good' : 'bad'}">${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg</div>
-        </div>
-
-        <div class="measurement-detail-row">
-          <div>
-            <span>Başlangıç</span>
-            <strong>${formatDate(first.date)}</strong>
-          </div>
-          <div>
-            <span>Son ölçüm</span>
-            <strong>${formatDate(last.date)}</strong>
-          </div>
-          <div>
-            <span>Yorum</span>
-            <strong>${getWeightChartSuggestion(first, last, weightDiff)}</strong>
-          </div>
-        </div>
-
-        <div class="measurement-chart-canvas">
-          ${canvasHtml}
-        </div>
-      </div>
-
-      <div class="waist-tracking-panel">
-        <div class="waist-tracking-head">
-          <span>Bel Takibi</span>
-          <div class="waist-tracking-change ${waistDiff === null ? 'neutral' : waistDiff <= 0 ? 'good' : 'bad'}">
-            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
-          </div>
-        </div>
-        <strong class="waist-tracking-values">${firstWaist && lastWaist
-          ? (waistData.length >= 2
-            ? `${Number(firstWaist.waist).toFixed(1)} → ${Number(lastWaist.waist).toFixed(1)} cm`
-            : `${Number(lastWaist.waist).toFixed(1)} cm`)
-          : 'Bekleniyor'}</strong>
-        <p class="waist-tracking-dates">${firstWaist && lastWaist
-          ? `${formatDate(firstWaist.date)} → ${formatDate(lastWaist.date)}`
-          : 'İlk bel ölçümü bekleniyor.'}</p>
-        <div class="waist-tracking-footer">
-          <div class="waist-rhythm" aria-label="Bel ölçüm döngüsü">
-            ${renderWaistRhythm(rhythmStep)}
-          </div>
-          <small>${waistData.length} bel ölçümü · 4 tartıda 1 takip</small>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 function setSyncDot(cls) {
   const dot = document.getElementById('syncDot');
   if (!dot) return;
@@ -945,12 +672,6 @@ function getMeasurementTrendData() {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function getChartMeasurementData() {
-  normalizeProfileState();
-  return getMeasurementSummaryData()
-    .filter(item => Number.isFinite(Number(item.weight)));
-}
-
 function getProfileStartMeasurement() {
   const weight = Number(state.startWeight);
   if (!Number.isFinite(weight)) return null;
@@ -986,11 +707,6 @@ function getLatestWaistMeasurement() {
     .at(-1);
 }
 
-function getWaistMeasurements() {
-  return getSortedMeasurements()
-    .filter(item => isValidWaist(item.waist) && shouldTrackWaist(item.date));
-}
-
 function getMeasurementSequenceNumber(date) {
   const targetDate = date || getSuggestedMeasureDate();
   const dates = new Set(
@@ -1019,15 +735,18 @@ function updateWaistHint() {
 
   if (waistInput) {
     waistInput.disabled = !required;
-    waistInput.placeholder = required ? 'cm' : '4. tartıda';
     if (!required) waistInput.value = '';
   }
+  const waistField = document.getElementById('waistField');
+  if (waistField) waistField.hidden = !required;
 
+  let nextWaist = sequence + 1;
+  while (nextWaist % 4 !== 0) nextWaist += 1;
   hint.textContent = required
     ? sequence === 1
       ? 'Başlangıç tartısı: bel ölçümünü de ekle.'
-      : `${sequence}. tartı: bu hafta bel ölçümünü de ekle.`
-    : `${sequence}. tartı: sadece kilo gir. Bel ölçümü 4. tartıda takip edilir.`;
+      : `${sequence}. tartı: bu hafta bel ölçümü de var.`
+    : `${sequence}. tartı: sadece kilo yeter. Sıradaki bel ölçümü ${nextWaist}. tartıda.`;
 
   if (existing) {
     hint.textContent = `${formatDate(date)} tarihinde kayıt var. Kaydedersen bu ölçüm güncellenir.`;
@@ -1213,7 +932,7 @@ function applyTheme() {
   }
 
   if (themeMeta) {
-    themeMeta.content = state.theme === 'dark' ? '#0d111b' : '#e9eef7';
+    themeMeta.content = state.theme === 'dark' ? '#0B0F17' : '#F4F5F7';
   }
 }
 
@@ -1248,11 +967,7 @@ function goPanel(idx) {
   requestAnimationFrame(() => {
     if (idx === 3) {
       normalizeProfileState();
-      renderProgressSummary();
-      renderMeasurementChart();
-      renderProgressCharts();
-      renderProgressList();
-      renderMonthlyOverview();
+      renderProgress();
     }
 
     window.scrollTo(0, 0);
@@ -1271,31 +986,6 @@ function goPanel(idx) {
 }
 
 // RENDER
-function renderHero() {
-  const dateEl = document.getElementById('heroDate');
-  const nameEl = document.getElementById('heroName');
-
-  if (dateEl) {
-    dateEl.textContent = new Date()
-      .toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
-      .toUpperCase();
-  }
-
-  if (nameEl) {
-    nameEl.textContent = state.name || 'Sporcu';
-  }
-}
-
-function renderMoti() {
-  const el = document.getElementById('motiText');
-  if (!el) return;
-
-  const now = new Date();
-  const localDay = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
-  const idx = localDay % MOTIVATIONS.length;
-  el.textContent = MOTIVATIONS[idx];
-}
-
 function getAchievementMetrics() {
   const measurements = getMeasurementSummaryData();
   const trackedSleep = (state.sleep || []).filter(item => isTrackableActivityDate(item.date));
@@ -1384,7 +1074,7 @@ function getAchievements() {
 
 function formatAchievementProgress(item) {
   const current = item.unit === 'km'
-    ? formatDistanceKm(item.current)
+    ? trNum(item.current, 2)
     : item.unit
       ? formatDecimal(item.current)
       : Math.floor(item.current);
@@ -1416,7 +1106,9 @@ function updateAchievementState(achievements) {
   const seen = new Set(state.achievementState.seen || []);
   const newlyUnlocked = unlocked.filter(item => !seen.has(item.id));
 
-  if (!achievementSessionReady) {
+  // Yeni cihazda ilk bulut yüklemesi bitene kadar rozetler sessizce işaretlenir;
+  // aksi halde eski rozetler "yeni başarı" gibi bildirilir.
+  if (!achievementSessionReady || !ensureSyncMeta().lastSuccess) {
     unlocked.forEach(item => seen.add(item.id));
     state.achievementState.seen = [...seen];
     state.achievementState.initialized = true;
@@ -1433,664 +1125,6 @@ function updateAchievementState(achievements) {
   }
 }
 
-function renderAchievements() {
-  const showcase = document.getElementById('achievementShowcase');
-  const dashboard = document.getElementById('dashboardAchievement');
-  const achievements = getAchievements();
-  const unlocked = achievements.filter(item => item.unlocked);
-  const next = achievements
-    .filter(item => !item.unlocked)
-    .sort((a, b) => b.progress - a.progress)[0];
-
-  if (dashboard) {
-    dashboard.innerHTML = `
-      <div class="dashboard-achievement-card">
-        <span class="achievement-ring">${unlocked.length}</span>
-        <div>
-          <strong>${unlocked.length} / ${achievements.length} başarı tamamlandı</strong>
-          <small>${next ? `Sıradaki: ${next.title} · ${formatAchievementProgress(next)}` : 'Tüm başarılar tamamlandı.'}</small>
-        </div>
-        <button type="button" onclick="goPanel(4)">Rozetler</button>
-      </div>
-    `;
-  }
-
-  if (showcase) {
-    showcase.innerHTML = `
-      <div class="achievement-showcase-head">
-        <div>
-          <span>Başarılar</span>
-          <strong>${unlocked.length} rozet kazanıldı</strong>
-        </div>
-        ${next ? `<small>Sıradaki hedef: ${next.title} · yeni rozet hedef tamamlanınca açılır</small>` : '<small>Tüm rozetler açıldı</small>'}
-      </div>
-      <div class="achievement-grid">
-        ${achievements.map(item => `
-          <article class="achievement-badge ${item.unlocked ? 'is-unlocked' : 'is-locked'}">
-            <span class="achievement-icon">${item.icon}</span>
-            <div class="achievement-copy">
-              <strong>${item.title}</strong>
-              <small>${item.detail}</small>
-              <div class="achievement-progress"><i style="width:${item.progress}%"></i></div>
-              <em>${item.unlocked ? '★ Tamamlandı' : formatAchievementProgress(item)}</em>
-            </div>
-          </article>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  updateAchievementState(achievements);
-}
-
-function renderDashboardWeekLabel() {
-  const el = document.getElementById('dashboardWeekLabel');
-  if (!el) return;
-
-  const range = getDashboardWeekRange();
-
-  const sleepTotal = getCurrentWeekSleepTotal();
-  const sleepTarget = getSleepTargetForRange(range);
-  const sleepPct = Math.min(100, Math.round((sleepTotal / sleepTarget) * 100));
-
-  const workoutTotal = getCurrentWeekWorkoutTotal();
-  const workoutTarget = getWorkoutTargetForRange(range);
-  const workoutPct = Math.min(100, Math.round((workoutTotal / workoutTarget) * 100));
-  const dailyTotals = getWeekDailyTotals(range);
-  const sleepDays = VERIFIED_WEEK_TOTALS[range.start]?.sleepNights || dailyTotals.sleep.length;
-  const workoutDays = dailyTotals.workouts.length;
-  const walkingStats = getWalkingStatsForRange(range);
-  const walkingDistance = walkingStats.distance;
-  const walkingPace = walkingStats.pace;
-  const sleepAverage = sleepDays ? sleepTotal / sleepDays : 0;
-  const weekStatus = sleepPct >= 100 && workoutPct >= 100
-    ? 'Hedef üstü'
-    : sleepAverage >= 7 && workoutPct >= 70
-      ? 'İyi gidiyorsun'
-      : sleepDays || workoutDays
-        ? 'Takipte'
-        : 'Başla';
-  const sleepInsight = sleepDays
-    ? `Kayıtlı gün ort. ${sleepAverage.toFixed(1)} saat`
-    : 'Uyku kaydı bekleniyor';
-  const workoutInsight = workoutDays
-    ? `${workoutDays} aktif gün`
-    : 'Antrenman kaydı bekleniyor';
-  const balanceInsight = sleepAverage >= 7 && workoutPct >= 100
-    ? 'Uyku ve hareket güçlü'
-    : sleepAverage >= 7
-      ? 'Uyku hedefte'
-      : workoutPct >= 100
-        ? 'Hareket güçlü'
-        : 'Ritim kuruluyor';
-
-  el.innerHTML = `
-    <div class="week-card-head">
-      <div>
-        <div class="week-card-title">${getDashboardWeekTitle()}</div>
-        <div class="week-card-date">${getDashboardWeekContext() || formatReportRange(range)}</div>
-      </div>
-
-      <div class="week-card-pill">
-        ${weekStatus}
-      </div>
-    </div>
-
-    <div class="week-metrics">
-      <div class="week-metric">
-        <div class="week-metric-top">
-          <span>Uyku</span>
-          <strong>${sleepTotal.toFixed(1)} / ${sleepTarget} saat</strong>
-        </div>
-        <div class="week-track">
-          <div class="week-fill sleep" style="width:${sleepPct}%"></div>
-        </div>
-      </div>
-
-      <div class="week-metric">
-        <div class="week-metric-top">
-          <span>Antrenman</span>
-          <strong>${workoutTotal} / ${workoutTarget} dk</strong>
-        </div>
-        <div class="week-track">
-          <div class="week-fill workout" style="width:${workoutPct}%"></div>
-        </div>
-      </div>
-
-      ${walkingDistance > 0
-        ? `<div class="week-metric walking-distance-metric">
-            <div class="week-metric-top">
-              <span>Yürüyüş mesafesi</span>
-              <strong>${formatDistanceKm(walkingDistance)} km</strong>
-            </div>
-            <small>${formatDecimal(walkingPace)} dk/km ortalama tempo</small>
-          </div>`
-        : ''}
-    </div>
-
-    <div class="week-mini-insights${walkingDistance > 0 ? ' has-distance' : ''}">
-      <span>Uyku <strong>${sleepInsight}</strong></span>
-      <span>Antrenman <strong>${workoutInsight}</strong></span>
-      <span>Durum <strong>${balanceInsight}</strong></span>
-      ${walkingDistance > 0
-        ? `<span>Yürüyüş <strong>${formatDistanceKm(walkingDistance)} km · ${formatDecimal(walkingPace)} dk/km</strong></span>`
-        : ''}
-    </div>
-  `;
-}
-
-function renderDashboardGoalCard() {
-  const el = document.getElementById('dashboardGoalCard');
-  if (!el) return;
-
-  const data = getMeasurementSummaryData();
-
-  if (!data.length) {
-    setEmptyState(
-      el,
-      'Haftalık rapor henüz oluşmadı',
-      'Uyku, antrenman ve ölçüm kayıtları geldikçe haftalık özetler burada listelenir.'
-    );
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-
-  const milestones = state.milestones || [95, 90, 85];
-  let currentGoal = milestones.find(goal => last.weight > goal);
-  if (!currentGoal) currentGoal = milestones[milestones.length - 1];
-
-  const completed = first.weight - last.weight;
-
-  const kgLeft = Math.max(0, Number(last.weight - currentGoal).toFixed(1));
-  const finalKgLeft = Math.max(0, Number(last.weight - state.goalWeight).toFixed(1));
-
-  const firstNeeded = first.weight - currentGoal;
-  const firstPct = firstNeeded > 0
-    ? Math.min(100, Math.round((completed / firstNeeded) * 100))
-    : 100;
-
-  const finalNeeded = first.weight - state.goalWeight;
-  const finalPct = finalNeeded > 0
-    ? Math.min(100, Math.round((completed / finalNeeded) * 100))
-    : 100;
-
-  el.innerHTML = `
-    <div class="goal-hero-card">
-      <div class="goal-card-layout">
-
-        <div class="goal-left">
-          <div class="goal-label">ŞU ANKİ ARA HEDEF</div>
-
-          <div class="goal-big">
-            <span>${currentGoal}</span>
-            <small>kg</small>
-          </div>
-
-          <div class="goal-caption">İlk hedef</div>
-
-          <div class="goal-mini-card">
-            <div class="goal-progress-row">
-              <span>İlk hedef ilerlemesi</span>
-              <strong>%${firstPct}</strong>
-            </div>
-            <div class="goal-track">
-              <div class="goal-fill" style="width:${firstPct}%"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="goal-right">
-          <div class="goal-info-card">
-            <span>İlk hedefe kalan</span>
-            <strong>${kgLeft} kg</strong>
-          </div>
-
-          <div class="goal-info-card">
-            <span>Final hedefe kalan</span>
-            <strong>${finalKgLeft} kg</strong>
-          </div>
-
-          <div class="goal-mini-card goal-final-card">
-            <div class="goal-progress-row">
-              <span>Final ilerleme</span>
-              <strong>%${finalPct}</strong>
-            </div>
-            <div class="goal-track final">
-              <div class="goal-fill final" style="width:${finalPct}%"></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  `;
-}
-
-function renderStats() {
-  const el = document.getElementById('dashboardProgressCard');
-  if (!el) return;
-
-  const data = getMeasurementSummaryData();
-
-  if (!data.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        Başlangıç kilo ve bel bilgilerini eklediğinde kartlar burada görünecek.
-      </div>
-    `;
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-  const waistMeasurements = getWaistMeasurements();
-  const profileWaist = parseWaist(state.startWaist);
-  const waistStart = isValidWaist(profileWaist)
-    ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
-    : waistMeasurements[0] || null;
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || waistStart;
-  const weightDiff = Number(last.weight - first.weight);
-  const waistDiff = waistStart && lastWaist
-    ? Number(lastWaist.waist - waistStart.waist)
-    : null;
-  const startDateText = formatDate(first.date);
-  const waistStartDateText = waistStart ? formatDate(waistStart.date) : startDateText;
-  const isProfileOnly = Boolean(last.isProfileStart);
-
-  el.innerHTML = `
-    <div class="dashboard-measure-grid">
-      <div class="progress-summary-card">
-        <div class="progress-summary-main">
-          <div class="progress-summary-label">${isProfileOnly ? 'Başlangıç Kilosu' : 'Son Kilo'}</div>
-          <div class="progress-summary-value">${last.weight} <span>kg</span></div>
-        </div>
-        <div class="progress-summary-side">
-          <div class="progress-summary-diff ${weightDiff <= 0 ? 'good' : 'bad'}">
-            ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
-          </div>
-          <div class="progress-summary-small">${isProfileOnly ? `${startDateText} başlangıç bilgisi` : `${startDateText} başlangıcından beri`}</div>
-        </div>
-      </div>
-
-      <div class="progress-summary-card">
-        <div class="progress-summary-main">
-          <div class="progress-summary-label">${lastWaist?.isProfileStart ? 'Başlangıç Bel Ölçümü' : 'Son Bel Ölçümü'}</div>
-          <div class="progress-summary-value">${lastWaist?.waist ?? '—'} <span>cm</span></div>
-        </div>
-        <div class="progress-summary-side">
-          <div class="progress-summary-diff ${waistDiff === null || waistDiff <= 0 ? 'good' : 'bad'}">
-            ${waistDiff === null ? 'Bekleniyor' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`}
-          </div>
-          <div class="progress-summary-small">${lastWaist?.isProfileStart
-            ? `${waistStartDateText} başlangıç bilgisi`
-            : `${waistStartDateText} başlangıcından beri`}</div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderMeasurementChart() {
-  const host = document.getElementById('measurementChartHost');
-  if (!host) return;
-
-  normalizeProfileState();
-  const data = getChartMeasurementData();
-
-  if (measurementChart) {
-    measurementChart.destroy();
-    measurementChart = null;
-  }
-
-  if (data.length < 2) {
-    host.innerHTML = '';
-    setEmptyState(
-      host,
-      'Grafik için iki ölçüm gerekli',
-      'Başlangıç kilosu ve en az bir sonraki kilo ölçümü olduğunda trend burada görünür.',
-      'Ölçüm Ekle',
-      1
-    );
-    return;
-  }
-
-  if (typeof Chart === 'undefined') {
-    renderFallbackMeasurementChart(host, data);
-    return;
-  }
-
-  renderMeasurementInsight(host, data, '<canvas id="measurementChart"></canvas>');
-  const canvas = document.getElementById('measurementChart');
-  if (!canvas) return;
-
-  canvas.style.display = 'block';
-
-  measurementChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: data.map(item => formatDate(item.date)),
-      datasets: [
-        {
-          label: 'Kilo (kg)',
-          data: data.map(item => item.weight),
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,.08)',
-          fill: true,
-          tension: 0.42,
-          borderWidth: 3,
-          pointRadius: 5,
-          pointHoverRadius: 6,
-          pointBorderWidth: 3,
-          pointBorderColor: '#ffffff',
-          pointBackgroundColor: '#2563eb'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: context => `${context.parsed.y} kg`
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            display: false
-          }
-        },
-        y: {
-          position: 'left',
-          beginAtZero: false,
-          suggestedMin: Math.min(...data.map(item => Number(item.weight))) - 1,
-          suggestedMax: Math.max(...data.map(item => Number(item.weight))) + 1,
-          grid: {
-            color: 'rgba(113,128,150,.18)'
-          },
-          ticks: {
-            callback: value => `${value} kg`
-          }
-        }
-      }
-    }
-  });
-}
-
-function renderWeightSummary() {
-  const el = document.getElementById('weightSummary');
-  if (!el) return;
-
-  const data = getMeasurementSummaryData();
-
-  if (!data.length) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const first = data[0];
-  const last = data[data.length - 1];
-  const waistMeasurements = getWaistMeasurements();
-  const firstWaist = waistMeasurements[0];
-  const profileWaist = parseWaist(state.startWaist);
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
-    isValidWaist(profileWaist)
-      ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
-      : null
-  );
-
-  const weightDiff = last.weight - first.weight;
-  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
-  const latestSkipped = getSkippedMeasurements().at(-1);
-  const isProfileOnly = Boolean(last.isProfileStart);
-
-  const milestones = state.milestones || [95, 90, 85, 80, 75];
-
-  let currentGoal = milestones.find(goal => last.weight > goal);
-
-  if (!currentGoal) {
-    currentGoal = milestones[milestones.length - 1];
-  }
-
-  const kgLeft = Math.max(0, (last.weight - currentGoal).toFixed(1));
-
-  const startWeight = first.weight;
-  const totalNeeded = startWeight - currentGoal;
-  const completed = startWeight - last.weight;
-
-  const progressPct = totalNeeded > 0
-    ? Math.min(100, Math.round((completed / totalNeeded) * 100))
-    : 100;
-
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          ${isProfileOnly ? 'BAŞLANGIÇ KİLOSU' : 'SON KİLO'}
-        </div>
-
-        <div style="font-size:24px;font-weight:900;margin-top:6px">
-          ${last.weight} kg
-        </div>
-      </div>
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          TOPLAM DEĞİŞİM
-        </div>
-
-        <div style="
-          font-size:24px;
-          font-weight:900;
-          margin-top:6px;
-          color:${weightDiff <= 0 ? 'var(--green)' : 'var(--red)'}
-        ">
-          ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg
-        </div>
-      </div>
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          İLK ARA HEDEF
-        </div>
-
-        <div style="font-size:24px;font-weight:900;margin-top:6px">
-          ${currentGoal} kg
-        </div>
-
-        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          İlk hedefe kalan: ${kgLeft} kg · Final hedef: ${state.goalWeight} kg
-        </div>
-
-        <div style="
-          height:8px;
-          background:var(--border);
-          border-radius:999px;
-          overflow:hidden;
-          margin-top:10px
-        ">
-          <div style="
-            height:100%;
-            width:${progressPct}%;
-            background:linear-gradient(90deg,#3b82f6,#06b6d4);
-            border-radius:999px
-          "></div>
-        </div>
-
-        <div style="font-size:12px;color:var(--muted);margin-top:6px">
-          %${progressPct} tamamlandı
-        </div>
-      </div>
-
-      <div class="card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          ${lastWaist?.isProfileStart ? 'BAŞLANGIÇ BELİ' : 'BEL DEĞİŞİMİ'}
-        </div>
-
-        <div style="
-          font-size:24px;
-          font-weight:900;
-          margin-top:6px;
-          color:${waistDiff === null || waistDiff <= 0 ? 'var(--green)' : 'var(--red)'}
-        ">
-          ${lastWaist?.isProfileStart ? `${lastWaist.waist} cm` : (waistDiff === null ? 'Sonraki ölçüm 4. tartıda' : `${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm`)}
-        </div>
-      </div>
-
-      ${latestSkipped ? `
-      <div class="card measurement-skip-card" style="padding:16px">
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
-          SON ÖLÇÜM NOTU
-        </div>
-
-        <div style="font-size:16px;font-weight:900;margin-top:6px">
-          ${formatDate(latestSkipped.date)} · Ölçüm atlandı
-        </div>
-
-        <div style="font-size:12px;color:var(--muted);margin-top:6px">
-          ${latestSkipped.reason || 'Seyahat / tartıya erişim yok'}
-        </div>
-      </div>
-      ` : ''}
-
-    </div>
-  `;
-}
-
-function renderWeightList() {
-  const list = document.getElementById('weightList');
-  const empty = document.getElementById('weightEmpty');
-  if (!list || !empty) return;
-
-  const measurementData = getSortedMeasurements();
-  const measurementDataDesc = [...measurementData].sort((a, b) => b.date.localeCompare(a.date));
-  const summaryData = getMeasurementSummaryData();
-  const data = [...summaryData].sort((a, b) => b.date.localeCompare(a.date));
-  const skipped = getSkippedMeasurements().map(item => ({ ...item, isSkipped: true }));
-  const rows = [
-    ...data.map(item => ({
-      ...item,
-      measurementIndex: measurementDataDesc.findIndex(measurement => measurement.date === item.date),
-      isSkipped: false,
-    })),
-    ...skipped,
-  ].sort((a, b) => b.date.localeCompare(a.date));
-
-  if (!rows.length) {
-    empty.style.display = 'block';
-    list.innerHTML = '';
-    return;
-  }
-
-  empty.style.display = 'none';
-
-  list.innerHTML = rows.map((m, index) => {
-    if (m.isSkipped) {
-      return `
-        <div class="measurement-skip-row">
-          <div>
-            <div class="measurement-skip-title">Ölçüm atlandı</div>
-            <div class="measurement-skip-meta">${formatDate(m.date)} · ${m.reason || 'Seyahat / tartıya erişim yok'}</div>
-          </div>
-          <span class="delta-pill neutral">Grafik etkilenmez</span>
-        </div>
-      `;
-    }
-
-    const prev = summaryData
-      .filter(item => item.date < m.date && Number.isFinite(Number(item.weight)))
-      .at(-1);
-
-    const weightDiff = prev && m.weight != null && prev.weight != null
-      ? (parseFloat(m.weight) - parseFloat(prev.weight)).toFixed(1)
-      : null;
-
-    const hasWaist = isValidWaist(m.waist);
-    const prevWaist = summaryData
-      .filter(item => item.date < m.date && isValidWaist(item.waist))
-      .at(-1);
-    const waistDiff = hasWaist && prevWaist
-      ? (Number(m.waist) - Number(prevWaist.waist)).toFixed(1)
-      : null;
-
-    const weightDiffHtml = weightDiff !== null
-      ? `<span class="delta-pill ${Number(weightDiff) < 0 ? 'good' : Number(weightDiff) > 0 ? 'bad' : 'neutral'}">${Number(weightDiff) > 0 ? '+' : ''}${weightDiff} kg</span>`
-      : '<span class="delta-pill neutral">Başlangıç</span>';
-
-    const waistDiffHtml = !hasWaist
-      ? '<span class="delta-pill neutral">Bel ölçümü yok</span>'
-      : waistDiff !== null
-        ? `<span class="delta-pill ${Number(waistDiff) < 0 ? 'good' : Number(waistDiff) > 0 ? 'bad' : 'neutral'}">${Number(waistDiff) > 0 ? '+' : ''}${waistDiff} cm</span>`
-        : '<span class="delta-pill neutral">Başlangıç beli</span>';
-
-    const waistText = hasWaist
-      ? `${Number(m.waist).toFixed(1)} <span style="font-size:12px;color:var(--muted)">cm bel</span>`
-      : '<span style="font-size:12px;color:var(--muted)">Bel ölçümü yok</span>';
-
-    return `
-      <div class="measurement-history-row">
-        <div class="measurement-history-main">
-          <div style="font-weight:700">
-            ${m.weight ?? '?'} <span style="font-size:12px;color:var(--muted)">kg</span>
-            ·
-            ${waistText}
-          </div>
-          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-            ${formatDate(m.date)}
-          </div>
-        </div>
-
-        <div class="measurement-history-deltas">
-          <div>${weightDiffHtml}</div>
-          <div>${waistDiffHtml}</div>
-        </div>
-
-        ${m.isProfileStart || m.measurementIndex < 0
-          ? '<span class="measurement-history-action-placeholder"></span>'
-          : `<button onclick="deleteWeight(${m.measurementIndex})"
-              class="measurement-history-delete"
-              aria-label="Sil">×</button>`}
-      </div>
-    `;
-  }).join('');
-}
-
-function renderNotes() {
-  const list = document.getElementById('noteList');
-  if (!list) return;
-
-  const notes = (Array.isArray(state.notes) ? state.notes : [])
-    .map((note, stateIndex) => ({ ...note, stateIndex }))
-    .filter(note => note.date === today());
-
-  if (!notes.length) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">+</div>
-        Bugün için not yok.
-      </div>
-    `;
-    return;
-  }
-
-  list.innerHTML = notes.map(note => `
-    <div class="daily-row">
-      <div>
-        <div class="daily-row-title">${note.text}</div>
-        <div class="daily-row-meta">Bugün</div>
-      </div>
-      <button onclick="deleteNote(${note.stateIndex})" class="row-delete" aria-label="Sil">×</button>
-    </div>
-  `).join('');
-}
 function getWeekRange(dateValue) {
   const parts = String(dateValue || '').split('-').map(Number);
   const date = parts.length === 3 && parts.every(Number.isFinite)
@@ -2158,246 +1192,6 @@ function itemMatchesReportRange(item, range, mode = 'activity') {
   return reportRange.start === range.start && reportRange.end === range.end;
 }
 
-function isFirstPreparationRange(range) {
-  return range?.start === START_DATE && range?.end === FIRST_REPORT_END;
-}
-
-function formatReportRange(range) {
-  if (!range?.start || !range?.end) return '';
-  return `${formatDate(range.start)} - ${formatDate(range.end)}`;
-}
-
-function getFirstMeasureHint(range) {
-  return isFirstPreparationRange(range)
-    ? `İlk tartı: ${formatDate(FIRST_MEASURE_DATE)} Pazar`
-    : '';
-}
-
-function getDashboardWeekRange() {
-  const activityRanges = [
-    ...(state.sleep || [])
-      .filter(item => item?.date)
-      .filter(item => isTrackableActivityDate(item.date))
-      .map(item => getSleepReportRangeForDate(item.date)),
-    ...(state.workouts || [])
-      .filter(item => item?.date)
-      .filter(item => isTrackableActivityDate(item.date))
-      .map(item => getWeekRange(item.date)),
-  ];
-  const measurementDates = [
-    ...getSortedMeasurements().map(item => item.date),
-    ...getSkippedMeasurements().map(item => item.date),
-  ].filter(Boolean);
-
-  if (activityRanges.length) {
-    return activityRanges.sort((a, b) => b.start.localeCompare(a.start))[0];
-  }
-
-  if (!measurementDates.length) {
-    return getWeekRange(today());
-  }
-
-  const latestDate = measurementDates.sort((a, b) => b.localeCompare(a))[0];
-  return getWeekRange(latestDate);
-}
-
-function getDashboardWeekTitle() {
-  const range = getDashboardWeekRange();
-  const current = getWeekRange(today());
-  return range.start === current.start ? 'Bu Hafta' : 'Son Aktif Hafta';
-}
-
-function getDashboardWeekContext() {
-  const range = getDashboardWeekRange();
-  const current = getWeekRange(today());
-  const firstMeasureHint = getFirstMeasureHint(range);
-  if (range.start === current.start) return firstMeasureHint;
-  return `Bu hafta henüz kayıt yok · ${formatReportRange(range)} gösteriliyor${firstMeasureHint ? ` · ${firstMeasureHint}` : ''}`;
-}
-
-function getDailyViewRange() {
-  if (dailyView === 'today') {
-    const date = today();
-    return { start: date, end: date, title: 'Bugün', targetMode: 'today' };
-  }
-
-  if (dailyView === 'all') {
-    return { start: null, end: null, title: 'Tüm Geçmiş', targetMode: 'all' };
-  }
-
-  return { ...getDashboardWeekRange(), title: getDashboardWeekTitle(), targetMode: 'week' };
-}
-
-function itemMatchesDailyView(item) {
-  const range = getDailyViewRange();
-  if (!item?.date) return false;
-  if (!isTrackableActivityDate(item.date)) return false;
-  if (!range.start || !range.end) return true;
-  return item.date >= range.start && item.date <= range.end;
-}
-
-function itemMatchesSleepDailyView(item) {
-  const range = getDailyViewRange();
-  if (!item?.date) return false;
-  if (!isTrackableActivityDate(item.date)) return false;
-  if (!range.start || !range.end) return true;
-  if (range.targetMode !== 'week') return item.date >= range.start && item.date <= range.end;
-
-  return itemMatchesReportRange(item, range, 'sleep');
-}
-
-function renderDailyViewControls() {
-  const range = getDailyViewRange();
-  const grid = document.getElementById('dailyGrid');
-  if (grid) grid.dataset.view = dailyView;
-
-  document.querySelectorAll('[data-daily-view]').forEach(btn => {
-    const isActive = btn.dataset.dailyView === dailyView;
-    btn.classList.toggle('active', isActive);
-    btn.setAttribute('aria-pressed', String(isActive));
-
-    if (btn.dataset.dailyView === 'week') {
-      btn.textContent = getDashboardWeekTitle();
-    }
-  });
-
-  return range;
-}
-
-function getCurrentWeekSleepTotal() {
-  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
-  const range = getDashboardWeekRange();
-  const verified = VERIFIED_WEEK_TOTALS[range.start];
-  if (verified) return verified.sleep;
-
-  return sleep
-    .filter(item => itemMatchesReportRange(item, range, 'sleep'))
-    .reduce((total, item) => total + Number(item.hours || 0), 0);
-}
-
-function renderSleepSummary() {
-  const el = document.getElementById('sleepSummary');
-  if (!el) return;
-
-  const sleep = Array.isArray(state.sleep) ? state.sleep : [];
-  const range = getDailyViewRange();
-  const todayTotal = sleep
-    .filter(item => item.date === today())
-    .reduce((total, item) => total + Number(item.hours || 0), 0);
-  const viewTotal = sleep
-    .filter(itemMatchesSleepDailyView)
-    .reduce((total, item) => total + Number(item.hours || 0), 0);
-  const sleepTarget = getSleepTargetForRange(range);
-  const viewValue = range.targetMode === 'week'
-    ? `${viewTotal.toFixed(1)} / ${sleepTarget} saat`
-    : `${viewTotal.toFixed(1)} saat`;
-
-  el.innerHTML = `
-    <div class="daily-stat-line">
-      <span>Bugün</span>
-      <strong>${todayTotal.toFixed(1)} saat</strong>
-    </div>
-    <div class="daily-stat-line muted">
-      <span>${range.title}</span>
-      <strong>${viewValue}</strong>
-    </div>
-  `;
-}
-function renderSleepList() {
-  const list = document.getElementById('sleepList');
-  if (!list) return;
-
-  const range = getDailyViewRange();
-  const sorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
-  const sleep = sorted
-    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(itemMatchesSleepDailyView);
-
-  if (!sleep.length) {
-    list.innerHTML = `<div class="empty-state compact">${range.title} için uyku kaydı yok.</div>`;
-    return;
-  }
-
-  list.innerHTML = sleep.map(item => `
-    <div class="daily-row">
-      <div>
-        <div class="daily-row-title">${formatDecimal(item.hours)} saat</div>
-        <div class="daily-row-meta">${item.date === today() ? 'Bugün' : formatDate(item.date)} · ${getSleepQuality(item.hours)}</div>
-      </div>
-      <button onclick="deleteSleep(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
-    </div>
-  `).join('');
-}
-function getCurrentWeekWorkoutTotal() {
-  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
-  const range = getDashboardWeekRange();
-  const verified = VERIFIED_WEEK_TOTALS[range.start];
-  if (verified) return verified.workouts;
-
-  return workouts
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .reduce((total, item) => total + Number(item.duration || 0), 0);
-}
-
-function renderWorkoutSummary() {
-  const el = document.getElementById('workoutSummary');
-  if (!el) return;
-
-  const workouts = Array.isArray(state.workouts) ? state.workouts : [];
-  const range = getDailyViewRange();
-  const todayTotal = workouts
-    .filter(item => item.date === today())
-    .reduce((total, item) => total + Number(item.duration || 0), 0);
-  const viewTotal = workouts
-    .filter(itemMatchesDailyView)
-    .reduce((total, item) => total + Number(item.duration || 0), 0);
-  const workoutTarget = getWorkoutTargetForRange(range);
-  const viewValue = range.targetMode === 'week'
-    ? `${viewTotal} / ${workoutTarget} dk`
-    : `${viewTotal} dk`;
-
-  el.innerHTML = `
-    <div class="daily-stat-line">
-      <span>Bugün</span>
-      <strong>${todayTotal} dk</strong>
-    </div>
-    <div class="daily-stat-line muted">
-      <span>${range.title}</span>
-      <strong>${viewValue}</strong>
-    </div>
-  `;
-}
-function renderWorkoutList() {
-  const list = document.getElementById('workoutList');
-  if (!list) return;
-
-  const range = getDailyViewRange();
-  const sorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
-  const workouts = sorted
-    .map((item, sortedIndex) => ({ ...item, sortedIndex }))
-    .filter(itemMatchesDailyView);
-
-  if (!workouts.length) {
-    list.innerHTML = `<div class="empty-state compact">${range.title} için antrenman kaydı yok.</div>`;
-    return;
-  }
-
-  list.innerHTML = workouts.map(item => {
-    const distance = getWorkoutDistanceFromNote(item.note);
-    return `
-    <div class="daily-row">
-      <div>
-        <div class="daily-row-title">${getWorkoutDisplayType(item)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</div>
-        <div class="daily-row-meta">${formatDate(item.date)} · ${getWorkoutDisplayCategory(item)} · ${getWorkoutIntensityFromNote(item.note)}${getCleanWorkoutNote(item.note) ? ` · ${getCleanWorkoutNote(item.note)}` : ''}</div>
-      </div>
-      <div class="row-actions">
-        <button onclick="editWorkout(${item.sortedIndex})" class="row-edit" aria-label="Düzenle">Düzenle</button>
-        <button onclick="deleteWorkout(${item.sortedIndex})" class="row-delete" aria-label="Sil">×</button>
-      </div>
-    </div>
-  `;
-  }).join('');
-}
 function getWeeklyProgressData() {
   const weeks = {};
 
@@ -2443,41 +1237,6 @@ function getWeeklyProgressData() {
     .sort((a, b) => a.start.localeCompare(b.start));
 }
 
-function getWorkoutCategoriesForRange(range) {
-  const categories = {};
-
-  (state.workouts || [])
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .forEach(item => {
-      const category = getWorkoutDisplayCategory(item);
-      categories[category] = (categories[category] || 0) + Number(item.duration || 0);
-    });
-
-  return Object.entries(categories)
-    .sort((a, b) => b[1] - a[1]);
-}
-
-function getWorkoutTypesForRange(range) {
-  const types = {};
-
-  (state.workouts || [])
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .forEach(item => {
-      const type = getWorkoutDisplayType(item);
-      types[type] = (types[type] || 0) + Number(item.duration || 0);
-    });
-
-  return Object.entries(types)
-    .sort((a, b) => b[1] - a[1]);
-}
-
-function getWorkoutTypeDisplay(type = '') {
-  const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
-  const displayType = getWorkoutTypeName(cleanType);
-  const category = getWorkoutCategory(cleanType);
-  return `${category} · ${displayType}`;
-}
-
 function getWorkoutTypeName(type = '') {
   const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
   return WORKOUT_TYPE_LABELS[cleanType] || cleanType;
@@ -2502,132 +1261,6 @@ function getWorkoutDisplayType(item = {}) {
 function getWorkoutDisplayCategory(item = {}) {
   const displayType = getWorkoutDisplayType(item);
   return getWorkoutCategory(displayType);
-}
-
-function renderWorkoutTypeLabel(type = '') {
-  const cleanType = String(type || 'Antrenman').trim() || 'Antrenman';
-  const displayType = getWorkoutTypeName(cleanType);
-  return `
-    <span class="workout-type-category">${getWorkoutCategory(cleanType)}</span>
-    <strong>${displayType}</strong>
-  `;
-}
-
-function getCurrentWeekWorkoutCategories() {
-  return getWorkoutCategoriesForRange(getDashboardWeekRange());
-}
-
-function getVerifiedAdjustment(week, field) {
-  if (!week?.verified) return 0;
-  const recordedField = field === 'sleep' ? 'recordedSleep' : 'recordedWorkouts';
-  return Number((Number(week[field] || 0) - Number(week[recordedField] || 0)).toFixed(1));
-}
-
-function getWeekDailyTotals(range) {
-  const sleepByDay = {};
-  const workoutByDay = {};
-  (state.sleep || [])
-    .filter(item => itemMatchesReportRange(item, range, 'sleep'))
-    .forEach(item => {
-      sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
-    });
-
-  (state.workouts || [])
-    .filter(item => item.date >= range.start && item.date <= range.end)
-    .forEach(item => {
-      if (!workoutByDay[item.date]) {
-        workoutByDay[item.date] = {
-          date: item.date,
-          duration: 0,
-          categories: {},
-          types: {},
-        };
-      }
-
-      const category = getWorkoutDisplayCategory(item);
-      const type = getWorkoutDisplayType(item);
-      workoutByDay[item.date].duration += Number(item.duration || 0);
-      workoutByDay[item.date].categories[category] = (workoutByDay[item.date].categories[category] || 0) + Number(item.duration || 0);
-      workoutByDay[item.date].types[type] = (workoutByDay[item.date].types[type] || 0) + Number(item.duration || 0);
-    });
-
-  return {
-    sleep: Object.entries(sleepByDay)
-      .map(([date, hours]) => ({ date, hours: Number(hours.toFixed(1)) }))
-      .sort((a, b) => a.date.localeCompare(b.date)),
-    workouts: Object.values(workoutByDay)
-      .sort((a, b) => a.date.localeCompare(b.date)),
-  };
-}
-
-function getWeekInsights(current, range) {
-  const totals = getWeekDailyTotals(range);
-  const sleepDays = current.sleepNights || totals.sleep.length;
-  const sleepAvg = sleepDays ? current.sleep / sleepDays : 0;
-  const bestSleep = totals.sleep.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
-  const bestWorkout = totals.workouts.reduce((best, item) => item.duration > (best?.duration || 0) ? item : best, null);
-  const categories = getWorkoutCategoriesForRange(range);
-  const topCategory = categories[0];
-
-  return {
-    sleepAvg,
-    sleepDays,
-    bestSleep,
-    workoutDays: totals.workouts.length,
-    bestWorkout,
-    topCategory,
-  };
-}
-
-function getProgressCoachInsight(current, range, prev) {
-  const insights = getWeekInsights(current, range);
-  const sleepTarget = getSleepTargetForRange(range);
-  const workoutTarget = getWorkoutTargetForRange(range);
-  const sleepPct = Math.min(100, Math.round((Number(current.sleep || 0) / sleepTarget) * 100));
-  const workoutPct = Math.min(100, Math.round((Number(current.workouts || 0) / workoutTarget) * 100));
-  const walkingStats = getWalkingStatsForRange(range);
-  const workoutDiff = prev ? Number(current.workouts || 0) - Number(prev.workouts || 0) : 0;
-  const sleepDiff = prev ? Number(current.sleep || 0) - Number(prev.sleep || 0) : 0;
-
-  let title = 'Ritim kuruluyor';
-  let tone = 'steady';
-  let text = 'Bu hafta için veri geldikçe yorum netleşecek. Uyku ve hareketi birlikte takip etmek en iyi resmi verir.';
-
-  if (sleepPct >= 100 && workoutPct >= 100) {
-    title = 'Hafta çok güçlü';
-    tone = 'strong';
-    text = 'Uyku ve antrenman hedefleri birlikte tamamlanmış. Bu tempo sürdürülebilirse gelişim çizgisi çok daha netleşir.';
-  } else if (insights.sleepAvg >= 7 && workoutPct >= 80) {
-    title = 'Dengeli gidiyorsun';
-    tone = 'strong';
-    text = 'Uyku hedefte, antrenman tarafı da güçlü. Bir sonraki adım bu düzeni haftadan haftaya korumak.';
-  } else if (insights.sleepAvg < 7 && workoutPct >= 80) {
-    title = 'Hareket iyi, uyku destek istiyor';
-    tone = 'focus';
-    text = 'Antrenman tarafı iyi görünüyor. Toparlanma için uyku ortalamasını 7 saate yaklaştırmak bu haftanın ana odağı olabilir.';
-  } else if (insights.sleepAvg >= 7 && workoutPct < 65) {
-    title = 'Uyku iyi, hareketi yükseltelim';
-    tone = 'focus';
-    text = 'Uyku tarafı toparlanmış. Antrenmanda 1-2 kısa ek seans bu haftayı daha dengeli hale getirebilir.';
-  } else if (insights.workoutDays || insights.sleepDays) {
-    title = 'Takip devam ediyor';
-    tone = 'steady';
-    text = 'Veri girişi başlamış. Bu hafta küçük ama düzenli kayıtlar, sonraki haftanın kıyasını daha anlamlı yapacak.';
-  }
-
-  const bullets = [
-    prev
-      ? `Önceki haftaya göre uyku ${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat`
-      : 'Önceki hafta kıyası için veri bekleniyor',
-    prev
-      ? `Antrenman farkı ${workoutDiff >= 0 ? '+' : ''}${formatMinutes(workoutDiff)} dk`
-      : `${insights.workoutDays} aktif gün kaydedildi`,
-    walkingStats.distance > 0
-      ? `Yürüyüş ${formatDistanceKm(walkingStats.distance)} km · ${formatDecimal(walkingStats.pace)} dk/km`
-      : 'Yürüyüş mesafesi girilirse km takibi açılır',
-  ];
-
-  return { title, text, tone, bullets, walkingStats };
 }
 
 function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
@@ -2655,405 +1288,6 @@ function getSelectedProgressWeek(weekly = getWeeklyProgressData()) {
   const latest = sorted[sorted.length - 1];
   progressWeekStart = latest.start;
   return latest;
-}
-
-function renderProgressWeekPicker(weekly = getWeeklyProgressData()) {
-  const el = document.getElementById('progressWeekPicker');
-  if (!el) return;
-
-  if (!weekly.length) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const sorted = [...weekly].sort((a, b) => b.start.localeCompare(a.start));
-  const selected = getSelectedProgressWeek(sorted);
-  const firstMeasureHint = getFirstMeasureHint(selected);
-
-  el.innerHTML = `
-    <div class="progress-week-picker">
-      <div>
-        <span>Görüntülenen hafta</span>
-        <strong>${formatReportRange(selected)}</strong>
-        ${firstMeasureHint ? `<small>${firstMeasureHint}</small>` : ''}
-      </div>
-      <select id="progressWeekSelect" aria-label="İlerleme haftası seç">
-        ${sorted.map(item => `
-          <option value="${item.start}" ${item.start === selected.start ? 'selected' : ''}>
-            ${formatReportRange(item)}
-          </option>
-        `).join('')}
-      </select>
-    </div>
-  `;
-
-  document.getElementById('progressWeekSelect')?.addEventListener('change', event => {
-    progressWeekStart = event.target.value;
-    progressWeekManuallySelected = true;
-    renderProgressSummary();
-    renderProgressCharts();
-    renderProgressWeekPicker();
-  });
-}
-
-function renderProgressSummary() {
-  const el = document.getElementById('progressSummary');
-  if (!el) return;
-
-  const weekly = getWeeklyProgressData();
-  const current = getSelectedProgressWeek(weekly) || { sleep: 0, workouts: 0 };
-  const range = current.start ? current : getDashboardWeekRange();
-  const rangeStart = parseIsoDateParts(range.start);
-  const dayBeforeRange = new Date(rangeStart.year, rangeStart.month - 1, rangeStart.day - 1);
-  const previousRange = getWeekRange(toLocalIsoDate(dayBeforeRange));
-  const prev = weekly.find(item => item.start === previousRange.start);
-  const previousDailyTotals = getWeekDailyTotals(previousRange);
-  const measurements = getMeasurementSummaryData();
-  const first = measurements[0];
-  const last = measurements[measurements.length - 1];
-  const realMeasurements = getSortedMeasurements();
-  const previousMeasure = realMeasurements[realMeasurements.length - 2];
-  const waistMeasurements = getWaistMeasurements();
-  const firstWaist = waistMeasurements[0];
-  const profileWaist = parseWaist(state.startWaist);
-  const lastWaist = waistMeasurements[waistMeasurements.length - 1] || (
-    isValidWaist(profileWaist)
-      ? { date: state.startDate || START_DATE, waist: profileWaist, isProfileStart: true }
-      : null
-  );
-  const previousWaist = waistMeasurements[waistMeasurements.length - 2];
-
-  const sleepTarget = getSleepTargetForRange(range);
-  const workoutTarget = getWorkoutTargetForRange(range);
-  const sleepPct = Math.min(100, Math.round((current.sleep / sleepTarget) * 100));
-  const workoutPct = Math.min(100, Math.round((current.workouts / workoutTarget) * 100));
-  const sleepDiff = prev ? current.sleep - prev.sleep : 0;
-  const workoutDiff = prev ? current.workouts - prev.workouts : 0;
-  const weightDiff = first && last ? last.weight - first.weight : 0;
-  const lastWeightDiff = previousMeasure && last && !last.isProfileStart ? last.weight - previousMeasure.weight : 0;
-  const waistDiff = waistMeasurements.length >= 2 ? lastWaist.waist - firstWaist.waist : null;
-  const lastWaistDiff = previousWaist && lastWaist ? lastWaist.waist - previousWaist.waist : null;
-  const categories = getWorkoutCategoriesForRange(range);
-  const categoryText = categories.length
-    ? categories.map(([category, minutes]) => `${category}: ${formatMinutes(minutes)} dk`).join(' · ')
-    : 'Bu hafta kategori verisi yok';
-  const workoutAdjustment = getVerifiedAdjustment(current, 'workouts');
-  const categoryAndAdjustmentText = workoutAdjustment
-    ? `${categoryText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
-    : categoryText;
-  const insights = getWeekInsights(current, range);
-  const topCategoryLabel = insights.topCategory
-    ? `${insights.topCategory[0]} · ${formatMinutes(insights.topCategory[1])} dk`
-    : 'Veri bekleniyor';
-  const bestSleepLabel = insights.bestSleep
-    ? `${formatDate(insights.bestSleep.date)} · ${insights.bestSleep.hours} saat`
-    : 'Veri bekleniyor';
-  const bestWorkoutLabel = insights.bestWorkout
-    ? `${formatDate(insights.bestWorkout.date)} · ${formatMinutes(insights.bestWorkout.duration)} dk`
-    : 'Veri bekleniyor';
-
-  const periodTitle = formatReportRange(range);
-  const periodLabel = range.start === getWeekRange(today()).start ? 'Bu hafta' : 'Son aktif hafta';
-  const firstMeasureHint = getFirstMeasureHint(range);
-  const sleepComparison = prev && previousDailyTotals.sleep.length
-    ? `${sleepDiff >= 0 ? '+' : ''}${sleepDiff.toFixed(1)} saat / önceki hafta`
-    : 'Önceki hafta kaydı yok';
-  const workoutComparison = prev && previousDailyTotals.workouts.length
-    ? `${workoutDiff >= 0 ? '+' : ''}${formatMinutes(workoutDiff)} dk / önceki hafta`
-    : 'Önceki hafta kaydı yok';
-
-  el.innerHTML = `
-    <div class="progress-period">
-      <span>${periodLabel}</span>
-      <strong>${periodTitle}</strong>
-      ${firstMeasureHint ? `<small>${firstMeasureHint}</small>` : ''}
-    </div>
-    <div class="progress-grid">
-      <div class="progress-metric-card">
-        <span>Uyku</span>
-        <strong>${current.sleep.toFixed(1)} saat</strong>
-        <div class="metric-track"><i style="width:${sleepPct}%"></i></div>
-        <small>${sleepComparison}</small>
-      </div>
-
-      <div class="progress-metric-card">
-          <span>Antrenman</span>
-        <strong>${formatMinutes(current.workouts)} dk</strong>
-        <div class="metric-track"><i style="width:${workoutPct}%"></i></div>
-        <small>${workoutComparison}</small>
-        <small>${categoryAndAdjustmentText}</small>
-      </div>
-
-      <div class="progress-metric-card">
-        <span>Kilo</span>
-        <strong>${last ? `${last.weight} kg` : '—'}</strong>
-        <small>Toplam: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} kg · Son: ${lastWeightDiff > 0 ? '+' : ''}${lastWeightDiff.toFixed(1)} kg</small>
-      </div>
-
-      <div class="progress-metric-card">
-        <span>Bel</span>
-        <strong>${lastWaist ? `${lastWaist.waist} cm` : '—'}</strong>
-        <small>${waistDiff === null ? 'Her 4. tartıda takip edilir' : `Toplam: ${waistDiff > 0 ? '+' : ''}${waistDiff.toFixed(1)} cm · Son: ${lastWaistDiff === null ? '—' : `${lastWaistDiff > 0 ? '+' : ''}${lastWaistDiff.toFixed(1)} cm`}`}</small>
-      </div>
-    </div>
-
-    <div class="progress-insight-grid">
-      <div class="progress-insight-card">
-        <span>Kayıtlı gün ortalaması</span>
-        <strong>${insights.sleepAvg.toFixed(1)} saat/gün</strong>
-        <small>${insights.sleepDays || 0} kayıtlı gün üzerinden</small>
-      </div>
-      <div class="progress-insight-card">
-        <span>En iyi uyku</span>
-        <strong>${bestSleepLabel}</strong>
-        <small>Haftanın en yüksek uyku kaydı</small>
-      </div>
-      <div class="progress-insight-card">
-        <span>Antrenman yapılan gün</span>
-        <strong>${insights.workoutDays} gün</strong>
-        <small>Bu hafta antrenman yapılan gün</small>
-      </div>
-      <div class="progress-insight-card">
-        <span>Öne çıkan kategori</span>
-        <strong>${topCategoryLabel}</strong>
-        <small>${bestWorkoutLabel}</small>
-      </div>
-    </div>
-  `;
-}
-function renderProgressCharts() {
-  const weekly = getWeeklyProgressData();
-
-  const latestWeek = getSelectedProgressWeek(weekly);
-
-  const sleepWrap = document.getElementById('sleepBars');
-  const workoutWrap = document.getElementById('workoutBars');
-
-  if (!latestWeek) {
-    setEmptyState(
-      sleepWrap,
-      'Uyku grafiği için kayıt bekleniyor',
-      'İlk uyku kaydını eklediğinde haftalık uyku düzenin burada görünür.',
-      'Uyku Ekle',
-      2
-    );
-    setEmptyState(
-      workoutWrap,
-      'Antrenman grafiği için kayıt bekleniyor',
-      'İlk antrenmanı eklediğinde süre ve yoğunluk dağılımı burada görünür.',
-      'Antrenman Ekle',
-      2
-    );
-    return;
-  }
-
-  if (sleepWrap) {
-    const sleepData = getWeekDailyTotals(latestWeek).sleep;
-    const sleepTarget = getSleepTargetForRange(latestWeek);
-    const sleepAvg = sleepData.length ? latestWeek.sleep / sleepData.length : 0;
-    const bestSleep = sleepData.reduce((best, item) => item.hours > (best?.hours || 0) ? item : best, null);
-
-    if (!sleepData.length) {
-      setEmptyState(
-        sleepWrap,
-        'Bu hafta uyku kaydı yok',
-        'Bir uyku kaydı eklediğinde günlük uyku düzenin burada grafik olarak görünecek.',
-        'Uyku Ekle',
-        2
-      );
-    } else {
-    sleepWrap.innerHTML = `
-      <div class="chart-mini-head enhanced">
-        <div>
-          <strong>Günlük uyku dağılımı</strong>
-          <span>Hedef aralık: 7-9 saat. Kayıtlı gün ortalaması ${sleepAvg.toFixed(1)} saat/gün</span>
-        </div>
-        <em>${latestWeek.sleep.toFixed(1)} / ${sleepTarget} saat</em>
-      </div>
-      <div class="chart-stat-row">
-        <div><span>Kayıtlı gün ort.</span><strong>${sleepAvg.toFixed(1)} saat</strong></div>
-        <div><span>En iyi gün</span><strong>${bestSleep ? `${getShortWeekday(bestSleep.date)} · ${formatDecimal(bestSleep.hours)} saat` : '—'}</strong></div>
-        <div><span>Durum</span><strong>${sleepAvg >= 7 ? 'Hedefte' : 'Eksik'}</strong></div>
-      </div>
-      <div class="bar-chart sleep-chart enhanced" style="--target-line: ${Math.min(100, (7 / 10) * 100)}%">
-        ${sleepData.map(item => {
-          const h = Math.min(140, Math.max(18, item.hours * 14));
-          const quality = getSleepQuality(item.hours);
-
-          return `
-            <div class="bar-item">
-              <div class="bar-fill sleep" style="height:${h}px" title="${formatDecimal(item.hours)} saat · ${quality}">
-                <span>${formatDecimal(item.hours)} saat</span>
-              </div>
-              <div class="bar-label">
-                ${getShortWeekday(item.date)}
-              </div>
-              <div class="bar-value">${quality}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-    }
-  }
-
-  if (workoutWrap) {
-    const workoutData = getWeekDailyTotals(latestWeek).workouts;
-    const categories = getWorkoutCategoriesForRange(latestWeek);
-    const workoutTypes = getWorkoutTypesForRange(latestWeek);
-    const walkingStats = getWalkingStatsForRange(latestWeek);
-    const recordedTypeText = workoutTypes.length
-      ? workoutTypes.map(([type, duration]) => `${getWorkoutTypeDisplay(type)}: ${formatMinutes(duration)} dk`).join(' · ')
-      : 'Antrenman tipi bekleniyor';
-    const distanceText = walkingStats.distance > 0
-      ? ` · Yürüyüş: ${formatDistanceKm(walkingStats.distance)} km`
-      : '';
-    const workoutAdjustment = getVerifiedAdjustment(latestWeek, 'workouts');
-    const categoryText = workoutAdjustment
-      ? `${recordedTypeText}${distanceText} · Not defteri farkı: ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk`
-      : `${recordedTypeText}${distanceText}`;
-    const workoutRecords = (state.workouts || [])
-      .filter(item => item.date >= latestWeek.start && item.date <= latestWeek.end)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const workoutDays = new Set(workoutRecords.map(item => item.date)).size;
-    const bestWorkout = workoutRecords.reduce((best, item) => Number(item.duration || 0) > Number(best?.duration || 0) ? item : best, null);
-
-    if (!workoutRecords.length) {
-      setEmptyState(
-        workoutWrap,
-        'Bu hafta antrenman kaydı yok',
-        'Antrenman eklediğinde süre, kategori ve haftalık dağılım burada görünür.',
-        'Antrenman Ekle',
-        2
-      );
-    } else {
-    workoutWrap.innerHTML = `
-      <div class="chart-mini-head enhanced">
-        <div>
-          <strong>Haftalık antrenman kayıtları</strong>
-          <span>${categoryText}</span>
-        </div>
-        <em>${workoutRecords.length} antrenman kaydı</em>
-      </div>
-      <div class="chart-stat-row">
-        <div><span>Antrenman yapılan gün</span><strong>${workoutDays} gün</strong></div>
-        <div><span>Kayıt sayısı</span><strong>${workoutRecords.length} kayıt</strong></div>
-        <div><span>En yoğun kayıt</span><strong>${bestWorkout ? `${getShortWeekday(bestWorkout.date)} · ${formatMinutes(bestWorkout.duration)} dk` : '—'}</strong></div>
-        <div><span>Odak</span><strong>${workoutTypes[0] ? getWorkoutTypeDisplay(workoutTypes[0][0]) : (categories[0] ? categories[0][0] : '—')}</strong></div>
-      </div>
-      <div class="bar-chart workout-chart enhanced">
-        ${workoutRecords.map(item => {
-          const h = Math.min(140, Math.max(18, Number(item.duration || 0) * 1.35));
-          const category = getWorkoutDisplayCategory(item);
-          const displayType = getWorkoutDisplayType(item);
-          const typeText = `${getWorkoutTypeDisplay(displayType || category)}: ${formatMinutes(item.duration)} dk`;
-
-          return `
-            <div class="bar-item">
-              <div class="bar-fill workout" style="height:${h}px" title="${typeText}">
-                <span>${formatMinutes(item.duration)} dk</span>
-              </div>
-              <div class="bar-label">
-                ${getShortWeekday(item.date)}
-              </div>
-              <div class="bar-value workout-type-label">${renderWorkoutTypeLabel(displayType || category)}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-      <div class="progress-record-list">
-        <span>Haftanın antrenman kayıtları</span>
-        ${workoutRecords.map(item => {
-          const distance = getWorkoutDistanceFromNote(item.note);
-          return `
-            <div class="progress-record-row">
-              <strong>${formatDate(item.date)}</strong>
-              <small>${getWorkoutDisplayType(item)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${formatDistanceKm(distance)} km` : ''}</small>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-    }
-  }
-}
-function renderProgressList() {
-  const el = document.getElementById('progressList');
-  if (!el) return;
-
-  const data = getWeeklyProgressData()
-    .sort((a, b) => b.start.localeCompare(a.start));
-
-  if (!data.length) {
-    setEmptyState(
-      el,
-      'Haftalık rapor henüz yok',
-      'Uyku ve antrenman kayıtları geldikçe haftalık özetler burada görünür.'
-    );
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="weekly-report-list">
-      ${data.map(item => {
-        const rangeDays = getRangeDayCount(item);
-        const sleepTarget = getSleepTargetForRange(item);
-        const workoutTarget = getWorkoutTargetForRange(item);
-        const sleepPct = Math.min(100, Math.round((item.sleep / sleepTarget) * 100));
-        const workoutPct = Math.min(100, Math.round((item.workouts / workoutTarget) * 100));
-        const isStrong = sleepPct >= 90 && workoutPct >= 90;
-        const isLight = sleepPct < 65 || workoutPct < 65;
-        const status = isStrong ? 'Güçlü hafta' : isLight ? 'Takviye gerekli' : 'Dengeli';
-        const categories = getWorkoutCategoriesForRange(item);
-        const categorySummary = categories.length
-          ? categories.slice(0, 2).map(([name, minutes]) => `${name} ${formatMinutes(minutes)} dk`).join(' · ')
-          : 'Kategori bekleniyor';
-        const walkingStats = getWalkingStatsForRange(item);
-        const activitySummary = walkingStats.distance > 0
-          ? `${categorySummary} · Yürüyüş ${formatDistanceKm(walkingStats.distance)} km`
-          : categorySummary;
-        const workoutDays = new Set(
-          state.workouts
-            .filter(workout => workout.date >= item.start && workout.date <= item.end)
-            .map(workout => workout.date)
-        ).size;
-        const workoutRecords = state.workouts
-          .filter(workout => workout.date >= item.start && workout.date <= item.end).length;
-        const sleepDays = item.sleepNights || getWeekDailyTotals(item).sleep.length;
-        const workoutAdjustment = getVerifiedAdjustment(item, 'workouts');
-        const verifiedNote = item.verified
-          ? `Not defteri doğrulandı${workoutAdjustment ? ` · süre farkı ${workoutAdjustment > 0 ? '+' : ''}${formatMinutes(workoutAdjustment)} dk` : ''}`
-          : '';
-        const workoutMetric = workoutDays
-          ? `${formatMinutes(item.workouts)} dk · ${workoutDays} gün · ${workoutRecords} kayıt`
-          : 'Kayıt yok';
-
-        return `
-          <div class="weekly-report-row">
-            <div>
-              <strong>${formatReportRange(item)}</strong>
-              <span>${status}</span>
-              <small>${activitySummary}</small>
-              ${verifiedNote ? `<small>${verifiedNote}</small>` : ''}
-            </div>
-            <div class="weekly-report-metrics">
-              <div>
-                <span>Uyku</span>
-                <strong>${item.sleep.toFixed(1)} saat</strong>
-                <small>${sleepDays}/${rangeDays} gece${item.verified ? ' · doğrulandı' : ''}</small>
-                <i><b style="width:${sleepPct}%"></b></i>
-              </div>
-              <div>
-                <span>Antrenman</span>
-                <strong>${workoutMetric}</strong>
-                <i><b style="width:${workoutPct}%"></b></i>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
 }
 
 function renderSettings() {
@@ -3093,16 +1327,16 @@ function renderSettings() {
   if (emailEl) emailEl.textContent = state.userEmail || '—';
   if (startWeightEl) {
     const startWeight = state.startWeight ?? firstMeasurement?.weight;
-    startWeightEl.textContent = Number.isFinite(Number(startWeight)) ? `${Number(startWeight).toFixed(1)} kg` : '— kg';
+    startWeightEl.textContent = Number.isFinite(Number(startWeight)) ? `${trNum(startWeight)} kg` : '— kg';
   }
   if (currentWeightEl) {
-    currentWeightEl.textContent = lastMeasurement?.weight ? `${Number(lastMeasurement.weight).toFixed(1)} kg` : '— kg';
+    currentWeightEl.textContent = lastMeasurement?.weight ? `${trNum(lastMeasurement.weight)} kg` : '— kg';
   }
   if (currentWaistEl) {
-    currentWaistEl.textContent = lastWaistMeasurement?.waist ? `${Number(lastWaistMeasurement.waist).toFixed(1)} cm` : 'Aylık takip';
+    currentWaistEl.textContent = lastWaistMeasurement?.waist ? `${trNum(lastWaistMeasurement.waist)} cm` : 'Ayda bir';
   }
-  if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${firstGoal} kg` : 'Belirlenmedi';
-  if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${finalGoal} kg` : 'Belirlenmedi';
+  if (firstGoalEl) firstGoalEl.textContent = firstGoal ? `${trNum(firstGoal)} kg` : 'Belirlenmedi';
+  if (finalGoalEl) finalGoalEl.textContent = finalGoal ? `${trNum(finalGoal)} kg` : 'Belirlenmedi';
   const syncMeta = ensureSyncMeta();
   const pendingCount = getPendingSyncCount();
   if (syncEl) {
@@ -3143,35 +1377,606 @@ function renderSettings() {
   if (dailyReminderToggle) dailyReminderToggle.checked = Boolean(state.preferences?.dailyReminder);
 }
 
-let selectedStatisticsMonth = null;
-function renderMonthlyOverview() {
-  const host = document.getElementById('monthlyOverview');
-  if (!host || !window.FitMonthly) return;
-  const current = today().slice(0, 7);
-  if (!selectedStatisticsMonth || selectedStatisticsMonth > current) selectedStatisticsMonth = current;
-  host.innerHTML = window.FitMonthly.markup(state, selectedStatisticsMonth, today());
-  const weekly = document.querySelector('.monthly-weekly');
-  if (weekly) weekly.ontoggle = () => {
-    if (weekly.open) requestAnimationFrame(() => {
-      renderMeasurementChart();
-      renderProgressCharts();
+// ─────────────────────────────────────────────────────────────
+// SADE ARAYÜZ (2026-11) — her ekran tek katman kart, tek font.
+// Hesaplar mevcut veri fonksiyonlarını kullanır; burada yalnız görünüm var.
+// ─────────────────────────────────────────────────────────────
+let entryTab = 'workout';
+let showAllRecent = false;
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+// Türkçe sayı: 99,1 · 1.250
+function trNum(value, digits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return number.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: digits });
+}
+
+function signedTr(value, digits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  const rounded = Number(number.toFixed(digits));
+  if (rounded === 0) return '0';
+  return `${rounded > 0 ? '+' : '−'}${trNum(Math.abs(rounded), digits)}`;
+}
+
+function formatShortDate(iso) {
+  const parts = parseIsoDateParts(iso);
+  if (!parts) return '';
+  return new Date(parts.year, parts.month - 1, parts.day)
+    .toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
+
+function formatShortRange(range) {
+  if (!range?.start || !range?.end) return '';
+  const a = parseIsoDateParts(range.start);
+  const b = parseIsoDateParts(range.end);
+  if (a && b && a.month === b.month) return `${a.day}–${formatShortDate(range.end)}`;
+  return `${formatShortDate(range.start)}–${formatShortDate(range.end)}`;
+}
+
+// Kilo ilerlemesi: tüm ekranlar aynı başlangıcı (profil başlangıcı) kullanır.
+function getWeightProgress() {
+  const data = getMeasurementSummaryData();
+  if (!data.length) return null;
+  const first = data[0];
+  const last = data[data.length - 1];
+  const milestones = (state.milestones || []).map(Number).filter(Number.isFinite);
+  const finalGoal = Number.isFinite(Number(state.goalWeight)) ? Number(state.goalWeight) : milestones.at(-1);
+  const goal = milestones.find(value => last.weight > value) ?? finalGoal ?? milestones.at(-1);
+  const lost = Number(first.weight) - Number(last.weight);
+  const needed = Number(first.weight) - Number(goal);
+  const pct = needed > 0 ? Math.max(0, Math.min(100, Math.round((lost / needed) * 100))) : 100;
+  const finalNeeded = Number(first.weight) - Number(finalGoal);
+  const finalPct = finalNeeded > 0 ? Math.max(0, Math.min(100, Math.round((lost / finalNeeded) * 100))) : 100;
+  return {
+    first,
+    last,
+    lost,
+    goal,
+    finalGoal,
+    pct,
+    finalPct,
+    left: Math.max(0, Number(last.weight) - Number(goal)),
+    lastIsMeasured: !last.isProfileStart,
+  };
+}
+
+// Bel ilerlemesi: başlangıç = profildeki başlangıç beli (yoksa ilk bel ölçümü).
+function getWaistProgress() {
+  const waists = getSortedMeasurements().filter(item => isValidWaist(item.waist));
+  const profileWaist = parseWaist(state.startWaist);
+  const start = isValidWaist(profileWaist)
+    ? { date: state.startDate || START_DATE, waist: Number(profileWaist) }
+    : waists[0] ? { date: waists[0].date, waist: Number(waists[0].waist) } : null;
+  const last = waists.at(-1) ? { date: waists.at(-1).date, waist: Number(waists.at(-1).waist) } : start;
+  if (!start || !last) return null;
+  return { start, last, diff: last.waist - start.waist };
+}
+
+function getMeasureDue() {
+  const date = getSuggestedMeasureDate();
+  return {
+    date,
+    due: date <= today(),
+    seq: getMeasurementSequenceNumber(date),
+    waist: shouldTrackWaist(date),
+  };
+}
+
+function getRangeTotals(range) {
+  const sleepNights = new Set();
+  let sleep = 0;
+  (state.sleep || []).forEach(item => {
+    if (itemMatchesReportRange(item, range, 'sleep')) {
+      sleep += Number(item.hours || 0);
+      sleepNights.add(item.date);
+    }
+  });
+  const workoutDays = new Set();
+  let workouts = 0;
+  let sessions = 0;
+  (state.workouts || []).forEach(item => {
+    if (item.date >= range.start && item.date <= range.end) {
+      workouts += Number(item.duration || 0);
+      workoutDays.add(item.date);
+      sessions += 1;
+    }
+  });
+  const verified = VERIFIED_WEEK_TOTALS[range.start];
+  if (verified) {
+    sleep = verified.sleep;
+    workouts = verified.workouts;
+  }
+  return {
+    sleep,
+    sleepNights: verified?.sleepNights || sleepNights.size,
+    workouts,
+    workoutDays: workoutDays.size,
+    sessions,
+    sleepTarget: getSleepTargetForRange(range),
+    workoutTarget: getWorkoutTargetForRange(range),
+    walking: getWalkingStatsForRange(range),
+  };
+}
+
+function getWeekStatus(totals) {
+  const sleepPct = totals.sleepTarget ? totals.sleep / totals.sleepTarget : 0;
+  const workoutPct = totals.workoutTarget ? totals.workouts / totals.workoutTarget : 0;
+  if (sleepPct >= 0.9 && workoutPct >= 0.9) return { label: 'Güçlü', tone: 'good' };
+  if (sleepPct < 0.65 || workoutPct < 0.65) return { label: 'Takviye', tone: 'warn' };
+  return { label: 'Dengeli', tone: 'neutral' };
+}
+
+// Uyku hedefini art arda tutturulan hafta sayısı (bitmemiş bu hafta, tutmadıysa sayılmaz).
+function getSleepWeekStreak() {
+  const currentStart = getWeekRange(today()).start;
+  const weeks = getWeeklyProgressData().sort((a, b) => b.start.localeCompare(a.start));
+  let streak = 0;
+  for (const week of weeks) {
+    const met = Number(week.sleep || 0) >= getSleepTargetForRange(week) - 0.01;
+    if (week.start === currentStart && !met) continue;
+    if (!met) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+function getTodayFocus() {
+  const t = today();
+  const due = getMeasureDue();
+  if (due.due) {
+    return {
+      kind: 'measure',
+      eyebrow: 'Bugünün odağı',
+      title: `${due.date === t ? 'Tartı günü' : 'Tartı zamanı geldi'} · ${due.seq}. tartı`,
+      sub: due.waist ? 'Bu tartıda bel ölçümü de var' : 'Sabah aç karnına, sadece kilo yeter',
+      panel: 1,
+    };
+  }
+  const yesterday = shiftIsoDate(t, -1);
+  const hasSleep = (state.sleep || []).some(item => item.date === yesterday || item.date === t);
+  if (!hasSleep) {
+    return { kind: 'sleep', eyebrow: 'Bugünün odağı', title: 'Dün geceki uykunu gir', sub: 'Tek dokunuş: 7 · 7,5 · 8 saat', panel: 2, tab: 'sleep' };
+  }
+  const week = getWeekRange(t);
+  const totals = getRangeTotals(week);
+  const left = Math.max(0, totals.workoutTarget - totals.workouts);
+  if (left > 0) {
+    return {
+      kind: 'workout',
+      eyebrow: 'Bu haftanın odağı',
+      title: totals.workouts ? `Antrenman hedefine ${trNum(left, 0)} dk kaldı` : 'Haftanın ilk antrenmanı',
+      sub: `Hedef ${totals.workoutTarget} dk · yaklaşık ${Math.max(1, Math.ceil(left / 60))} seans`,
+      panel: 2,
+      tab: 'workout',
+    };
+  }
+  return { kind: 'done', eyebrow: 'Harika gidiyorsun', title: 'Bu haftanın hedefleri tamam', sub: 'Ritmi koru; istersen bugüne bir not ekle.', panel: 2, tab: 'note' };
+}
+
+const ICONS = {
+  scale: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9.5a4 4 0 0 1 6 0M12 12l1.5-2"/>',
+  moon: '<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/>',
+  dumbbell: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
+  pen: '<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  chevron: '<path d="M9 6l6 6-6 6"/>',
+  chevronLeft: '<path d="M15 6l-6 6 6 6"/>',
+  ruler: '<path d="M4 20c0-6 4-8 8-8s8 2 8 8M12 12a4 4 0 1 0 0-8"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/>',
+};
+
+function icon(name, size = 20) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+}
+
+function renderHero() {
+  const dateEl = document.getElementById('heroDate');
+  const nameEl = document.getElementById('heroName');
+  if (dateEl) {
+    const week = Math.floor(getInclusiveDayCount(state.startDate || START_DATE, today()) / 7) + 1;
+    const dateText = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+    dateEl.textContent = today() >= (state.startDate || START_DATE) ? `${dateText} · ${week}. hafta` : dateText;
+  }
+  if (nameEl) nameEl.textContent = String(state.name || 'Sporcu').split(' ')[0];
+}
+
+function renderDashboard() {
+  const focusEl = document.getElementById('dashFocus');
+  const goalEl = document.getElementById('dashGoal');
+  const highlightsEl = document.getElementById('dashHighlights');
+  const weekEl = document.getElementById('dashWeek');
+
+  if (focusEl) {
+    const focus = getTodayFocus();
+    const iconName = { measure: 'scale', sleep: 'moon', workout: 'dumbbell', done: 'check' }[focus.kind];
+    focusEl.innerHTML = `
+      <button type="button" class="focus-card" data-focus-panel="${focus.panel}" data-focus-tab="${focus.tab || ''}">
+        <span class="focus-icon">${icon(iconName, 24)}</span>
+        <span class="focus-copy">
+          <span class="focus-eyebrow">${focus.eyebrow}</span>
+          <span class="focus-title">${escapeHtml(focus.title)}</span>
+          <span class="focus-sub">${escapeHtml(focus.sub)}</span>
+        </span>
+        <span class="focus-go">${icon('chevron', 20)}</span>
+      </button>`;
+    focusEl.querySelector('[data-focus-panel]')?.addEventListener('click', event => {
+      const btn = event.currentTarget;
+      if (btn.dataset.focusTab) setEntryTab(btn.dataset.focusTab);
+      goPanel(Number(btn.dataset.focusPanel));
     });
-  };
-  host.onclick = event => {
-    const button = event.target.closest('button');
-    if (!button || button.disabled) return;
-    if (button.hasAttribute('data-month-current')) selectedStatisticsMonth = current;
-    else if (button.hasAttribute('data-month-step')) selectedStatisticsMonth = window.FitMonthly.shiftMonth(selectedStatisticsMonth, Number(button.dataset.monthStep));
-    else return;
-    if (selectedStatisticsMonth < '2000-01') selectedStatisticsMonth = '2000-01';
-    renderMonthlyOverview();
-  };
-  host.onchange = event => {
-    if (event.target.dataset?.statMonth !== 'true' || !/^\d{4}-\d{2}$/.test(event.target.value)) return;
-    if (event.target.value > current || event.target.value < '2000-01') return;
-    selectedStatisticsMonth = event.target.value;
-    renderMonthlyOverview();
-  };
+  }
+
+  const weight = getWeightProgress();
+  if (goalEl) {
+    if (!weight) {
+      goalEl.innerHTML = `<div class="card empty">İlk ölçümünü eklediğinde hedef ilerlemen burada görünür.</div>`;
+    } else {
+      const circumference = 2 * Math.PI * 50;
+      const dash = (weight.pct / 100) * circumference;
+      goalEl.innerHTML = `
+        <section class="card goal-card" aria-label="Hedefe ilerleme">
+          <div class="ring" role="img" aria-label="Ara hedefin yüzde ${weight.pct}'i tamamlandı">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-track" cx="60" cy="60" r="50"/>
+              <circle class="ring-fill" cx="60" cy="60" r="50" stroke-dasharray="${dash.toFixed(1)} ${circumference.toFixed(1)}" transform="rotate(-90 60 60)"/>
+            </svg>
+            <span class="ring-label"><strong>%${weight.pct}</strong><small>ara hedef</small></span>
+          </div>
+          <div class="goal-copy">
+            <span class="label">${weight.lastIsMeasured ? `Güncel kilo · ${formatShortDate(weight.last.date)}` : 'Başlangıç kilosu'}</span>
+            <span class="big-number">${trNum(weight.last.weight)} <small>kg</small></span>
+            ${weight.lost > 0 ? `<span class="good-text">−${trNum(weight.lost)} kg verdin</span>` : ''}
+            <span class="muted-text">${weight.left > 0 ? `${trNum(weight.goal)} kg'a ${trNum(weight.left)} kg kaldı` : `${trNum(weight.goal)} kg hedefine ulaştın`}</span>
+          </div>
+        </section>`;
+    }
+  }
+
+  if (highlightsEl) {
+    const streak = getSleepWeekStreak();
+    const waist = getWaistProgress();
+    const walkingTotal = (state.workouts || []).reduce((total, item) => total + getWorkoutDistanceFromNote(item.note), 0);
+    const cards = [];
+    if (streak > 0) {
+      cards.push(`<div class="card stat"><span class="stat-icon sleep">${icon('moon', 20)}</span><strong>${streak} hafta</strong><span>üst üste uyku hedefinde</span></div>`);
+    }
+    if (waist && waist.diff < 0) {
+      cards.push(`<div class="card stat"><span class="stat-icon good">${icon('ruler', 20)}</span><strong>${signedTr(waist.diff)} cm</strong><span>belden · ${trNum(waist.start.waist)} → ${trNum(waist.last.waist)}</span></div>`);
+    }
+    if (cards.length < 2 && walkingTotal > 0) {
+      cards.push(`<div class="card stat"><span class="stat-icon accent">${icon('dumbbell', 20)}</span><strong>${trNum(walkingTotal)} km</strong><span>toplam yürüyüş</span></div>`);
+    }
+    highlightsEl.innerHTML = cards.slice(0, 2).join('');
+    highlightsEl.hidden = !cards.length;
+  }
+
+  if (weekEl) {
+    const range = getWeekRange(today());
+    const totals = getRangeTotals(range);
+    const prevRange = getWeekRange(shiftIsoDate(range.start, -1));
+    const prev = getRangeTotals(prevRange);
+    const sleepPct = Math.min(100, Math.round((totals.sleep / totals.sleepTarget) * 100) || 0);
+    const workoutPct = Math.min(100, Math.round((totals.workouts / totals.workoutTarget) * 100) || 0);
+    let coach = '';
+    if (prev.workouts > 0 || prev.sleep > 0) {
+      const prevLeft = prev.workoutTarget - prev.workouts;
+      coach = prevLeft > 0
+        ? `Geçen hafta antrenman hedefine <b>${trNum(prevLeft, 0)} dk</b> kalmıştı. Bu hafta ${Math.max(1, Math.ceil((totals.workoutTarget - totals.workouts) / 60))} seans yeterli.`
+        : `Geçen hafta antrenman hedefini <b>${trNum(prev.workouts, 0)} dk</b> ile tutturdun. Aynı ritim.`;
+    }
+    weekEl.innerHTML = `
+      <section class="card" aria-label="Bu hafta">
+        <div class="card-head"><h2>Bu hafta</h2><span class="muted-text">${formatShortRange(range)}</span></div>
+        <div class="meter">
+          <div class="meter-row"><span>Uyku</span><span><b>${trNum(totals.sleep)}</b> / ${totals.sleepTarget} saat</span></div>
+          <div class="bar"><i class="sleep" style="width:${sleepPct}%"></i></div>
+        </div>
+        <div class="meter">
+          <div class="meter-row"><span>Antrenman</span><span><b>${trNum(totals.workouts, 0)}</b> / ${totals.workoutTarget} dk</span></div>
+          <div class="bar"><i style="width:${workoutPct}%"></i></div>
+        </div>
+        ${coach ? `<p class="coach">${coach}</p>` : ''}
+      </section>`;
+  }
+}
+
+function renderAchievements() {
+  const showcase = document.getElementById('achievementShowcase');
+  const dashboard = document.getElementById('dashboardAchievement');
+  const achievements = getAchievements();
+  const unlocked = achievements.filter(item => item.unlocked);
+  const next = achievements.filter(item => !item.unlocked).sort((a, b) => b.progress - a.progress)[0];
+
+  if (dashboard) {
+    dashboard.innerHTML = `
+      <button type="button" class="card link-row" data-go-panel="4">
+        <span class="badge-count">${unlocked.length}</span>
+        <span class="link-copy">
+          <strong>${unlocked.length} / ${achievements.length} rozet</strong>
+          <small>${next ? `Sıradaki: ${escapeHtml(next.title)} · ${formatAchievementProgress(next)}` : 'Tüm rozetler tamamlandı'}</small>
+        </span>
+        ${icon('chevron', 18)}
+      </button>`;
+  }
+
+  if (showcase) {
+    showcase.innerHTML = `
+      <div class="card-head"><h2>Rozetler</h2><span class="muted-text">${unlocked.length} / ${achievements.length}</span></div>
+      <div class="badge-grid">
+        ${achievements.map(item => `
+          <div class="badge ${item.unlocked ? 'is-on' : ''}">
+            <span class="badge-icon">${item.unlocked ? icon('check', 16) : escapeHtml(item.icon)}</span>
+            <span class="badge-copy">
+              <strong>${escapeHtml(item.title)}</strong>
+              <small>${item.unlocked ? escapeHtml(item.detail) : formatAchievementProgress(item)}</small>
+            </span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  updateAchievementState(achievements);
+}
+
+function renderWeightSummary() {
+  const el = document.getElementById('weightSummary');
+  if (!el) return;
+  const weight = getWeightProgress();
+  const waist = getWaistProgress();
+  if (!weight) {
+    el.innerHTML = '';
+    return;
+  }
+  const lostClass = weight.lost > 0 ? 'good-text' : weight.lost < 0 ? 'bad-text' : '';
+  const waistClass = waist && waist.diff < 0 ? 'good-text' : waist && waist.diff > 0 ? 'bad-text' : '';
+  el.innerHTML = `
+    <div class="card mini"><span class="label">Son</span><strong>${trNum(weight.last.weight)} kg</strong></div>
+    <div class="card mini"><span class="label">Toplam</span><strong class="${lostClass}">${signedTr(-weight.lost)} kg</strong></div>
+    <div class="card mini"><span class="label">Bel</span><strong class="${waistClass}">${waist ? `${signedTr(waist.diff)} cm` : '—'}</strong></div>`;
+}
+
+function renderWeightList() {
+  const list = document.getElementById('weightList');
+  const empty = document.getElementById('weightEmpty');
+  if (!list || !empty) return;
+
+  const measurementDesc = [...getSortedMeasurements()].sort((a, b) => b.date.localeCompare(a.date));
+  const summaryData = getMeasurementSummaryData();
+  const rows = [
+    ...summaryData.map(item => ({ ...item, measurementIndex: measurementDesc.findIndex(m => m.date === item.date) })),
+    ...getSkippedMeasurements().map(item => ({ ...item, isSkipped: true })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
+  empty.hidden = rows.length > 0;
+  list.innerHTML = rows.map(m => {
+    if (m.isSkipped) {
+      return `<div class="row"><span class="row-date">${formatShortDate(m.date)}</span><span class="row-main"><strong>Atlandı</strong><small>${escapeHtml(m.reason || 'Tartıya erişim yok')}</small></span><span class="chip">—</span><span class="row-spacer"></span></div>`;
+    }
+    const prev = summaryData.filter(item => item.date < m.date && Number.isFinite(Number(item.weight))).at(-1);
+    const diff = prev ? Number(m.weight) - Number(prev.weight) : null;
+    const rounded = diff === null ? null : Number(diff.toFixed(1));
+    const tone = rounded === null ? 'neutral' : rounded < 0 ? 'good' : rounded > 0 ? 'bad' : 'neutral';
+    const waistText = isValidWaist(m.waist) ? `Bel ${trNum(m.waist)} cm` : m.isProfileStart ? 'Başlangıç' : 'Bel ölçülmedi';
+    const deleteBtn = m.isProfileStart || m.measurementIndex < 0
+      ? '<span class="row-spacer"></span>'
+      : `<button type="button" class="icon-only" onclick="deleteWeight(${m.measurementIndex})" aria-label="${formatShortDate(m.date)} ölçümünü sil">${icon('close', 16)}</button>`;
+    return `
+      <div class="row">
+        <span class="row-date">${formatShortDate(m.date)}</span>
+        <span class="row-main"><strong>${trNum(m.weight)} kg</strong><small>${waistText}</small></span>
+        <span class="chip ${tone}">${rounded === null ? 'Başlangıç' : `${signedTr(rounded)} kg`}</span>
+        ${deleteBtn}
+      </div>`;
+  }).join('');
+}
+
+function setEntryTab(tab) {
+  entryTab = ['sleep', 'workout', 'note'].includes(tab) ? tab : 'workout';
+  document.querySelectorAll('[data-entry-tab]').forEach(btn => {
+    const active = btn.dataset.entryTab === entryTab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('[data-entry-form]').forEach(form => {
+    form.hidden = form.dataset.entryForm !== entryTab;
+  });
+}
+
+function renderEntryTabs() {
+  setEntryTab(entryTab);
+}
+
+function renderRecentEntries() {
+  const list = document.getElementById('recentList');
+  const toggle = document.getElementById('recentToggle');
+  if (!list) return;
+
+  const sleepSorted = [...(state.sleep || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const workoutSorted = [...(state.workouts || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const items = [
+    ...sleepSorted.map((item, sortedIndex) => ({
+      kind: 'sleep', date: item.date, sortedIndex,
+      title: `Uyku · ${trNum(item.hours)} saat`,
+      sub: `${formatShortDate(item.date)} · ${getSleepQuality(item.hours)}`,
+    })),
+    ...workoutSorted.map((item, sortedIndex) => {
+      const distance = getWorkoutDistanceFromNote(item.note);
+      const note = getCleanWorkoutNote(item.note);
+      return {
+        kind: 'workout', date: item.date, sortedIndex,
+        title: `${getWorkoutDisplayType(item)} · ${formatMinutes(item.duration)} dk${distance > 0 ? ` · ${trNum(distance, 2)} km` : ''}`,
+        sub: `${formatShortDate(item.date)} · ${getWorkoutDisplayCategory(item)} · ${getWorkoutIntensityFromNote(item.note)}${note ? ` · ${note}` : ''}`,
+      };
+    }),
+    ...(state.notes || []).map((item, stateIndex) => ({
+      kind: 'note', date: item.date, stateIndex,
+      title: item.text,
+      sub: `${formatShortDate(item.date)} · Not`,
+    })),
+  ].filter(item => isTrackableActivityDate(item.date))
+    .sort((a, b) => b.date.localeCompare(a.date) || a.kind.localeCompare(b.kind));
+
+  const cutoff = shiftIsoDate(today(), -7);
+  const visible = showAllRecent ? items : items.filter(item => item.date >= cutoff);
+  const shown = visible.length ? visible : items.slice(0, 5);
+
+  if (toggle) {
+    toggle.hidden = items.length <= shown.length && !showAllRecent;
+    toggle.textContent = showAllRecent ? 'Son 7 gün' : 'Tümü';
+  }
+
+  if (!shown.length) {
+    list.innerHTML = '<p class="empty">Henüz kayıt yok. Yukarıdan ilk kaydını ekle.</p>';
+    return;
+  }
+
+  const kindLabel = { sleep: 'Uyku', workout: 'Antrenman', note: 'Not' };
+  list.innerHTML = shown.map(item => {
+    const del = item.kind === 'sleep' ? `deleteSleep(${item.sortedIndex})`
+      : item.kind === 'workout' ? `deleteWorkout(${item.sortedIndex})`
+        : `deleteNote(${item.stateIndex})`;
+    const edit = item.kind === 'workout'
+      ? `<button type="button" class="icon-only" onclick="editWorkout(${item.sortedIndex})" aria-label="Antrenmanı düzenle">${icon('edit', 18)}</button>`
+      : '';
+    return `
+      <div class="row">
+        <span class="row-dot ${item.kind}" aria-hidden="true"></span>
+        <span class="row-main"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.sub)}</small></span>
+        ${edit}
+        <button type="button" class="icon-only" onclick="${del}" aria-label="${kindLabel[item.kind]} kaydını sil">${icon('close', 16)}</button>
+      </div>`;
+  }).join('');
+}
+
+function renderWeightChart() {
+  const el = document.getElementById('progressChart');
+  if (!el) return;
+  const data = getMeasurementSummaryData().filter(item => Number.isFinite(Number(item.weight)));
+  const weight = getWeightProgress();
+  if (data.length < 2 || !weight) {
+    el.innerHTML = '<p class="empty">Grafik için en az iki ölçüm gerekiyor.</p>';
+    return;
+  }
+  const W = 640, H = 220, padX = 12, padTop = 14, padBottom = 14;
+  const values = data.map(item => Number(item.weight));
+  const goal = Number(weight.goal);
+  const lo = Math.floor(Math.min(...values, Number.isFinite(goal) ? goal : Infinity) - 1);
+  const hi = Math.ceil(Math.max(...values) + 1);
+  const x = i => padX + (i * (W - padX * 2)) / (data.length - 1);
+  const y = v => padTop + ((hi - v) / (hi - lo)) * (H - padTop - padBottom);
+  const points = data.map((item, i) => `${x(i).toFixed(1)},${y(Number(item.weight)).toFixed(1)}`).join(' ');
+  const area = `${x(0).toFixed(1)},${H - padBottom} ${points} ${x(data.length - 1).toFixed(1)},${H - padBottom}`;
+  const goalY = Number.isFinite(goal) && goal >= lo ? y(goal) : null;
+  const lastPoint = data.at(-1);
+  el.innerHTML = `
+    <div class="card-head">
+      <h2>Kilo trendi</h2>
+      <span class="${weight.lost > 0 ? 'good-text' : 'muted-text'}"><b>${trNum(weight.first.weight)} → ${trNum(lastPoint.weight)} kg</b></span>
+    </div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${formatShortDate(data[0].date)} ${trNum(data[0].weight)} kg'dan ${formatShortDate(lastPoint.date)} ${trNum(lastPoint.weight)} kg'a kilo grafiği">
+      ${goalY !== null ? `<line class="chart-goal" x1="0" x2="${W}" y1="${goalY.toFixed(1)}" y2="${goalY.toFixed(1)}"/>` : ''}
+      <polygon class="chart-area" points="${area}"/>
+      <polyline class="chart-line" points="${points}"/>
+      ${data.map((item, i) => `<circle class="chart-dot" cx="${x(i).toFixed(1)}" cy="${y(Number(item.weight)).toFixed(1)}" r="4"/>`).join('')}
+    </svg>
+    <div class="chart-axis"><span>${formatShortDate(data[0].date)}</span><span>${formatShortDate(lastPoint.date)}</span></div>
+    ${goalY !== null ? `<p class="muted-text small">Kesikli çizgi: ara hedef ${trNum(goal)} kg</p>` : ''}`;
+}
+
+function renderProgressWeek() {
+  const el = document.getElementById('progressWeek');
+  if (!el) return;
+  const weekly = getWeeklyProgressData();
+  const selected = getSelectedProgressWeek(weekly);
+  if (!selected) {
+    el.innerHTML = '<p class="empty">Haftalık özet için uyku veya antrenman kaydı ekle.</p>';
+    return;
+  }
+  const sorted = [...weekly].sort((a, b) => a.start.localeCompare(b.start));
+  const index = sorted.findIndex(item => item.start === selected.start);
+  const range = { start: selected.start, end: selected.end };
+  const totals = getRangeTotals(range);
+  const status = getWeekStatus(totals);
+  const days = [];
+  for (let i = 0; i < getRangeDayCount(range); i += 1) days.push(shiftIsoDate(range.start, i));
+  const sleepByDay = {};
+  (state.sleep || []).forEach(item => {
+    if (item.date >= range.start && item.date <= range.end) sleepByDay[item.date] = (sleepByDay[item.date] || 0) + Number(item.hours || 0);
+  });
+  const avg = totals.sleepNights ? totals.sleep / totals.sleepNights : 0;
+  el.innerHTML = `
+    <div class="week-nav">
+      <button type="button" class="icon-btn" data-week-step="-1" aria-label="Önceki hafta" ${index <= 0 ? 'disabled' : ''}>${icon('chevronLeft', 18)}</button>
+      <div class="week-title"><strong>${formatShortRange(range)}</strong><span class="chip ${status.tone}">${status.label} hafta</span></div>
+      <button type="button" class="icon-btn" data-week-step="1" aria-label="Sonraki hafta" ${index >= sorted.length - 1 ? 'disabled' : ''}>${icon('chevron', 18)}</button>
+    </div>
+    <div class="trio">
+      <div class="tile"><span class="label">Uyku</span><strong>${trNum(totals.sleep)} sa</strong><small>ort. ${trNum(avg)}</small></div>
+      <div class="tile"><span class="label">Antrenman</span><strong>${trNum(totals.workouts, 0)} dk</strong><small>${totals.workoutDays} gün</small></div>
+      <div class="tile"><span class="label">Yürüyüş</span><strong>${totals.walking.distance > 0 ? `${trNum(totals.walking.distance, 2)} km` : '—'}</strong><small>${totals.walking.distance > 0 ? `${trNum(totals.walking.pace)} dk/km` : 'kayıt yok'}</small></div>
+    </div>
+    <div class="sleep-bars" role="img" aria-label="Gece gece uyku saatleri">
+      ${days.map(day => {
+        const hours = sleepByDay[day] || 0;
+        const height = Math.max(4, Math.round((Math.min(hours, 10) / 10) * 64));
+        const dayName = new Date(day + 'T12:00:00').toLocaleDateString('tr-TR', { weekday: 'short' });
+        return `<div class="sleep-bar"><small>${hours ? trNum(hours) : '–'}</small><i class="${hours >= 7 ? 'ok' : hours ? 'low' : 'none'}" style="height:${height}px"></i><span>${dayName}</span></div>`;
+      }).join('')}
+    </div>`;
+  el.querySelectorAll('[data-week-step]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = sorted[index + Number(btn.dataset.weekStep)];
+      if (!next) return;
+      progressWeekStart = next.start;
+      progressWeekManuallySelected = true;
+      renderProgressWeek();
+    });
+  });
+}
+
+function renderProgressTable() {
+  const el = document.getElementById('progressTable');
+  if (!el) return;
+  const data = getWeeklyProgressData().sort((a, b) => b.start.localeCompare(a.start));
+  if (!data.length) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <div class="card-head"><h2>Haftalar</h2><span class="muted-text">${data.length} hafta</span></div>
+    <div class="week-table" role="table" aria-label="Haftalık özet">
+      <div class="week-row head" role="row"><span role="columnheader">Hafta</span><span role="columnheader">Uyku</span><span role="columnheader">Antrenman</span><span role="columnheader">Durum</span></div>
+      ${data.map(week => {
+        const totals = getRangeTotals(week);
+        const status = getWeekStatus(totals);
+        return `
+          <button type="button" class="week-row" role="row" data-week-start="${week.start}">
+            <span role="cell"><b>${formatShortRange(week)}</b></span>
+            <span role="cell">${trNum(totals.sleep)} sa</span>
+            <span role="cell">${trNum(totals.workouts, 0)} dk</span>
+            <span role="cell"><span class="chip ${status.tone}">${status.label}</span></span>
+          </button>`;
+      }).join('')}
+    </div>`;
+  el.querySelectorAll('[data-week-start]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      progressWeekStart = btn.dataset.weekStart;
+      progressWeekManuallySelected = true;
+      renderProgressWeek();
+      document.getElementById('progressWeek')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
+function renderProgress() {
+  renderWeightChart();
+  renderProgressWeek();
+  renderProgressTable();
 }
 
 function renderAll() {
@@ -3179,26 +1984,14 @@ function renderAll() {
 
   [
     renderHero,
-    renderMoti,
-    renderDashboardWeekLabel,
+    renderDashboard,
     renderAchievements,
-    renderDashboardGoalCard,
-    renderStats,
-    renderMeasurementChart,
     renderWeightSummary,
     renderWeightList,
-    renderNotes,
-    renderDailyViewControls,
-    renderSleepSummary,
-    renderSleepList,
-    renderWorkoutSummary,
-    renderWorkoutList,
+    renderEntryTabs,
+    renderRecentEntries,
     updateWorkoutGuidance,
-    renderProgressSummary,
-    renderMonthlyOverview,
-    renderProgressWeekPicker,
-    renderProgressCharts,
-    renderProgressList,
+    renderProgress,
     renderSettings,
     syncMeasureFormDate,
     applyTheme,
@@ -3804,61 +2597,6 @@ async function saveMeasurementFromForm() {
   await requestSync();
 }
 
-async function addMeasurement() {
-  if (document.getElementById('measureDateInput')) {
-    await saveMeasurementFromForm();
-    return;
-  }
-
-  const dateInput = prompt('Ölçüm tarihi gir (gg/aa/yyyy):', todayDisplay());
-  if (!dateInput) return;
-
-  const date = parseDisplayDate(dateInput);
-  if (!date) {
-    alert('Tarih formatı hatalı. Örnek: 27/04/2026 veya 27.04.2026');
-    return;
-  }
-
-  if (date < FIRST_MEASURE_DATE) {
-    alert('İlk tartı tarihi 9 Ağustos 2026. Bu tarihten önce ölçüm eklenemez.');
-    return;
-  }
-
-  if (!Array.isArray(state.measurements)) state.measurements = [];
-
-  const alreadyExists = state.measurements.some(item => item.date === date);
-
-  if (alreadyExists) {
-    alert('Bu tarih için zaten kayıt var. Önce mevcut kaydı silmelisin.');
-    return;
-  }
-
-  const weightInput = prompt('Kilonu gir (kg):');
-  const weight = parseLocaleNumber(weightInput);
-  if (!weightInput || Number.isNaN(weight)) return;
-
-  const waistInput = prompt(
-    shouldTrackWaist(date)
-      ? 'Bu 4. tartı günü. Bel ölçünü gir (cm):'
-      : 'Bel ölçünü gir (cm, opsiyonel):'
-  );
-  const waist = waistInput ? parseLocaleNumber(waistInput) : null;
-  if (shouldTrackWaist(date) && (!waistInput || Number.isNaN(waist))) return;
-  if (waistInput && Number.isNaN(waist)) return;
-
-  const measurement = {
-    date,
-    weight: parseFloat(weight.toFixed(1)),
-    waist: waistInput ? parseFloat(waist.toFixed(1)) : null,
-    user_id: getUserId(),
-  };
-
-  saveMeasurementLocally(measurement);
-  setStatus('Ölçüm eklendi ✓', 'ok');
-
-  await requestSync();
-}
-
 async function deleteWeight(sortedIdx) {
   if (!confirm('Bu ölçümü silmek istediğinden emin misin?')) return;
 
@@ -3955,7 +2693,7 @@ async function saveSleep() {
   hourInput.value = '';
   document.querySelectorAll('[data-sleep-hours]').forEach(btn => btn.classList.remove('is-selected'));
   releaseMobileInputFocus();
-  dateInput.value = today();
+  dateInput.value = shiftIsoDate(today(), -1);
 
   await requestSync();
 }
@@ -4603,11 +3341,17 @@ async function syncNow() {
 
 function startAutoSync() {
   if (autoSyncTimer) window.clearInterval(autoSyncTimer);
+  // Bekleyen değişiklik varsa 5 sn'de bir, yoksa 30 sn'de bir dener.
+  // iPhone "internet geldi" sinyalini her zaman vermediği için bu yedek yol önemlidir.
+  let lastAutoSync = Date.now();
   autoSyncTimer = window.setInterval(() => {
-    if (!document.hidden && state.onboarded && hasActiveUser() && navigator.onLine) {
-      loadAllCloudData({ force: true });
-    }
-  }, 30000);
+    if (document.hidden || !state.onboarded || !hasActiveUser()) return;
+    const pending = getPendingSyncCount() > 0;
+    const due = pending ? 5000 : 30000;
+    if (Date.now() - lastAutoSync < due) return;
+    lastAutoSync = Date.now();
+    loadAllCloudData({ force: true });
+  }, 5000);
 }
 
 // PWA INSTALL
@@ -4646,8 +3390,9 @@ function bindUiEvents() {
   const sleepBtn = document.getElementById('saveSleepBtn');
   if (sleepBtn) sleepBtn.addEventListener('click', saveSleep);
 
+  // Uyku her sabah bir önceki gecenin tarihiyle girilir.
   const sleepDateInput = document.getElementById('sleepDateInput');
-  if (sleepDateInput) sleepDateInput.value = today();
+  if (sleepDateInput) sleepDateInput.value = shiftIsoDate(today(), -1);
 
   const workoutDateInput = document.getElementById('workoutDateInput');
   if (workoutDateInput) workoutDateInput.value = today();
@@ -4702,15 +3447,23 @@ function bindUiEvents() {
     });
   });
 
-  document.querySelectorAll('[data-daily-view]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      dailyView = btn.dataset.dailyView || 'week';
-      renderDailyViewControls();
-      renderSleepSummary();
-      renderSleepList();
-      renderWorkoutSummary();
-      renderWorkoutList();
+  document.querySelectorAll('[data-entry-tab]').forEach(btn => {
+    btn.addEventListener('click', () => setEntryTab(btn.dataset.entryTab));
+  });
+
+  const recentToggle = document.getElementById('recentToggle');
+  if (recentToggle) {
+    recentToggle.addEventListener('click', () => {
+      showAllRecent = !showAllRecent;
+      renderRecentEntries();
     });
+  }
+
+  document.addEventListener('click', event => {
+    const target = event.target.closest('[data-go-panel]');
+    if (!target) return;
+    if (target.dataset.entry) setEntryTab(target.dataset.entry);
+    goPanel(Number(target.dataset.goPanel));
   });
 
   const signOutBtn = document.getElementById('signOutBtn');
@@ -4722,9 +3475,6 @@ function bindUiEvents() {
   window.addEventListener('focus', () => {
     if (state.onboarded) loadAllCloudData();
   });
-
-  const weightBtn = document.getElementById('openAddWeightBtn');
-  if (weightBtn) weightBtn.addEventListener('click', addMeasurement);
 
   const themeBtn = document.getElementById('themeBtn');
   if (themeBtn) themeBtn.addEventListener('click', toggleTheme);

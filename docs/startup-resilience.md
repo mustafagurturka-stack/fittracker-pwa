@@ -15,7 +15,7 @@
 - Notlar: mevcut hesap bazlı yerel veri ve eşitleme kuyruğu korunur. Sürüm kontrolü app-version.json ve sw.js için ağdan/no-store sürer. Bildirim ve ikon sayaç işlemleri korunur.
 - Bütçe: ilk kayıt okuması 8 saniyede kesilir. Başarısız okuma sıfır bakiye veya boş hesap gibi gösterilmez. Sonraki başarısız yenileme önceden yüklenen kayıtları boşaltmaz. Yazma işlemleri otomatik iptal/tekrar edilmez. Yeni worker açık formu zorla yeniden yüklemez.
 - Kitaplık: mevcut hesap bazlı cache/çakışma/kuyruk mantığı korunur. İlk bulut READ isteğine süre sınırı eklenir; başarısız okumada yerel kitaplık sıfırlanmaz. Mevcut kullanıcı onaylı sürüm güncelleme akışı korunur.
-- Fittracker: Supabase SDK 2.112.3 MIT lisansıyla uygulama içinde sabit sürüm olarak taşınır. CDN'den ilk SDK yüklemesi beklenmez. Grafik kütüphanesi isteğe bağlı/asenkron yüklenir; gelmezse mevcut yerel grafik yedeği kullanılır. SDK oturumu doğrulamadan yerel sağlık verisi açılmaz. Cloud verileri yerel görünümü bekletmeden arkadan yenilenir.
+- Fittracker: Supabase SDK 2.112.3 MIT lisansıyla uygulama içinde sabit sürüm olarak taşınır. CDN'den ilk SDK yüklemesi beklenmez. Grafikler uygulama içinde SVG olarak çizilir; dış grafik kütüphanesi ve dış font yoktur. SDK oturumu doğrulamadan yerel sağlık verisi açılmaz. Cloud verileri yerel görünümü bekletmeden arkadan yenilenir.
 
 ## Test ve yayın
 

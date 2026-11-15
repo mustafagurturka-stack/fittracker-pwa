@@ -1,33 +1,23 @@
-# FitTracker Pro PWA
+# FitTracker
 
-Deploy-ready static PWA package.
+Kilo, bel, uyku ve antrenman takibi. Web ve iPhone PWA aynı Supabase hesabıyla senkron çalışır.
 
-## Structure
-- `index.html`
-- `styles/main.css`
-- `scripts/app.js`
-- `manifest.json`
-- `service-worker.js`
-- `offline.html`
-- `icons/`
+## Yapı
+- `index.html` — tek sayfa, 5 ekran (Özet, Kilo, Kayıt, İlerleme, Profil)
+- `scripts/app.js` — veri, senkron ve ekran çizimi
+- `styles/main.css` — sade tasarım; açık/koyu tema, mobil + geniş ekran
+- `fonts/` — gömülü DM Sans (OFL); internet olmadan da aynı görünüm
+- `service-worker.js` — uygulama kabuğunu önbellekte tutar
+- `supabase/migrations/` — veritabanına uygulanmış değişikliklerin kaydı
 
-## Local preview
-Use any static server. Example:
+## Senkron kuralı
+Bulut tek doğru kaynaktır. Cihazda bekleyen (henüz gönderilmemiş) değişiklikler buluttaki sürümün önüne geçer;
+başka cihazda silinen kayıt geri yüklenmez. Antrenman ve notlar cihazda üretilen UUID ile kaydedilir, tekrar gönderim kopya oluşturmaz.
 
+## Test
 ```bash
-python3 -m http.server 8080
+node --test tests/*.test.mjs
 ```
 
-Then open `http://localhost:8080`.
-
-## Vercel deploy
-1. Create a GitHub repo and upload these files.
-2. Import the repo into Vercel.
-3. Framework preset: **Other**
-4. Build command: leave empty
-5. Output directory: leave empty
-
-## Notes
-- `manifest.json` now uses `/?source=pwa` as `start_url`.
-- `service-worker.js` includes runtime cache pruning.
-- CSS and JS were separated from `index.html` for easier maintenance.
+## Yayın
+Vercel, `main` dalını otomatik yayınlar (derleme adımı yok).
