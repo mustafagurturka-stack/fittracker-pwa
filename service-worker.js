@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'fittracker-pro-';
-const CACHE_NAME = 'fittracker-pro-canli-20261115-1';
-const BUILD_ASSETS = /*__BUILD_ASSETS__*/ ['/styles/main.css?v=301.0-canli','/scripts/vendor/supabase-2.112.3.js','/scripts/app.js?v=301.0-canli','/manifest.json?v=277.7','/icons/icon-192.png?v=229','/icons/icon-512.png?v=229','/fonts/dm-sans-latin-wght-normal.woff2','/fonts/dm-sans-latin-ext-wght-normal.woff2'];
+const CACHE_NAME = 'fittracker-pro-canli-20261115-2';
+const BUILD_ASSETS = /*__BUILD_ASSETS__*/ ['/styles/main.css?v=301.1-canli','/scripts/vendor/supabase-2.112.3.js','/scripts/app.js?v=301.1-canli','/manifest.json?v=277.7','/icons/icon-192.png?v=229','/icons/icon-512.png?v=229','/fonts/dm-sans-latin-wght-normal.woff2','/fonts/dm-sans-latin-ext-wght-normal.woff2'];
 const SHELL = ['/index.html', ...BUILD_ASSETS];
 // CacheStorage is optional: its failures must never reject a page navigation.
 function cacheAttempt(task, ms = 700) {
