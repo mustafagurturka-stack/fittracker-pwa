@@ -2010,6 +2010,44 @@ function renderWeightChart() {
   const lastX = x(last.date), lastY = y(Number(last.weight));
   const goalY = showGoal ? y(goal) : null;
 
+  // Etiketler çizgiye, noktalara ve birbirine binmeyecek ilk boş konuma yerleşir.
+  const pts = data.map(item => [x(item.date), y(Number(item.weight))]);
+  const blocked = [];
+  if (goalY !== null) blocked.push({ x1: W - right - 96, x2: W - right, y1: goalY - 20, y2: goalY + 2 });
+  const hitsLine = box => {
+    if (blocked.some(b => box.x1 < b.x2 && box.x2 > b.x1 && box.y1 < b.y2 && box.y2 > b.y1)) return true;
+    for (let i = 0; i < pts.length; i += 1) {
+      const [ax, ay] = pts[i];
+      const [bx, by] = pts[i + 1] || pts[i];
+      const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 2));
+      for (let k = 0; k <= steps; k += 1) {
+        const px = ax + ((bx - ax) * k) / steps;
+        const py = ay + ((by - ay) * k) / steps;
+        if (px > box.x1 - 5 && px < box.x2 + 5 && py > box.y1 - 5 && py < box.y2 + 5) return true;
+      }
+    }
+    return false;
+  };
+  const placeLabel = (px, py, text, size) => {
+    const w = text.length * size * 0.58;
+    const h = size;
+    const candidates = [
+      [px - 10, py - 12, 'end'], [px - 10, py + 22, 'end'], [px, py - 14, 'middle'], [px, py + 24, 'middle'],
+      [px - 10, py - 26, 'end'], [px - 10, py + 36, 'end'], [px + 10, py - 12, 'start'], [px + 10, py + 22, 'start']
+    ];
+    for (const [cx, cy, anchor] of candidates) {
+      const x1 = anchor === 'end' ? cx - w : anchor === 'middle' ? cx - w / 2 : cx;
+      const box = { x1, x2: x1 + w, y1: cy - h, y2: cy + 2 };
+      if (box.x1 < left || box.x2 > W - 2 || box.y1 < 2 || box.y2 > H - bottom) continue;
+      if (hitsLine(box)) continue;
+      blocked.push(box);
+      return { x: cx, y: cy, anchor };
+    }
+    return null;
+  };
+  const lastLabel = placeLabel(lastX, lastY, `${trNum(last.weight)} kg`, 13);
+  const lowLabel = lowest !== last ? placeLabel(x(lowest.date), y(Number(lowest.weight)), `en düşük ${trNum(lowest.weight)}`, 11) : null;
+
   const fourWeeksAgo = shiftIsoDate(last.date, -28);
   const ref = [...data].reverse().find(item => item.date <= fourWeeksAgo);
   const recent = ref ? Number(last.weight) - Number(ref.weight) : null;
@@ -2026,9 +2064,9 @@ function renderWeightChart() {
       <polygon class="chart-area" points="${area}"/>
       <polyline class="chart-line" points="${points}"/>
       ${data.map(item => `<circle class="chart-dot" cx="${x(item.date).toFixed(1)}" cy="${y(Number(item.weight)).toFixed(1)}" r="3.5"><title>${formatShortDate(item.date)} · ${trNum(item.weight)} kg</title></circle>`).join('')}
-      ${lowest !== last ? `<text class="chart-note" x="${x(lowest.date).toFixed(1)}" y="${(y(Number(lowest.weight)) + 18).toFixed(1)}" text-anchor="middle">en düşük ${trNum(lowest.weight)}</text>` : ''}
+      ${lowLabel ? `<text class="chart-note" x="${lowLabel.x.toFixed(1)}" y="${lowLabel.y.toFixed(1)}" text-anchor="${lowLabel.anchor}">en düşük ${trNum(lowest.weight)}</text>` : ''}
       <circle class="chart-last" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="6"/>
-      <text class="chart-value" x="${(lastX - 10).toFixed(1)}" y="${(lastY - 12).toFixed(1)}" text-anchor="end">${trNum(last.weight)} kg</text>
+      ${lastLabel ? `<text class="chart-value" x="${lastLabel.x.toFixed(1)}" y="${lastLabel.y.toFixed(1)}" text-anchor="${lastLabel.anchor}">${trNum(last.weight)} kg</text>` : ''}
     </svg>
     <div class="trio chart-stats">
       <div class="tile"><span class="label">Son 4 hafta</span><strong class="${recentTone}">${recent === null ? '—' : `${signedTr(recent)} kg`}</strong></div>
