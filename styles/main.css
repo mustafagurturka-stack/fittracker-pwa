@@ -114,8 +114,9 @@ svg[viewBox='0 0 24 24'] { fill: none; stroke: currentColor; stroke-width: 1.9; 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-.brand { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-.brand span { color: var(--accent); }
+.brand { display: flex; align-items: center; gap: 9px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.brand-logo { width: 30px; height: 30px; border-radius: 9px; flex: none; }
+.brand-name span { color: var(--accent); }
 .top-actions { display: flex; align-items: center; gap: 10px; }
 
 .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
